@@ -99,8 +99,11 @@ export function EventsProvider({ children }) {
         throw new Error('Event is at full capacity');
       }
       
-      // Check if already registered (by email)
-      if (event.attendees && event.attendees.some(a => a.email === attendee.email)) {
+      // Check if already registered (by student_id UUID first, then email)
+      if (
+        (event.attendees && attendee.authId && event.attendees.some(a => a.studentId === attendee.authId)) ||
+        (event.attendees && attendee.email && event.attendees.some(a => a.email === attendee.email))
+      ) {
         throw new Error('You are already registered for this event');
       }
       

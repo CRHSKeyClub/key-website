@@ -664,27 +664,34 @@ class SupabaseService {
     try {
       console.log('✍️ Signing up for event:', eventId, attendeeData);
       
-      const sNumberLower = attendeeData.sNumber ? attendeeData.sNumber.toLowerCase() : null;
+      // Try to resolve auth user's UUID for student_id
+      let studentUuid = null;
+      if (attendeeData.sNumber) {
+        const auth = await this.getAuthUser(attendeeData.sNumber);
+        if (auth && auth.id) {
+          studentUuid = auth.id; // UUID from auth_users
+        }
+      }
       
       // Check if already registered (by student_id if available, otherwise by email)
       let existingAttendee = null;
-      // Check by S-number first if available
-      if (sNumberLower) {
-        const { data: existingBySNumber, error: checkError1 } = await supabase
+      // Check by student_id if available (UUID)
+      if (studentUuid) {
+        const { data: existingByStudentId, error: checkError1 } = await supabase
           .from('event_attendees')
           .select('id, email')
           .eq('event_id', eventId)
-          .eq('s_number', sNumberLower)
+          .eq('student_id', studentUuid)
           .maybeSingle();
 
         if (checkError1) {
-          console.error('❌ Error checking existing attendee by s_number:', checkError1);
+          console.error('❌ Error checking existing attendee by student_id:', checkError1);
           throw checkError1;
         }
-        if (existingBySNumber) existingAttendee = existingBySNumber;
+        if (existingByStudentId) existingAttendee = existingByStudentId;
       }
 
-      // If not found by s_number, check by email as fallback
+      // If not found by student_id, check by email as fallback
       if (!existingAttendee && attendeeData.email) {
         const { data: existingByEmail, error: checkError2 } = await supabase
           .from('event_attendees')
@@ -724,8 +731,8 @@ class SupabaseService {
         email: attendeeData.email,
         registered_at: new Date().toISOString()
       };
-      // Save S-number with the signup for traceability and duplicate checks
-      if (sNumberLower) attendeeInsertData.s_number = sNumberLower;
+      // Include student_id when we have a UUID
+      if (studentUuid) attendeeInsertData.student_id = studentUuid;
 
       // Add attendee
       const { data, error } = await supabase
