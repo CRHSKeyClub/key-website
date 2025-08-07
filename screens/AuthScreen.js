@@ -27,11 +27,7 @@ export default function AuthScreen({ navigation }) {
   
   // Animation values
   const slideAnim = useRef(new Animated.Value(0)).current;
-  const leftPanelAnim = useRef(new Animated.Value(0)).current;
-  const rightPanelAnim = useRef(new Animated.Value(0)).current;
-  const formSlideAnim = useRef(new Animated.Value(0)).current;
-  const loginOpacity = useRef(new Animated.Value(1)).current;
-  const registerOpacity = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
   
   // Sign In State
   const [signInSNumber, setSignInSNumber] = useState('');
@@ -47,47 +43,22 @@ export default function AuthScreen({ navigation }) {
   
   // Toggle animation
   const toggleAuthMode = () => {
-    const toValue = isActive ? 0 : 1;
-    
-    Animated.parallel([
-      // Slide the blue background
-      Animated.timing(slideAnim, {
-        toValue,
-        duration: 1800,
-        useNativeDriver: false,
-      }),
-      // Move left panel
-      Animated.timing(leftPanelAnim, {
-        toValue,
-        duration: 600,
-        delay: isActive ? 1200 : 0,
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
         useNativeDriver: true,
       }),
-      // Move right panel
-      Animated.timing(rightPanelAnim, {
-        toValue,
-        duration: 600,
-        delay: isActive ? 0 : 1200,
-        useNativeDriver: true,
-      }),
-      // Slide forms
-      Animated.timing(formSlideAnim, {
-        toValue,
-        duration: 1200,
-        delay: 600,
-        useNativeDriver: true,
-      }),
-      // Fade forms
-      Animated.sequence([
-        Animated.timing(isActive ? registerOpacity : loginOpacity, {
-          toValue: 0,
-          duration: 300,
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: isActive ? 0 : 1,
+          duration: 600,
           useNativeDriver: true,
         }),
-        Animated.timing(isActive ? loginOpacity : registerOpacity, {
+        Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 300,
-          delay: 900,
+          duration: 200,
+          delay: 200,
           useNativeDriver: true,
         }),
       ]),
@@ -196,227 +167,220 @@ export default function AuthScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.mainContainer}>
-            {/* Blue Sliding Background */}
+            {/* Blue Sliding Panel - Behind everything */}
             <Animated.View 
               style={[
-                styles.slidingBackground,
-                {
-                  left: slideAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['-250%', '50%'],
-                  }),
-                }
-              ]}
-            />
-            
-            {/* Forms Container */}
-            <Animated.View 
-              style={[
-                styles.formsWrapper,
+                styles.bluePanel,
                 {
                   transform: [{
-                    translateX: formSlideAnim.interpolate({
+                    translateX: slideAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0, -screenWidth * 0.5],
+                      outputRange: [0, screenWidth * 0.5],
                     })
                   }]
                 }
               ]}
             >
-              {/* Login Form */}
-              <Animated.View 
-                style={[
-                  styles.formBox,
-                  styles.loginForm,
-                  { opacity: loginOpacity }
-                ]}
-              >
-                <Image 
-                  source={require('../assets/images/keyclublogo.png')} 
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-                
-                <Text style={styles.title}>Login</Text>
-                
-                <View style={styles.inputBox}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="S-Number"
-                    placeholderTextColor="#888"
-                    value={signInSNumber}
-                    onChangeText={setSignInSNumber}
-                    autoCapitalize="none"
-                    editable={!signInLoading}
-                  />
-                  <Ionicons name="person" size={20} color="#666" style={styles.inputIcon} />
-                </View>
-                
-                <View style={styles.inputBox}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor="#888"
-                    value={signInPassword}
-                    onChangeText={setSignInPassword}
-                    secureTextEntry
-                    editable={!signInLoading}
-                  />
-                  <Ionicons name="lock-closed" size={20} color="#666" style={styles.inputIcon} />
-                </View>
-                
-                <TouchableOpacity 
-                  onPress={() => navigation.navigate('ForgotPassword')}
-                  style={styles.forgotLink}
-                >
-                  <Text style={styles.forgotLinkText}>Forgot Password?</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.submitBtn, signInLoading && styles.disabledBtn]}
-                  onPress={handleSignIn}
-                  disabled={signInLoading}
-                >
-                  {signInLoading ? (
-                    <ActivityIndicator color="#ffffff" size="small" />
-                  ) : (
-                    <Text style={styles.submitBtnText}>Login</Text>
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
-              
-              {/* Register Form */}
-              <Animated.View 
-                style={[
-                  styles.formBox,
-                  styles.registerForm,
-                  { opacity: registerOpacity }
-                ]}
-              >
-                <Image 
-                  source={require('../assets/images/keyclublogo.png')} 
-                  style={styles.logo}
-                  resizeMode="contain"
-                />
-                
-                <Text style={styles.title}>Registration</Text>
-                
-                <View style={styles.inputBox}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="S-Number"
-                    placeholderTextColor="#888"
-                    value={signUpSNumber}
-                    onChangeText={setSignUpSNumber}
-                    autoCapitalize="none"
-                    editable={!signUpLoading}
-                  />
-                  <Ionicons name="card" size={20} color="#666" style={styles.inputIcon} />
-                </View>
-                
-                <View style={styles.inputBox}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Full Name"
-                    placeholderTextColor="#888"
-                    value={signUpName}
-                    onChangeText={setSignUpName}
-                    editable={!signUpLoading}
-                  />
-                  <Ionicons name="person" size={20} color="#666" style={styles.inputIcon} />
-                </View>
-                
-                <View style={styles.inputBox}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor="#888"
-                    value={signUpPassword}
-                    onChangeText={setSignUpPassword}
-                    secureTextEntry
-                    editable={!signUpLoading}
-                  />
-                  <Ionicons name="lock-closed" size={20} color="#666" style={styles.inputIcon} />
-                </View>
-                
-                <View style={styles.inputBox}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Confirm Password"
-                    placeholderTextColor="#888"
-                    value={signUpConfirmPassword}
-                    onChangeText={setSignUpConfirmPassword}
-                    secureTextEntry
-                    editable={!signUpLoading}
-                  />
-                  <Ionicons name="lock-closed" size={20} color="#666" style={styles.inputIcon} />
-                </View>
-                
-                <TouchableOpacity
-                  style={[styles.submitBtn, signUpLoading && styles.disabledBtn]}
-                  onPress={handleSignUp}
-                  disabled={signUpLoading}
-                >
-                  {signUpLoading ? (
-                    <ActivityIndicator color="#ffffff" size="small" />
-                  ) : (
-                    <Text style={styles.submitBtnText}>Register</Text>
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
+              <View style={styles.panelContent}>
+                {!isActive ? (
+                  <>
+                    <Text style={styles.panelTitle}>Welcome{'\n'}Back!</Text>
+                    <Text style={styles.panelSubtitle}>
+                      Already have an account?
+                    </Text>
+                    <Text style={styles.panelDescription}>
+                      Sign in to access your Key Club account
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.panelButton}
+                      onPress={toggleAuthMode}
+                    >
+                      <Text style={styles.panelButtonText}>Login</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.panelTitle}>Hello,{'\n'}Friend!</Text>
+                    <Text style={styles.panelSubtitle}>
+                      New to Key Club?
+                    </Text>
+                    <Text style={styles.panelDescription}>
+                      Create an account and start your journey with us
+                    </Text>
+                    <TouchableOpacity 
+                      style={styles.panelButton}
+                      onPress={toggleAuthMode}
+                    >
+                      <Text style={styles.panelButtonText}>Register</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
             </Animated.View>
             
-            {/* Toggle Panels */}
-            <View style={styles.toggleBox}>
-              {/* Left Panel */}
-              <Animated.View 
-                style={[
-                  styles.togglePanel,
-                  styles.toggleLeft,
-                  {
-                    transform: [{
-                      translateX: leftPanelAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -screenWidth * 0.5],
-                      })
-                    }]
-                  }
-                ]}
-              >
-                <Text style={styles.toggleTitle}>Hello, Welcome!</Text>
-                <Text style={styles.toggleText}>Don't have an account?</Text>
-                <TouchableOpacity 
-                  style={styles.toggleBtn}
-                  onPress={toggleAuthMode}
+            {/* Forms Container - On top */}
+            <View style={styles.formsContainer}>
+              {/* Sign In Form */}
+              {!isActive && (
+                <Animated.View 
+                  style={[
+                    styles.formBox,
+                    styles.rightForm,
+                    { opacity: fadeAnim }
+                  ]}
                 >
-                  <Text style={styles.toggleBtnText}>Register</Text>
-                </TouchableOpacity>
-              </Animated.View>
+                  <Image 
+                    source={require('../assets/images/keyclublogo.png')} 
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                  
+                  <Text style={styles.title}>Sign In</Text>
+                  <Text style={styles.subtitle}>Use your S-Number to access your account</Text>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="S-Number"
+                      placeholderTextColor="#888"
+                      value={signInSNumber}
+                      onChangeText={setSignInSNumber}
+                      autoCapitalize="none"
+                      editable={!signInLoading}
+                    />
+                    <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Password"
+                      placeholderTextColor="#888"
+                      value={signInPassword}
+                      onChangeText={setSignInPassword}
+                      secureTextEntry
+                      editable={!signInLoading}
+                    />
+                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('ForgotPassword')}
+                    style={styles.forgotLink}
+                  >
+                    <Text style={styles.forgotLinkText}>Forgot Password?</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[styles.submitBtn, signInLoading && styles.disabledBtn]}
+                    onPress={handleSignIn}
+                    disabled={signInLoading}
+                  >
+                    {signInLoading ? (
+                      <ActivityIndicator color="#ffffff" size="small" />
+                    ) : (
+                      <Text style={styles.submitBtnText}>Sign In</Text>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <View style={styles.mobileToggle}>
+                    <Text style={styles.mobileToggleText}>Don't have an account? </Text>
+                    <TouchableOpacity onPress={toggleAuthMode}>
+                      <Text style={styles.mobileToggleLink}>Sign Up</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              )}
               
-              {/* Right Panel */}
-              <Animated.View 
-                style={[
-                  styles.togglePanel,
-                  styles.toggleRight,
-                  {
-                    transform: [{
-                      translateX: rightPanelAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [screenWidth * 0.5, 0],
-                      })
-                    }]
-                  }
-                ]}
-              >
-                <Text style={styles.toggleTitle}>Welcome Back!</Text>
-                <Text style={styles.toggleText}>Already have an account?</Text>
-                <TouchableOpacity 
-                  style={styles.toggleBtn}
-                  onPress={toggleAuthMode}
+              {/* Sign Up Form */}
+              {isActive && (
+                <Animated.View 
+                  style={[
+                    styles.formBox,
+                    styles.leftForm,
+                    { opacity: fadeAnim }
+                  ]}
                 >
-                  <Text style={styles.toggleBtnText}>Login</Text>
-                </TouchableOpacity>
-              </Animated.View>
+                  <Image 
+                    source={require('../assets/images/keyclublogo.png')} 
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                  
+                  <Text style={styles.title}>Create Account</Text>
+                  <Text style={styles.subtitle}>Join Key Club today</Text>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="S-Number"
+                      placeholderTextColor="#888"
+                      value={signUpSNumber}
+                      onChangeText={setSignUpSNumber}
+                      autoCapitalize="none"
+                      editable={!signUpLoading}
+                    />
+                    <Ionicons name="card-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Full Name"
+                      placeholderTextColor="#888"
+                      value={signUpName}
+                      onChangeText={setSignUpName}
+                      editable={!signUpLoading}
+                    />
+                    <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Password (min. 6 characters)"
+                      placeholderTextColor="#888"
+                      value={signUpPassword}
+                      onChangeText={setSignUpPassword}
+                      secureTextEntry
+                      editable={!signUpLoading}
+                    />
+                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Confirm Password"
+                      placeholderTextColor="#888"
+                      value={signUpConfirmPassword}
+                      onChangeText={setSignUpConfirmPassword}
+                      secureTextEntry
+                      editable={!signUpLoading}
+                    />
+                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <TouchableOpacity
+                    style={[styles.submitBtn, signUpLoading && styles.disabledBtn]}
+                    onPress={handleSignUp}
+                    disabled={signUpLoading}
+                  >
+                    {signUpLoading ? (
+                      <ActivityIndicator color="#ffffff" size="small" />
+                    ) : (
+                      <Text style={styles.submitBtnText}>Create Account</Text>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <View style={styles.mobileToggle}>
+                    <Text style={styles.mobileToggleText}>Already have an account? </Text>
+                    <TouchableOpacity onPress={toggleAuthMode}>
+                      <Text style={styles.mobileToggleLink}>Sign In</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -445,103 +409,148 @@ const styles = StyleSheet.create({
   mainContainer: {
     position: 'relative',
     width: '100%',
-    maxWidth: 850,
-    height: 550,
+    maxWidth: 900,
+    height: 500,
     backgroundColor: '#fff',
-    borderRadius: 30,
+    borderRadius: 25,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 30,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
     elevation: 10,
     overflow: 'hidden',
     alignSelf: 'center',
   },
-  slidingBackground: {
+  bluePanel: {
     position: 'absolute',
-    width: '300%',
+    left: 0,
+    width: '50%',
     height: '100%',
     backgroundColor: '#1e40af',
-    borderRadius: 150,
-    zIndex: 2,
+    zIndex: 1,
   },
-  formsWrapper: {
+  panelContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
+  },
+  panelTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 15,
+    textAlign: 'center',
+    lineHeight: 38,
+  },
+  panelSubtitle: {
+    fontSize: 16,
+    color: '#fbbf24',
+    marginBottom: 10,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  panelDescription: {
+    fontSize: 14,
+    color: '#fff',
+    marginBottom: 30,
+    textAlign: 'center',
+    opacity: 0.9,
+    lineHeight: 20,
+  },
+  panelButton: {
+    paddingHorizontal: 40,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 2,
+    borderColor: '#fbbf24',
+    backgroundColor: 'transparent',
+  },
+  panelButtonText: {
+    color: '#fbbf24',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  formsContainer: {
     position: 'absolute',
     width: '100%',
     height: '100%',
-    flexDirection: 'row',
+    zIndex: 2,
   },
   formBox: {
     position: 'absolute',
     width: '50%',
     height: '100%',
-    backgroundColor: '#fff',
-    alignItems: 'center',
+    backgroundColor: 'transparent',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 40,
-    zIndex: 1,
   },
-  loginForm: {
+  rightForm: {
     right: 0,
   },
-  registerForm: {
-    right: '50%',
+  leftForm: {
+    left: 0,
   },
   logo: {
-    width: 60,
-    height: 60,
-    marginBottom: 10,
+    width: 50,
+    height: 50,
+    marginBottom: 15,
   },
   title: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 30,
+    color: '#1e293b',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 25,
+    textAlign: 'center',
   },
   inputBox: {
     position: 'relative',
     width: '100%',
-    marginVertical: 15,
+    marginVertical: 10,
   },
   input: {
     width: '100%',
-    paddingVertical: 13,
-    paddingLeft: 20,
-    paddingRight: 50,
-    backgroundColor: '#eee',
-    borderRadius: 8,
-    fontSize: 16,
-    color: '#333',
-    fontWeight: '500',
+    paddingVertical: 12,
+    paddingLeft: 15,
+    paddingRight: 45,
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    fontSize: 14,
+    color: '#1e293b',
   },
   inputIcon: {
     position: 'absolute',
-    right: 20,
+    right: 15,
     top: '50%',
     marginTop: -10,
   },
   forgotLink: {
-    alignSelf: 'flex-start',
-    marginTop: -10,
+    alignSelf: 'flex-end',
+    marginTop: -5,
     marginBottom: 15,
   },
   forgotLinkText: {
-    fontSize: 14.5,
-    color: '#333',
+    fontSize: 13,
+    color: '#1e40af',
+    fontWeight: '500',
   },
   submitBtn: {
     width: '100%',
-    height: 48,
+    height: 45,
     backgroundColor: '#1e40af',
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
-    marginTop: 10,
+    marginTop: 15,
   },
   submitBtnText: {
     fontSize: 16,
@@ -551,52 +560,18 @@ const styles = StyleSheet.create({
   disabledBtn: {
     backgroundColor: '#94a3b8',
   },
-  toggleBox: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-  },
-  togglePanel: {
-    position: 'absolute',
-    width: '50%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2,
-    padding: 20,
-  },
-  toggleLeft: {
-    left: 0,
-  },
-  toggleRight: {
-    right: 0,
-  },
-  toggleTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  toggleText: {
-    fontSize: 14.5,
-    color: '#fff',
-    marginBottom: 30,
-    textAlign: 'center',
-  },
-  toggleBtn: {
-    width: 160,
-    height: 46,
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#fbbf24',
-    borderRadius: 8,
-    justifyContent: 'center',
+  mobileToggle: {
+    flexDirection: 'row',
+    marginTop: 20,
     alignItems: 'center',
   },
-  toggleBtnText: {
-    fontSize: 16,
-    color: '#fbbf24',
+  mobileToggleText: {
+    fontSize: 13,
+    color: '#64748b',
+  },
+  mobileToggleLink: {
+    fontSize: 13,
+    color: '#1e40af',
     fontWeight: '600',
   },
 });
