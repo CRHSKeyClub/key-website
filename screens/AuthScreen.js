@@ -208,7 +208,7 @@ export default function AuthScreen({ navigation }) {
                   {
                     left: circularSlideAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [-screenWidth * 0.9, screenWidth * 0.1],
+                      outputRange: [-screenWidth * 0.6, screenWidth * 0.05],
                     }),
                   }
                 ]}
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 0,
+    paddingHorizontal: 20,
     width: '100%',
     maxWidth: 700,
   },
@@ -494,21 +494,20 @@ const styles = StyleSheet.create({
     elevation: 8,
     overflow: 'hidden',
     alignSelf: 'center',
-    marginHorizontal: 20,
   },
   circularBackground: {
     position: 'absolute',
-    width: screenWidth * 1.8,
+    width: screenWidth * 1.2,
     height: '100%',
     backgroundColor: '#1e40af',
-    borderRadius: screenWidth * 0.9,
+    borderRadius: screenWidth * 0.6,
     zIndex: 2,
     overflow: 'hidden',
   },
   formContainer: {
     position: 'absolute',
     right: 0,
-    width: '55%',
+    width: '50%',
     height: '100%',
     backgroundColor: '#fff',
     zIndex: 1,
@@ -623,7 +622,7 @@ const styles = StyleSheet.create({
   },
   togglePanel: {
     position: 'absolute',
-    width: '45%',
+    width: '50%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
