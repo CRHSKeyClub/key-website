@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     maxWidth: 900,
-    height: 500,
+    height: 600,
     backgroundColor: '#fff',
     borderRadius: 25,
     shadowColor: '#000',
