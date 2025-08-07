@@ -25,10 +25,12 @@ export default function AuthScreen({ navigation }) {
   const { loginAsStudent, registerStudent } = useAuth();
   const [isSignUpActive, setIsSignUpActive] = useState(false);
   
-  // Animation values
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  // Animation values for circular sliding effect
+  const circularSlideAnim = useRef(new Animated.Value(0)).current;
+  const leftPanelSlideAnim = useRef(new Animated.Value(0)).current;
+  const rightPanelSlideAnim = useRef(new Animated.Value(0)).current;
+  const formSlideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const toggleAnim = useRef(new Animated.Value(0)).current;
   
   // Sign In State
   const [signInSNumber, setSignInSNumber] = useState('');
@@ -42,35 +44,55 @@ export default function AuthScreen({ navigation }) {
   const [signUpConfirmPassword, setSignUpConfirmPassword] = useState('');
   const [signUpLoading, setSignUpLoading] = useState(false);
   
-  // Animated toggle between sign in and sign up
+  // Animated toggle with circular sliding effect
   const toggleAuthMode = () => {
     console.log('Toggle button clicked! Current state:', isSignUpActive);
     
-    // Start the animation sequence
+    // Start the complex animation sequence
     Animated.sequence([
-      // Fade out current form
+      // Step 1: Fade out current form
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 150,
+        duration: 200,
         useNativeDriver: true,
       }),
-      // Slide to new form
+      // Step 2: Start circular slide and panel movements
       Animated.parallel([
-        Animated.timing(slideAnim, {
+        // Circular background slides
+        Animated.timing(circularSlideAnim, {
           toValue: isSignUpActive ? 0 : 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(toggleAnim, {
-          toValue: isSignUpActive ? 0 : 1,
-          duration: 300,
+          duration: 1800,
           useNativeDriver: false,
         }),
+        // Left panel slides out (with delay)
+        Animated.sequence([
+          Animated.delay(isSignUpActive ? 0 : 1200),
+          Animated.timing(leftPanelSlideAnim, {
+            toValue: isSignUpActive ? 0 : 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]),
+        // Right panel slides in (with delay)
+        Animated.sequence([
+          Animated.delay(isSignUpActive ? 1200 : 0),
+          Animated.timing(rightPanelSlideAnim, {
+            toValue: isSignUpActive ? 0 : 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]),
+        // Form slides
+        Animated.timing(formSlideAnim, {
+          toValue: isSignUpActive ? 0 : 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
       ]),
-      // Fade in new form
+      // Step 3: Fade in new form
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 150,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start();
@@ -166,33 +188,6 @@ export default function AuthScreen({ navigation }) {
     }
   };
   
-  // Dynamic content based on current state
-  const getOverlayContent = () => {
-    if (isSignUpActive) {
-      // User is on Sign Up, show Sign In option
-      return {
-        title: "Already a Member?",
-        text: "Welcome back! Sign in to access your account and continue tracking your progress",
-        buttonText: "SIGN IN"
-      };
-    } else {
-      // User is on Sign In, show Sign Up option
-      return {
-        title: "New to Key Club?",
-        text: "Create an account to track your volunteer hours and participate in events",
-        buttonText: "SIGN UP"
-      };
-    }
-  };
-  
-  const overlayContent = getOverlayContent();
-  
-  // Calculate toggle button position
-  const toggleButtonTranslateX = toggleAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, screenWidth - 40], // Adjust based on your toggle container width
-  });
-  
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
@@ -205,41 +200,21 @@ export default function AuthScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>Student Login</Text>
-              <Text style={styles.headerSubtitle}>Access your Key Club account</Text>
-            </View>
-            
             <View style={styles.authContainer}>
-              {/* Animated Toggle Buttons */}
-              <View style={styles.toggleContainer}>
-                <Animated.View 
-                  style={[
-                    styles.toggleSlider,
-                    {
-                      transform: [{ translateX: toggleButtonTranslateX }],
-                    }
-                  ]}
-                />
-                <TouchableOpacity
-                  style={[styles.toggleButton, !isSignUpActive && styles.toggleButtonActive]}
-                  onPress={() => isSignUpActive && toggleAuthMode()}
-                >
-                  <Text style={[styles.toggleButtonText, !isSignUpActive && styles.toggleButtonTextActive]}>
-                    Sign In
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.toggleButton, isSignUpActive && styles.toggleButtonActive]}
-                  onPress={() => !isSignUpActive && toggleAuthMode()}
-                >
-                  <Text style={[styles.toggleButtonText, isSignUpActive && styles.toggleButtonTextActive]}>
-                    Sign Up
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Animated Form Container */}
+              {/* Circular Sliding Background */}
+              <Animated.View 
+                style={[
+                  styles.circularBackground,
+                  {
+                    left: circularSlideAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-screenWidth * 1.5, screenWidth * 0.5],
+                    }),
+                  }
+                ]}
+              />
+              
+              {/* Form Container */}
               <Animated.View 
                 style={[
                   styles.formContainer,
@@ -247,9 +222,9 @@ export default function AuthScreen({ navigation }) {
                     opacity: fadeAnim,
                     transform: [
                       {
-                        translateX: slideAnim.interpolate({
+                        translateX: formSlideAnim.interpolate({
                           inputRange: [0, 1],
-                          outputRange: [0, -screenWidth],
+                          outputRange: [0, -screenWidth * 0.5],
                         })
                       }
                     ]
@@ -273,7 +248,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>S-Number</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="person" size={20} color="#4299e1" style={styles.inputIcon} />
+                        <Ionicons name="person" size={20} color="#7494ec" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="s150712"
@@ -288,7 +263,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Password</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="lock-closed" size={20} color="#4299e1" style={styles.inputIcon} />
+                        <Ionicons name="lock-closed" size={20} color="#7494ec" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="Enter your password"
@@ -341,7 +316,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>S-Number</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="card" size={20} color="#4299e1" style={styles.inputIcon} />
+                        <Ionicons name="card" size={20} color="#7494ec" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="s150712"
@@ -356,7 +331,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Full Name</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="person" size={20} color="#4299e1" style={styles.inputIcon} />
+                        <Ionicons name="person" size={20} color="#7494ec" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="Your full name"
@@ -370,7 +345,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Password</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="lock-closed" size={20} color="#4299e1" style={styles.inputIcon} />
+                        <Ionicons name="lock-closed" size={20} color="#7494ec" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="Create a password"
@@ -385,7 +360,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Confirm Password</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="lock-closed" size={20} color="#4299e1" style={styles.inputIcon} />
+                        <Ionicons name="lock-closed" size={20} color="#7494ec" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="Confirm your password"
@@ -414,6 +389,63 @@ export default function AuthScreen({ navigation }) {
                   </View>
                 )}
               </Animated.View>
+              
+              {/* Toggle Panels */}
+              <View style={styles.toggleContainer}>
+                {/* Left Panel */}
+                <Animated.View 
+                  style={[
+                    styles.togglePanel,
+                    styles.toggleLeft,
+                    {
+                      transform: [
+                        {
+                          translateX: leftPanelSlideAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, -screenWidth * 0.5],
+                          })
+                        }
+                      ]
+                    }
+                  ]}
+                >
+                  <Text style={styles.toggleTitle}>Hello, Welcome!</Text>
+                  <Text style={styles.toggleText}>Don't have an account?</Text>
+                  <TouchableOpacity 
+                    style={styles.toggleButton}
+                    onPress={toggleAuthMode}
+                  >
+                    <Text style={styles.toggleButtonText}>Register</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+                
+                {/* Right Panel */}
+                <Animated.View 
+                  style={[
+                    styles.togglePanel,
+                    styles.toggleRight,
+                    {
+                      transform: [
+                        {
+                          translateX: rightPanelSlideAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [screenWidth * 0.5, 0],
+                          })
+                        }
+                      ]
+                    }
+                  ]}
+                >
+                  <Text style={styles.toggleTitle}>Welcome Back!</Text>
+                  <Text style={styles.toggleText}>Already have an account?</Text>
+                  <TouchableOpacity 
+                    style={styles.toggleButton}
+                    onPress={toggleAuthMode}
+                  >
+                    <Text style={styles.toggleButtonText}>Login</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
             </View>
           </View>
         </ScrollView>
@@ -425,7 +457,7 @@ export default function AuthScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a365d', // Deep navy blue background
+    backgroundColor: '#e2e2e2', // Light gray background like the HTML
   },
   keyboardAvoid: {
     flex: 1,
@@ -445,89 +477,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#4299e1', // Professional blue
-    textAlign: 'center',
-    marginBottom: 10,
-    textShadowColor: 'rgba(66, 153, 225, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#e2e8f0', // Light gray
-    textAlign: 'center',
-    opacity: 0.9,
-  },
   authContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Subtle transparency
-    borderRadius: 20,
-    padding: 25,
-    width: '100%',
-    maxWidth: 500,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(66, 153, 225, 0.2)',
-    overflow: 'hidden', // Important for slide animations
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
-    width: '100%',
     position: 'relative',
+    width: '100%',
+    maxWidth: 850,
+    height: 550,
+    backgroundColor: '#fff',
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 30,
+    elevation: 8,
+    overflow: 'hidden',
   },
-  toggleSlider: {
+  circularBackground: {
     position: 'absolute',
-    top: 4,
-    left: 4,
-    width: '50%',
+    width: screenWidth * 3, // 300% width like the HTML
     height: '100%',
-    backgroundColor: '#4299e1',
-    borderRadius: 8,
-    zIndex: 1,
-  },
-  toggleButton: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 8,
+    backgroundColor: '#7494ec', // Blue color from HTML
+    borderRadius: screenWidth * 1.5, // 150px radius
     zIndex: 2,
   },
-  toggleButtonActive: {
-    // Background is now handled by the slider
-  },
-  toggleButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#e2e8f0', // Light gray
-  },
-  toggleButtonTextActive: {
-    color: '#ffffff',
-  },
   formContainer: {
-    width: '100%',
-    position: 'relative',
+    position: 'absolute',
+    right: 0,
+    width: '50%',
+    height: '100%',
+    backgroundColor: '#fff',
+    zIndex: 1,
+    padding: 40,
+    justifyContent: 'center',
   },
   formPanel: {
     width: '100%',
-    padding: 15,
-    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    position: 'relative',
   },
   keyClubLogoContainer: {
     width: 80,
@@ -541,91 +525,129 @@ const styles = StyleSheet.create({
     height: 80,
   },
   formTitle: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: '#4299e1', // Professional blue
+    color: '#333',
     marginBottom: 8,
     textAlign: 'center',
   },
   formSubtitle: {
-    fontSize: 15,
-    color: '#e2e8f0', // Light gray
+    fontSize: 14.5,
+    color: '#666',
     textAlign: 'center',
-    marginBottom: 16,
-    lineHeight: 20,
+    marginBottom: 30,
   },
   formGroup: {
-    marginBottom: 16,
+    marginBottom: 30,
     width: '100%',
   },
   label: {
     fontSize: 15,
-    color: '#e2e8f0', // Light gray
+    color: '#333',
     marginBottom: 10,
     fontWeight: '600',
-    textAlign: 'left',
-    width: '100%',
   },
   inputWrapper: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#4299e1', // Professional blue
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    minHeight: 50,
-    width: '100%',
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 13,
   },
   inputIcon: {
-    marginRight: 10,
-    color: '#4299e1', // Professional blue
+    position: 'absolute',
+    right: 20,
+    fontSize: 20,
   },
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#2d3748', // Dark gray
-    backgroundColor: 'transparent',
-    marginLeft: 12,
-    paddingVertical: 8,
-    minHeight: 20,
+    color: '#333',
+    fontWeight: '500',
+    paddingRight: 50,
   },
   forgotLink: {
-    marginVertical: 10,
+    marginTop: -15,
+    marginBottom: 15,
     alignSelf: 'flex-end',
   },
   forgotLinkText: {
-    color: '#4299e1', // Professional blue
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14.5,
+    color: '#333',
   },
   button: {
-    backgroundColor: '#4299e1', // Professional blue
-    paddingVertical: 16,
-    paddingHorizontal: 50,
-    borderRadius: 14,
-    marginTop: 20,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
     width: '100%',
+    height: 48,
+    backgroundColor: '#7494ec',
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
   },
   buttonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   buttonIcon: {
     marginLeft: 10,
   },
   disabledButton: {
-    backgroundColor: '#718096', // Medium gray
+    backgroundColor: '#ccc',
+  },
+  toggleContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    zIndex: 2,
+  },
+  togglePanel: {
+    position: 'absolute',
+    width: '50%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  toggleLeft: {
+    left: 0,
+  },
+  toggleRight: {
+    right: 0,
+  },
+  toggleTitle: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  toggleText: {
+    fontSize: 14.5,
+    color: '#fff',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  toggleButton: {
+    width: 160,
+    height: 46,
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#fff',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
