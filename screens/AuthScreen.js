@@ -248,7 +248,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>S-Number</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="person" size={20} color="#7494ec" style={styles.inputIcon} />
+                        <Ionicons name="person" size={20} color="#1e40af" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="s150712"
@@ -263,7 +263,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Password</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="lock-closed" size={20} color="#7494ec" style={styles.inputIcon} />
+                        <Ionicons name="lock-closed" size={20} color="#1e40af" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="Enter your password"
@@ -316,7 +316,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>S-Number</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="card" size={20} color="#7494ec" style={styles.inputIcon} />
+                        <Ionicons name="card" size={20} color="#1e40af" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="s150712"
@@ -331,7 +331,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Full Name</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="person" size={20} color="#7494ec" style={styles.inputIcon} />
+                        <Ionicons name="person" size={20} color="#1e40af" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="Your full name"
@@ -345,7 +345,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Password</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="lock-closed" size={20} color="#7494ec" style={styles.inputIcon} />
+                        <Ionicons name="lock-closed" size={20} color="#1e40af" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="Create a password"
@@ -360,7 +360,7 @@ export default function AuthScreen({ navigation }) {
                     <View style={styles.formGroup}>
                       <Text style={styles.label}>Confirm Password</Text>
                       <View style={styles.inputWrapper}>
-                        <Ionicons name="lock-closed" size={20} color="#7494ec" style={styles.inputIcon} />
+                        <Ionicons name="lock-closed" size={20} color="#1e40af" style={styles.inputIcon} />
                         <TextInput
                           style={styles.input}
                           placeholder="Confirm your password"
@@ -457,7 +457,7 @@ export default function AuthScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#e2e2e2', // Light gray background like the HTML
+    backgroundColor: '#f8fafc', // Light blue-gray background
   },
   keyboardAvoid: {
     flex: 1,
@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 30,
     elevation: 8,
     overflow: 'hidden',
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: screenWidth * 3, // 300% width like the HTML
     height: '100%',
-    backgroundColor: '#7494ec', // Blue color from HTML
+    backgroundColor: '#1e40af', // Key Club blue
     borderRadius: screenWidth * 1.5, // 150px radius
     zIndex: 2,
   },
@@ -527,13 +527,13 @@ const styles = StyleSheet.create({
   formTitle: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1e40af', // Key Club blue
     marginBottom: 8,
     textAlign: 'center',
   },
   formSubtitle: {
     fontSize: 14.5,
-    color: '#666',
+    color: '#64748b',
     textAlign: 'center',
     marginBottom: 30,
   },
@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
-    color: '#333',
+    color: '#1e40af', // Key Club blue
     marginBottom: 10,
     fontWeight: '600',
   },
@@ -551,10 +551,12 @@ const styles = StyleSheet.create({
     position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eee',
-    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
     paddingHorizontal: 20,
-    paddingVertical: 13,
+    paddingVertical: 15,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
   },
   inputIcon: {
     position: 'absolute',
@@ -564,7 +566,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: '#1e293b',
     fontWeight: '500',
     paddingRight: 50,
   },
@@ -575,17 +577,18 @@ const styles = StyleSheet.create({
   },
   forgotLinkText: {
     fontSize: 14.5,
-    color: '#333',
+    color: '#1e40af', // Key Club blue
+    fontWeight: '500',
   },
   button: {
     width: '100%',
     height: 48,
-    backgroundColor: '#7494ec',
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    backgroundColor: '#1e40af', // Key Club blue
+    borderRadius: 12,
+    shadowColor: '#1e40af',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 6,
     alignItems: 'center',
     justifyContent: 'center',
@@ -600,7 +603,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   disabledButton: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#94a3b8',
   },
   toggleContainer: {
     position: 'absolute',
@@ -628,25 +631,29 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginBottom: 20,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   toggleText: {
     fontSize: 14.5,
     color: '#fff',
     marginBottom: 20,
     textAlign: 'center',
+    opacity: 0.9,
   },
   toggleButton: {
     width: 160,
     height: 46,
     backgroundColor: 'transparent',
     borderWidth: 2,
-    borderColor: '#fff',
-    borderRadius: 8,
+    borderColor: '#fbbf24', // Key Club gold
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   toggleButtonText: {
-    color: '#fff',
+    color: '#fbbf24', // Key Club gold
     fontSize: 16,
     fontWeight: '600',
   },
