@@ -468,36 +468,41 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 12, // Reduced from 16
+    padding: 12,
     minHeight: screenHeight,
+    alignItems: 'center',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16, // Reduced from 20
+    paddingHorizontal: 16,
+    width: '100%',
+    maxWidth: 700,
   },
   authContainer: {
     position: 'relative',
     width: '100%',
-    maxWidth: 700, // Reduced from 850
-    height: 450, // Reduced from 550
+    maxWidth: 700,
+    height: 450,
     backgroundColor: '#fff',
-    borderRadius: 25, // Reduced from 30
+    borderRadius: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.15,
-    shadowRadius: 25, // Reduced from 30
+    shadowRadius: 25,
     elevation: 8,
     overflow: 'hidden',
+    alignSelf: 'center',
   },
   circularBackground: {
     position: 'absolute',
-    width: screenWidth * 3, // 300% width like the HTML
+    width: screenWidth * 3,
     height: '100%',
-    backgroundColor: '#1e40af', // Key Club blue
-    borderRadius: screenWidth * 1.5, // 150px radius
+    backgroundColor: '#1e40af',
+    borderRadius: screenWidth * 1.5,
     zIndex: 2,
+    overflow: 'hidden',
   },
   formContainer: {
     position: 'absolute',
@@ -506,8 +511,9 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#fff',
     zIndex: 1,
-    padding: 20, // Reduced from 30
+    padding: 20,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   formPanel: {
     width: '100%',
@@ -610,6 +616,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     zIndex: 2,
+    overflow: 'hidden',
   },
   togglePanel: {
     position: 'absolute',
@@ -617,7 +624,8 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20, // Reduced from 30
+    padding: 20,
+    overflow: 'hidden',
   },
   toggleLeft: {
     left: 0,
