@@ -378,7 +378,7 @@ export default function AuthScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1e3a8a', // Dark blue background
+    backgroundColor: '#330066', // Dark indigo background
   },
   keyboardAvoid: {
     flex: 1,
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 900,
     height: 600,
-    backgroundColor: '#fef3c7', // Light gold background
+    backgroundColor: '#CC9900', // Muted gold background
     borderRadius: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: '50%',
     height: '100%',
-    backgroundColor: '#1e40af', // Keep the blue panel
+    backgroundColor: '#0000FF', // Bright blue panel
     zIndex: 10,
     borderRadius: 25,
   },
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   },
   panelSubtitle: {
     fontSize: 16,
-    color: '#f59e0b', // Gold color
+    color: '#FFCC00', // Bright gold color
     marginBottom: 10,
     textAlign: 'center',
     fontWeight: '600',
@@ -450,11 +450,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: '#f59e0b', // Gold border
+    borderColor: '#FFCC00', // Bright gold border
     backgroundColor: 'transparent',
   },
   panelButtonText: {
-    color: '#f59e0b', // Gold text
+    color: '#FFCC00', // Bright gold text
     fontSize: 16,
     fontWeight: '600',
   },
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
-    backgroundColor: '#fef3c7', // Light gold background
+    backgroundColor: '#CC9900', // Muted gold background
     borderRadius: 25,
   },
   leftForm: {
@@ -488,13 +488,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1e40af', // Blue text
+    color: '#0000FF', // Bright blue text
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 14,
-    color: '#1e40af', // Blue text
+    color: '#0000FF', // Bright blue text
     marginBottom: 30,
     textAlign: 'center',
   },
@@ -509,17 +509,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#1e40af',
+    borderColor: '#0000FF',
     paddingHorizontal: 15,
     paddingRight: 45,
     fontSize: 14,
-    color: '#1e40af',
+    color: '#0000FF',
   },
   inputIcon: {
     position: 'absolute',
     right: 15,
     top: 12,
-    color: '#1e40af', // Blue icons
+    color: '#0000FF', // Bright blue icons
   },
   forgotLink: {
     alignSelf: 'flex-end',
@@ -528,12 +528,12 @@ const styles = StyleSheet.create({
   },
   forgotLinkText: {
     fontSize: 13,
-    color: '#1e40af', // Keep blue
+    color: '#0000FF', // Bright blue
     fontWeight: '500',
   },
   submitBtn: {
     width: '100%',
-    backgroundColor: '#1e40af', // Keep blue
+    backgroundColor: '#0000FF', // Bright blue
     borderRadius: 10,
     height: 45,
     justifyContent: 'center',
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   disabledBtn: {
-    backgroundColor: '#f59e0b', // Gold when disabled
+    backgroundColor: '#FFCC00', // Bright gold when disabled
   },
   mobileToggle: {
     flexDirection: 'row',
@@ -555,11 +555,11 @@ const styles = StyleSheet.create({
   },
   mobileToggleText: {
     fontSize: 14,
-    color: '#1e40af', // Blue text
+    color: '#0000FF', // Bright blue text
   },
   mobileToggleLink: {
     fontSize: 14,
-    color: '#f59e0b', // Gold link
+    color: '#FFCC00', // Bright gold link
     fontWeight: '600',
   },
 });
