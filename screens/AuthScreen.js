@@ -206,8 +206,168 @@ export default function AuthScreen({ navigation }) {
 
             {/* Forms Container */}
             <View style={styles.formsContainer}>
-              {/* Your existing Animated.View sign-in and sign-up forms stay the same */}
-              {/* ... keep your forms code here ... */}
+              <Animated.View 
+                style={[
+                  styles.formBox,
+                  styles.rightForm,
+                  { 
+                    opacity: !isActive ? fadeAnim : 0,
+                    pointerEvents: !isActive ? 'auto' : 'none'
+                  }
+                ]}
+              >
+                  <Image 
+                    source={require('../assets/images/keyclublogo.png')} 
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                  
+                  <Text style={styles.title}>Sign In</Text>
+                  <Text style={styles.subtitle}>Use your S-Number to access your account</Text>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="S-Number"
+                      placeholderTextColor="#888"
+                      value={signInSNumber}
+                      onChangeText={setSignInSNumber}
+                      autoCapitalize="none"
+                      editable={!signInLoading}
+                    />
+                    <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Password"
+                      placeholderTextColor="#888"
+                      value={signInPassword}
+                      onChangeText={setSignInPassword}
+                      secureTextEntry
+                      editable={!signInLoading}
+                    />
+                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('ForgotPassword')}
+                    style={styles.forgotLink}
+                  >
+                    <Text style={styles.forgotLinkText}>Forgot Password?</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[styles.submitBtn, signInLoading && styles.disabledBtn]}
+                    onPress={handleSignIn}
+                    disabled={signInLoading}
+                  >
+                    {signInLoading ? (
+                      <ActivityIndicator color="#ffffff" size="small" />
+                    ) : (
+                      <Text style={styles.submitBtnText}>Sign In</Text>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <View style={styles.mobileToggle}>
+                    <Text style={styles.mobileToggleText}>Don't have an account? </Text>
+                    <TouchableOpacity onPress={toggleAuthMode}>
+                      <Text style={styles.mobileToggleLink}>Sign Up</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
+              
+              {/* Sign Up Form */}
+              <Animated.View 
+                style={[
+                  styles.formBox,
+                  styles.leftForm,
+                  { 
+                    opacity: isActive ? fadeAnim : 0,
+                    pointerEvents: isActive ? 'auto' : 'none'
+                  }
+                ]}
+              >
+                  <Image 
+                    source={require('../assets/images/keyclublogo.png')} 
+                    style={styles.logo}
+                    resizeMode="contain"
+                  />
+                  
+                  <Text style={styles.title}>Create Account</Text>
+                  <Text style={styles.subtitle}>Join Key Club today</Text>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="S-Number"
+                      placeholderTextColor="#888"
+                      value={signUpSNumber}
+                      onChangeText={setSignUpSNumber}
+                      autoCapitalize="none"
+                      editable={!signUpLoading}
+                    />
+                    <Ionicons name="card-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Full Name"
+                      placeholderTextColor="#888"
+                      value={signUpName}
+                      onChangeText={setSignUpName}
+                      editable={!signUpLoading}
+                    />
+                    <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Password (min. 6 characters)"
+                      placeholderTextColor="#888"
+                      value={signUpPassword}
+                      onChangeText={setSignUpPassword}
+                      secureTextEntry
+                      editable={!signUpLoading}
+                    />
+                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <View style={styles.inputBox}>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Confirm Password"
+                      placeholderTextColor="#888"
+                      value={signUpConfirmPassword}
+                      onChangeText={setSignUpConfirmPassword}
+                      secureTextEntry
+                      editable={!signUpLoading}
+                    />
+                    <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                  </View>
+                  
+                  <TouchableOpacity
+                    style={[styles.submitBtn, signUpLoading && styles.disabledBtn]}
+                    onPress={handleSignUp}
+                    disabled={signUpLoading}
+                  >
+                    {signUpLoading ? (
+                      <ActivityIndicator color="#ffffff" size="small" />
+                    ) : (
+                      <Text style={styles.submitBtnText}>Create Account</Text>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <View style={styles.mobileToggle}>
+                    <Text style={styles.mobileToggleText}>Already have an account? </Text>
+                    <TouchableOpacity onPress={toggleAuthMode}>
+                      <Text style={styles.mobileToggleLink}>Sign In</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Animated.View>
             </View>
           </View>
         </ScrollView>
