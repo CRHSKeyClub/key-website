@@ -267,6 +267,7 @@ class SupabaseService {
         success: true,
         user: {
           id: student.id,
+          authId: authUser.id, // UUID from auth_users
           sNumber: sNumber.toLowerCase(),
           name: name || student.name,
           role: 'student'
@@ -318,6 +319,7 @@ class SupabaseService {
         success: true,
         user: {
           id: student.id,
+          authId: authUser.id, // UUID from auth_users for relations
           sNumber: sNumber.toLowerCase(),
           name: student.name,
           role: student.role || 'student',
@@ -438,6 +440,7 @@ class SupabaseService {
             id: attendee.id,
             name: attendee.name,
             email: attendee.email,
+            studentId: attendee.student_id,
             registeredAt: attendee.registered_at
           });
         });
@@ -661,39 +664,27 @@ class SupabaseService {
     try {
       console.log('✍️ Signing up for event:', eventId, attendeeData);
       
-      let studentId = null;
-      
-      // If sNumber is provided, get the student ID
-      if (attendeeData.sNumber) {
-        const student = await this.getStudent(attendeeData.sNumber);
-        if (student) {
-          studentId = student.id;
-          console.log('👤 Found student ID:', studentId, 'for sNumber:', attendeeData.sNumber);
-        }
-      }
+      const sNumberLower = attendeeData.sNumber ? attendeeData.sNumber.toLowerCase() : null;
       
       // Check if already registered (by student_id if available, otherwise by email)
       let existingAttendee = null;
-      if (studentId) {
-        // Check by student_id first (this respects the unique constraint)
-        const { data: existingByStudent, error: checkError1 } = await supabase
+      // Check by S-number first if available
+      if (sNumberLower) {
+        const { data: existingBySNumber, error: checkError1 } = await supabase
           .from('event_attendees')
           .select('id, email')
           .eq('event_id', eventId)
-          .eq('student_id', studentId)
+          .eq('s_number', sNumberLower)
           .maybeSingle();
 
         if (checkError1) {
-          console.error('❌ Error checking existing attendee by student_id:', checkError1);
+          console.error('❌ Error checking existing attendee by s_number:', checkError1);
           throw checkError1;
         }
-        
-        if (existingByStudent) {
-          existingAttendee = existingByStudent;
-        }
+        if (existingBySNumber) existingAttendee = existingBySNumber;
       }
-      
-      // If not found by student_id, check by email as fallback
+
+      // If not found by s_number, check by email as fallback
       if (!existingAttendee && attendeeData.email) {
         const { data: existingByEmail, error: checkError2 } = await supabase
           .from('event_attendees')
@@ -733,11 +724,8 @@ class SupabaseService {
         email: attendeeData.email,
         registered_at: new Date().toISOString()
       };
-      
-      // Add student_id if available
-      if (studentId) {
-        attendeeInsertData.student_id = studentId;
-      }
+      // Save S-number with the signup for traceability and duplicate checks
+      if (sNumberLower) attendeeInsertData.s_number = sNumberLower;
 
       // Add attendee
       const { data, error } = await supabase
@@ -803,12 +791,18 @@ class SupabaseService {
       
       let studentId = null;
       
-      // If sNumber is provided, get the student ID
+      // Resolve UUID from auth_users if possible
       if (sNumber) {
-        const student = await this.getStudent(sNumber);
-        if (student) {
-          studentId = student.id;
-          console.log('👤 Found student ID:', studentId, 'for sNumber:', sNumber);
+        const auth = await this.getAuthUser(sNumber);
+        if (auth && auth.id) {
+          studentId = auth.id;
+          console.log('🔗 Using auth user UUID for unregister student_id:', studentId);
+        } else {
+          const student = await this.getStudent(sNumber);
+          if (student && typeof student.id === 'string' && student.id.includes('-')) {
+            studentId = student.id;
+            console.log('👤 Using student UUID for unregister student_id:', studentId);
+          }
         }
       }
       

@@ -69,14 +69,14 @@ export default function EventScreen({ route, navigation }) {
     
     let existingRegistration = null;
     
-    // If user is authenticated, check by student_id first
+    // If user is authenticated, check by student's S-number first
     if (isAuthenticated && user && user.sNumber) {
       existingRegistration = event.attendees.find(attendee => 
-        attendee.studentId && attendee.studentId === user.id
+        attendee.sNumber && attendee.sNumber.toLowerCase() === user.sNumber.toLowerCase()
       );
     }
     
-    // If not found by student_id, check by email
+    // If not found by sNumber, check by email
     if (!existingRegistration && userEmail) {
       existingRegistration = event.attendees.find(attendee => 
         attendee.email && attendee.email.toLowerCase() === userEmail.toLowerCase()
@@ -385,14 +385,14 @@ export default function EventScreen({ route, navigation }) {
     // Check if already registered and update registration status
     let existingRegistration = null;
     
-    // Check by student_id first if available
+    // Check by sNumber first if available
     if (finalSNumber) {
       existingRegistration = event.attendees.find(attendee => 
-        attendee.studentId && attendee.studentId === user?.id
+        attendee.sNumber && attendee.sNumber.toLowerCase() === finalSNumber.toLowerCase()
       );
     }
     
-    // If not found by student_id, check by email
+    // If not found by sNumber, check by email
     if (!existingRegistration && finalEmail) {
       existingRegistration = event.attendees.find(attendee => 
         attendee.email && attendee.email.toLowerCase() === finalEmail.toLowerCase()
