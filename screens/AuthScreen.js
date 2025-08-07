@@ -208,7 +208,7 @@ export default function AuthScreen({ navigation }) {
                   {
                     left: circularSlideAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [-screenWidth * 1.5, screenWidth * 0.5],
+                      outputRange: [-screenWidth * 1.25, screenWidth * 0.25],
                     }),
                   }
                 ]}
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 12,
+    padding: 16,
     minHeight: screenHeight,
     alignItems: 'center',
   },
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     width: '100%',
     maxWidth: 700,
   },
@@ -484,7 +484,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     maxWidth: 700,
-    height: 450,
+    height: 500,
     backgroundColor: '#fff',
     borderRadius: 25,
     shadowColor: '#000',
@@ -497,10 +497,10 @@ const styles = StyleSheet.create({
   },
   circularBackground: {
     position: 'absolute',
-    width: screenWidth * 3,
+    width: screenWidth * 2.5,
     height: '100%',
     backgroundColor: '#1e40af',
-    borderRadius: screenWidth * 1.5,
+    borderRadius: screenWidth * 1.25,
     zIndex: 2,
     overflow: 'hidden',
   },
@@ -511,13 +511,15 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#fff',
     zIndex: 1,
-    padding: 20,
+    padding: 24,
     justifyContent: 'center',
     overflow: 'hidden',
   },
   formPanel: {
     width: '100%',
     alignItems: 'center',
+    maxHeight: '100%',
+    overflow: 'hidden',
   },
   keyClubLogoContainer: {
     width: 50, // Reduced from 60
@@ -624,7 +626,7 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
     overflow: 'hidden',
   },
   toggleLeft: {
