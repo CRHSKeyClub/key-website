@@ -208,7 +208,7 @@ export default function AuthScreen({ navigation }) {
                   {
                     left: circularSlideAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [-screenWidth * 0.6, screenWidth * 0.05],
+                      outputRange: [-screenWidth * 0.4, screenWidth * 0.02],
                     }),
                   }
                 ]}
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
+    padding: 16,
     minHeight: screenHeight,
     alignItems: 'center',
   },
@@ -476,15 +476,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     width: '100%',
-    maxWidth: 700,
+    maxWidth: 600,
   },
   authContainer: {
     position: 'relative',
-    width: '100%',
-    maxWidth: 700,
-    height: 500,
+    width: '90%',
+    maxWidth: 600,
+    height: 450,
     backgroundColor: '#fff',
     borderRadius: 25,
     shadowColor: '#000',
@@ -497,21 +497,21 @@ const styles = StyleSheet.create({
   },
   circularBackground: {
     position: 'absolute',
-    width: screenWidth * 1.2,
+    width: screenWidth * 0.8,
     height: '100%',
     backgroundColor: '#1e40af',
-    borderRadius: screenWidth * 0.6,
+    borderRadius: screenWidth * 0.4,
     zIndex: 2,
     overflow: 'hidden',
   },
   formContainer: {
     position: 'absolute',
     right: 0,
-    width: '50%',
+    width: '60%',
     height: '100%',
     backgroundColor: '#fff',
     zIndex: 1,
-    padding: 24,
+    padding: 20,
     justifyContent: 'center',
     overflow: 'hidden',
   },
@@ -522,31 +522,31 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   keyClubLogoContainer: {
-    width: 50, // Reduced from 60
-    height: 50, // Reduced from 60
+    width: 45,
+    height: 45,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12, // Reduced from 15
+    marginBottom: 10,
   },
   keyClubLogo: {
-    width: 50, // Reduced from 60
-    height: 50, // Reduced from 60
+    width: 45,
+    height: 45,
   },
   formTitle: {
-    fontSize: 24, // Reduced from 28
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#1e40af', // Key Club blue
-    marginBottom: 4, // Reduced from 6
+    color: '#1e40af',
+    marginBottom: 4,
     textAlign: 'center',
   },
   formSubtitle: {
-    fontSize: 12, // Reduced from 13
+    fontSize: 11,
     color: '#64748b',
     textAlign: 'center',
-    marginBottom: 20, // Reduced from 25
+    marginBottom: 16,
   },
   formGroup: {
-    marginBottom: 15, // Reduced from 20
+    marginBottom: 12,
     width: '100%',
   },
   label: {
@@ -622,11 +622,11 @@ const styles = StyleSheet.create({
   },
   togglePanel: {
     position: 'absolute',
-    width: '50%',
+    width: '40%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 20,
     overflow: 'hidden',
   },
   toggleLeft: {
