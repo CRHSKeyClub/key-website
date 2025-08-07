@@ -468,14 +468,14 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 16,
+    padding: 12, // Reduced from 16
     minHeight: screenHeight,
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16, // Reduced from 20
   },
   authContainer: {
     position: 'relative',
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#fff',
     zIndex: 1,
-    padding: 30, // Reduced from 40
+    padding: 20, // Reduced from 30
     justifyContent: 'center',
   },
   formPanel: {
@@ -514,37 +514,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   keyClubLogoContainer: {
-    width: 60, // Reduced from 80
-    height: 60, // Reduced from 80
+    width: 50, // Reduced from 60
+    height: 50, // Reduced from 60
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15, // Reduced from 18
+    marginBottom: 12, // Reduced from 15
   },
   keyClubLogo: {
-    width: 60, // Reduced from 80
-    height: 60, // Reduced from 80
+    width: 50, // Reduced from 60
+    height: 50, // Reduced from 60
   },
   formTitle: {
-    fontSize: 28, // Reduced from 36
+    fontSize: 24, // Reduced from 28
     fontWeight: 'bold',
     color: '#1e40af', // Key Club blue
-    marginBottom: 6, // Reduced from 8
+    marginBottom: 4, // Reduced from 6
     textAlign: 'center',
   },
   formSubtitle: {
-    fontSize: 13, // Reduced from 14.5
+    fontSize: 12, // Reduced from 13
     color: '#64748b',
     textAlign: 'center',
-    marginBottom: 25, // Reduced from 30
+    marginBottom: 20, // Reduced from 25
   },
   formGroup: {
-    marginBottom: 20, // Reduced from 30
+    marginBottom: 15, // Reduced from 20
     width: '100%',
   },
   label: {
-    fontSize: 14, // Reduced from 15
+    fontSize: 13, // Reduced from 14
     color: '#1e40af', // Key Club blue
-    marginBottom: 8, // Reduced from 10
+    marginBottom: 6, // Reduced from 8
     fontWeight: '600',
   },
   inputWrapper: {
@@ -552,39 +552,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
-    borderRadius: 10, // Reduced from 12
-    paddingHorizontal: 16, // Reduced from 20
-    paddingVertical: 12, // Reduced from 15
+    borderRadius: 8, // Reduced from 10
+    paddingHorizontal: 12, // Reduced from 16
+    paddingVertical: 10, // Reduced from 12
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
   inputIcon: {
     position: 'absolute',
-    right: 16, // Reduced from 20
-    fontSize: 18, // Reduced from 20
+    right: 12, // Reduced from 16
+    fontSize: 16, // Reduced from 18
   },
   input: {
     flex: 1,
-    fontSize: 15, // Reduced from 16
+    fontSize: 14, // Reduced from 15
     color: '#1e293b',
     fontWeight: '500',
-    paddingRight: 45, // Reduced from 50
+    paddingRight: 35, // Reduced from 45
   },
   forgotLink: {
-    marginTop: -12, // Reduced from -15
-    marginBottom: 12, // Reduced from 15
+    marginTop: -8, // Reduced from -12
+    marginBottom: 10, // Reduced from 12
     alignSelf: 'flex-end',
   },
   forgotLinkText: {
-    fontSize: 13, // Reduced from 14.5
+    fontSize: 12, // Reduced from 13
     color: '#1e40af', // Key Club blue
     fontWeight: '500',
   },
   button: {
     width: '100%',
-    height: 42, // Reduced from 48
+    height: 38, // Reduced from 42
     backgroundColor: '#1e40af', // Key Club blue
-    borderRadius: 10, // Reduced from 12
+    borderRadius: 8, // Reduced from 10
     shadowColor: '#1e40af',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -596,11 +596,11 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    fontSize: 15, // Reduced from 16
+    fontSize: 14, // Reduced from 15
     fontWeight: '600',
   },
   buttonIcon: {
-    marginLeft: 8, // Reduced from 10
+    marginLeft: 6, // Reduced from 8
   },
   disabledButton: {
     backgroundColor: '#94a3b8',
@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 30, // Reduced from 40
+    padding: 20, // Reduced from 30
   },
   toggleLeft: {
     left: 0,
@@ -626,35 +626,35 @@ const styles = StyleSheet.create({
     right: 0,
   },
   toggleTitle: {
-    fontSize: 28, // Reduced from 36
+    fontSize: 24, // Reduced from 28
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 15, // Reduced from 20
+    marginBottom: 12, // Reduced from 15
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   toggleText: {
-    fontSize: 13, // Reduced from 14.5
+    fontSize: 12, // Reduced from 13
     color: '#fff',
-    marginBottom: 15, // Reduced from 20
+    marginBottom: 12, // Reduced from 15
     textAlign: 'center',
     opacity: 0.9,
   },
   toggleButton: {
-    width: 140, // Reduced from 160
-    height: 40, // Reduced from 46
+    width: 120, // Reduced from 140
+    height: 36, // Reduced from 40
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: '#fbbf24', // Key Club gold
-    borderRadius: 10, // Reduced from 12
+    borderRadius: 8, // Reduced from 10
     alignItems: 'center',
     justifyContent: 'center',
   },
   toggleButtonText: {
     color: '#fbbf24', // Key Club gold
-    fontSize: 15, // Reduced from 16
+    fontSize: 14, // Reduced from 15
     fontWeight: '600',
   },
 });
