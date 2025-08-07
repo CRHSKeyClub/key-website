@@ -82,6 +82,25 @@ export default function EventScreen({ route, navigation }) {
     }
   };
 
+  // Email validation function
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Handle email input change with validation
+  const handleEmailChange = (text) => {
+    setEmail(text);
+    
+    // Only check registration status if email is valid
+    if (text.trim() && isValidEmail(text.trim())) {
+      checkRegistrationStatus(text.trim());
+    } else {
+      setIsAlreadyRegistered(false);
+      setCurrentRegistration(null);
+    }
+  };
+
   // Handle unregistration
   const handleUnregister = async () => {
     if (!currentRegistration) return;
@@ -144,6 +163,19 @@ export default function EventScreen({ route, navigation }) {
   // Handle email update for existing registration
   const handleUpdateEmail = async () => {
     if (!email.trim()) {
+      showModal({
+        title: 'Error',
+        message: 'Please enter an email address',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle'
+      });
+      return;
+    }
+
+    if (!isValidEmail(email.trim())) {
       showModal({
         title: 'Error',
         message: 'Please enter a valid email address',
@@ -294,6 +326,19 @@ export default function EventScreen({ route, navigation }) {
       showModal({
         title: 'Error',
         message: 'Please fill in all required fields',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle'
+      });
+      return;
+    }
+
+    if (!isValidEmail(finalEmail)) {
+      showModal({
+        title: 'Error',
+        message: 'Please enter a valid email address',
         onCancel: () => {},
         onConfirm: () => {},
         cancelText: '',
@@ -533,13 +578,16 @@ export default function EventScreen({ route, navigation }) {
               </View>
             ) : (
               <View style={styles.signupContainer}>
-                <Text style={styles.signupTitle}>Sign Up for This Event</Text>
+                <Text style={styles.signupTitle}>
+                  {isAlreadyRegistered ? 'Event Registration Management' : 'Sign Up for This Event'}
+                </Text>
                 
                 {isAuthenticated && user && (
                   <View style={styles.loggedInInfo}>
                     <Ionicons name="person-circle" size={20} color="#4CAF50" />
                     <Text style={styles.loggedInText}>
                       Logged in as: {user.name} ({user.sNumber})
+                      {user.email && ` • ${user.email}`}
                     </Text>
                   </View>
                 )}
@@ -558,22 +606,19 @@ export default function EventScreen({ route, navigation }) {
                 <View style={styles.formGroup}>
                   <Text style={styles.label}>Email</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input,
+                      email.trim() && !isValidEmail(email.trim()) && styles.invalidInput
+                    ]}
                     value={email}
-                    onChangeText={(text) => {
-                      setEmail(text);
-                      // Check registration status when email changes
-                      if (text.trim()) {
-                        checkRegistrationStatus(text);
-                      } else {
-                        setIsAlreadyRegistered(false);
-                        setCurrentRegistration(null);
-                      }
-                    }}
+                    onChangeText={handleEmailChange}
                     placeholder="Enter your email"
                     keyboardType="email-address"
                     autoCapitalize="none"
                   />
+                  {email.trim() && !isValidEmail(email.trim()) && (
+                    <Text style={styles.validationError}>Please enter a valid email address</Text>
+                  )}
                 </View>
                 
                 <View style={styles.buttonContainer}>
@@ -586,23 +631,33 @@ export default function EventScreen({ route, navigation }) {
                       </View>
                       <Text style={styles.registeredDetails}>
                         Registered as: {currentRegistration?.name}
+                        {currentRegistration?.email && ` (${currentRegistration.email})`}
                       </Text>
                       
                       {/* Email Update Section */}
                       <View style={styles.emailUpdateSection}>
                         <Text style={styles.emailUpdateLabel}>Update Email Address:</Text>
                         <TextInput
-                          style={styles.emailUpdateInput}
+                          style={[
+                            styles.emailUpdateInput,
+                            email.trim() && !isValidEmail(email.trim()) && styles.invalidInput
+                          ]}
                           value={email}
-                          onChangeText={setEmail}
+                          onChangeText={handleEmailChange}
                           placeholder="Enter new email address"
                           keyboardType="email-address"
                           autoCapitalize="none"
                         />
+                        {email.trim() && !isValidEmail(email.trim()) && (
+                          <Text style={styles.validationError}>Please enter a valid email address</Text>
+                        )}
                         <TouchableOpacity
-                          style={[styles.updateEmailButton, loading && styles.disabledButton]}
+                          style={[
+                            styles.updateEmailButton, 
+                            (loading || !isValidEmail(email.trim())) && styles.disabledButton
+                          ]}
                           onPress={handleUpdateEmail}
-                          disabled={loading}
+                          disabled={loading || !isValidEmail(email.trim())}
                         >
                           <Text style={styles.updateEmailButtonText}>
                             {loading ? 'Updating...' : 'Update Email'}
@@ -625,9 +680,12 @@ export default function EventScreen({ route, navigation }) {
                     // Show normal signup form
                     <>
                       <TouchableOpacity
-                        style={[styles.signupButton, loading && styles.disabledButton]}
+                        style={[
+                          styles.signupButton, 
+                          (loading || !isValidEmail(email.trim()) || !name.trim()) && styles.disabledButton
+                        ]}
                         onPress={handleSignup}
-                        disabled={loading}
+                        disabled={loading || !isValidEmail(email.trim()) || !name.trim()}
                       >
                         <Text style={styles.buttonText}>
                           {loading ? 'Signing up...' : 'Sign Up'}
@@ -967,5 +1025,15 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  invalidInput: {
+    borderColor: '#ff6b6b',
+    borderWidth: 2,
+  },
+  validationError: {
+    color: '#ff6b6b',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });
