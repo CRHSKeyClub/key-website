@@ -208,7 +208,7 @@ export default function AuthScreen({ navigation }) {
                   {
                     left: circularSlideAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [-screenWidth * 0.4, screenWidth * 0.02],
+                      outputRange: [-screenWidth * 0.3, screenWidth * 0.01],
                     }),
                   }
                 ]}
@@ -482,9 +482,9 @@ const styles = StyleSheet.create({
   },
   authContainer: {
     position: 'relative',
-    width: '90%',
-    maxWidth: 600,
-    height: 450,
+    width: '85%',
+    maxWidth: 550,
+    height: 400,
     backgroundColor: '#fff',
     borderRadius: 25,
     shadowColor: '#000',
@@ -497,21 +497,21 @@ const styles = StyleSheet.create({
   },
   circularBackground: {
     position: 'absolute',
-    width: screenWidth * 0.8,
+    width: screenWidth * 0.6,
     height: '100%',
     backgroundColor: '#1e40af',
-    borderRadius: screenWidth * 0.4,
+    borderRadius: screenWidth * 0.3,
     zIndex: 2,
     overflow: 'hidden',
   },
   formContainer: {
     position: 'absolute',
     right: 0,
-    width: '60%',
+    width: '65%',
     height: '100%',
     backgroundColor: '#fff',
     zIndex: 1,
-    padding: 20,
+    padding: 16,
     justifyContent: 'center',
     overflow: 'hidden',
   },
@@ -522,31 +522,31 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   keyClubLogoContainer: {
-    width: 45,
-    height: 45,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   keyClubLogo: {
-    width: 45,
-    height: 45,
+    width: 40,
+    height: 40,
   },
   formTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1e40af',
-    marginBottom: 4,
+    marginBottom: 3,
     textAlign: 'center',
   },
   formSubtitle: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#64748b',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   formGroup: {
-    marginBottom: 12,
+    marginBottom: 8,
     width: '100%',
   },
   label: {
@@ -560,9 +560,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
-    borderRadius: 8, // Reduced from 10
-    paddingHorizontal: 12, // Reduced from 16
-    paddingVertical: 10, // Reduced from 12
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#e2e8f0',
   },
@@ -590,9 +590,9 @@ const styles = StyleSheet.create({
   },
   button: {
     width: '100%',
-    height: 38, // Reduced from 42
-    backgroundColor: '#1e40af', // Key Club blue
-    borderRadius: 8, // Reduced from 10
+    height: 36,
+    backgroundColor: '#1e40af',
+    borderRadius: 8,
     shadowColor: '#1e40af',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -622,11 +622,11 @@ const styles = StyleSheet.create({
   },
   togglePanel: {
     position: 'absolute',
-    width: '40%',
+    width: '35%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: 16,
     overflow: 'hidden',
   },
   toggleLeft: {
