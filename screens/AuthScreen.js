@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -25,10 +24,6 @@ export default function AuthScreen({ navigation }) {
   const { loginAsStudent, registerStudent } = useAuth();
   const [isActive, setIsActive] = useState(false);
 
-  // Animation values
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-
   // State
   const [signInSNumber, setSignInSNumber] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
@@ -40,14 +35,8 @@ export default function AuthScreen({ navigation }) {
   const [signUpLoading, setSignUpLoading] = useState(false);
 
   const toggleAuthMode = () => {
-    const newIsActive = !isActive;
-    setIsActive(newIsActive);
-    
-    Animated.timing(slideAnim, {
-      toValue: newIsActive ? 1 : 0,
-      duration: 600,
-      useNativeDriver: false,
-    }).start();
+    console.log('Toggling auth mode:', { current: isActive, new: !isActive });
+    setIsActive(!isActive);
   };
 
   const handleSignIn = async () => {
@@ -145,18 +134,12 @@ export default function AuthScreen({ navigation }) {
         >
           <View style={styles.mainContainer}>
             {/* Sliding Blue Panel */}
-            <Animated.View
+            <View
               style={[
                 styles.bluePanel,
                 {
-                  transform: [
-                    {
-                      translateX: slideAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, '50%'],
-                      }),
-                    },
-                  ],
+                  transform: `translateX(${isActive ? '50%' : '0%'})`,
+                  transition: 'transform 0.6s ease-in-out',
                 },
               ]}
             >
@@ -168,7 +151,13 @@ export default function AuthScreen({ navigation }) {
                     <Text style={styles.panelDescription}>
                       Create an account and start your journey with us
                     </Text>
-                    <TouchableOpacity style={styles.panelButton} onPress={toggleAuthMode}>
+                    <TouchableOpacity 
+                      style={styles.panelButton} 
+                      onPress={() => {
+                        console.log('Sign Up button pressed');
+                        toggleAuthMode();
+                      }}
+                    >
                       <Text style={styles.panelButtonText}>Sign Up</Text>
                     </TouchableOpacity>
                   </>
@@ -179,25 +168,32 @@ export default function AuthScreen({ navigation }) {
                     <Text style={styles.panelDescription}>
                       Sign in to access your Key Club account
                     </Text>
-                    <TouchableOpacity style={styles.panelButton} onPress={toggleAuthMode}>
+                    <TouchableOpacity 
+                      style={styles.panelButton} 
+                      onPress={() => {
+                        console.log('Sign In button pressed');
+                        toggleAuthMode();
+                      }}
+                    >
                       <Text style={styles.panelButtonText}>Sign In</Text>
                     </TouchableOpacity>
                   </>
                 )}
               </View>
-            </Animated.View>
+            </View>
 
             {/* Forms Container */}
             <View style={styles.formsContainer}>
               {/* Sign In Form */}
-              <Animated.View 
+              <View 
                 style={[
                   styles.formBox,
                   styles.rightForm,
                   { 
                     opacity: !isActive ? 1 : 0,
                     pointerEvents: !isActive ? 'auto' : 'none',
-                    zIndex: !isActive ? 5 : 1
+                    zIndex: !isActive ? 5 : 1,
+                    transition: 'opacity 0.3s ease-in-out',
                   }
                 ]}
               >
@@ -261,17 +257,18 @@ export default function AuthScreen({ navigation }) {
                     <Text style={styles.mobileToggleLink}>Sign Up</Text>
                   </TouchableOpacity>
                 </View>
-              </Animated.View>
+              </View>
              
               {/* Sign Up Form */}
-              <Animated.View 
+              <View 
                 style={[
                   styles.formBox,
                   styles.leftForm,
                   { 
                     opacity: isActive ? 1 : 0,
                     pointerEvents: isActive ? 'auto' : 'none',
-                    zIndex: isActive ? 5 : 1
+                    zIndex: isActive ? 5 : 1,
+                    transition: 'opacity 0.3s ease-in-out',
                   }
                 ]}
               >
@@ -353,7 +350,7 @@ export default function AuthScreen({ navigation }) {
                     <Text style={styles.mobileToggleLink}>Sign In</Text>
                   </TouchableOpacity>
                 </View>
-              </Animated.View>
+              </View>
             </View>
           </View>
         </ScrollView>
