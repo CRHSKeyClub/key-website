@@ -40,28 +40,27 @@ export default function AuthScreen({ navigation }) {
   const [signUpLoading, setSignUpLoading] = useState(false);
 
   const toggleAuthMode = () => {
-    Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
+    const newIsActive = !isActive;
+    setIsActive(newIsActive);
+    
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: newIsActive ? 1 : 0,
+        duration: 600,
         useNativeDriver: false,
       }),
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: isActive ? 0 : 1,
-          duration: 600,
-          useNativeDriver: false,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 200,
-          delay: 200,
-          useNativeDriver: false,
-        }),
-      ]),
-    ]).start();
-
-    setIsActive(!isActive);
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: false,
+      }),
+    ]).start(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+    });
   };
 
   const handleSignIn = async () => {
@@ -209,7 +208,7 @@ export default function AuthScreen({ navigation }) {
                   styles.formBox,
                   styles.rightForm,
                   { 
-                    opacity: !isActive ? fadeAnim : 0,
+                    opacity: !isActive ? 1 : 0,
                     pointerEvents: !isActive ? 'auto' : 'none'
                   }
                 ]}
@@ -282,7 +281,7 @@ export default function AuthScreen({ navigation }) {
                   styles.formBox,
                   styles.leftForm,
                   { 
-                    opacity: isActive ? fadeAnim : 0,
+                    opacity: isActive ? 1 : 0,
                     pointerEvents: isActive ? 'auto' : 'none'
                   }
                 ]}
@@ -473,9 +472,11 @@ const styles = StyleSheet.create({
   },
   leftForm: {
     left: 0,
+    zIndex: 5,
   },
   rightForm: {
     right: 0,
+    zIndex: 5,
   },
   logo: {
     width: 60,
