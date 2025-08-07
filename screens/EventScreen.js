@@ -58,18 +58,30 @@ export default function EventScreen({ route, navigation }) {
       
       // Check if they're already registered
       if (event && event.attendees) {
-        checkRegistrationStatus(user.email || user.sNumber);
+        checkRegistrationStatus(user.email);
       }
     }
   }, [isAuthenticated, user, event]);
 
   // Check if user is already registered for this event
   const checkRegistrationStatus = (userEmail) => {
-    if (!event || !event.attendees || !userEmail) return;
+    if (!event || !event.attendees) return;
     
-    const existingRegistration = event.attendees.find(attendee => 
-      attendee.email.toLowerCase() === userEmail.toLowerCase()
-    );
+    let existingRegistration = null;
+    
+    // If user is authenticated, check by student_id first
+    if (isAuthenticated && user && user.sNumber) {
+      existingRegistration = event.attendees.find(attendee => 
+        attendee.studentId && attendee.studentId === user.id
+      );
+    }
+    
+    // If not found by student_id, check by email
+    if (!existingRegistration && userEmail) {
+      existingRegistration = event.attendees.find(attendee => 
+        attendee.email && attendee.email.toLowerCase() === userEmail.toLowerCase()
+      );
+    }
     
     if (existingRegistration) {
       setIsAlreadyRegistered(true);
@@ -121,8 +133,12 @@ export default function EventScreen({ route, navigation }) {
     try {
       setLoading(true);
       
-      // Call the unregister function (we'll need to add this to SupabaseService)
-      await SupabaseService.unregisterFromEvent(eventId, currentRegistration.email);
+      // Call the unregister function with sNumber if available
+      await SupabaseService.unregisterFromEvent(
+        eventId, 
+        currentRegistration.email, 
+        currentRegistration.sNumber || (isAuthenticated && user ? user.sNumber : null)
+      );
       
       // Refresh events to update the UI
       await refreshEvents();
@@ -191,8 +207,12 @@ export default function EventScreen({ route, navigation }) {
     try {
       setLoading(true);
       
-      // First unregister with old email
-      await SupabaseService.unregisterFromEvent(eventId, currentRegistration.email);
+      // First unregister with old email and sNumber if available
+      await SupabaseService.unregisterFromEvent(
+        eventId, 
+        currentRegistration.email, 
+        currentRegistration.sNumber || (isAuthenticated && user ? user.sNumber : null)
+      );
       
       // Then register with new email
       await signupForEvent(eventId, {
@@ -363,9 +383,24 @@ export default function EventScreen({ route, navigation }) {
     }
 
     // Check if already registered and update registration status
-    if (event.attendees && event.attendees.some(attendee => attendee.email === finalEmail)) {
+    let existingRegistration = null;
+    
+    // Check by student_id first if available
+    if (finalSNumber) {
+      existingRegistration = event.attendees.find(attendee => 
+        attendee.studentId && attendee.studentId === user?.id
+      );
+    }
+    
+    // If not found by student_id, check by email
+    if (!existingRegistration && finalEmail) {
+      existingRegistration = event.attendees.find(attendee => 
+        attendee.email && attendee.email.toLowerCase() === finalEmail.toLowerCase()
+      );
+    }
+    
+    if (existingRegistration) {
       // User is already registered, update the registration status
-      const existingRegistration = event.attendees.find(attendee => attendee.email === finalEmail);
       setIsAlreadyRegistered(true);
       setCurrentRegistration(existingRegistration);
       setName(existingRegistration.name);

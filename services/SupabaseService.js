@@ -655,23 +655,61 @@ class SupabaseService {
   }
 
   /**
-   * Sign up for event - MISSING METHOD ADDED
+   * Sign up for event - UPDATED TO USE STUDENT_ID
    */
   static async signupForEvent(eventId, attendeeData) {
     try {
       console.log('✍️ Signing up for event:', eventId, attendeeData);
       
-      // Check if already registered
-      const { data: existingAttendee, error: checkError } = await supabase
-        .from('event_attendees')
-        .select('id')
-        .eq('event_id', eventId)
-        .eq('email', attendeeData.email)
-        .maybeSingle();
+      let studentId = null;
+      
+      // If sNumber is provided, get the student ID
+      if (attendeeData.sNumber) {
+        const student = await this.getStudent(attendeeData.sNumber);
+        if (student) {
+          studentId = student.id;
+          console.log('👤 Found student ID:', studentId, 'for sNumber:', attendeeData.sNumber);
+        }
+      }
+      
+      // Check if already registered (by student_id if available, otherwise by email)
+      let existingAttendee = null;
+      if (studentId) {
+        // Check by student_id first (this respects the unique constraint)
+        const { data: existingByStudent, error: checkError1 } = await supabase
+          .from('event_attendees')
+          .select('id, email')
+          .eq('event_id', eventId)
+          .eq('student_id', studentId)
+          .maybeSingle();
 
-      if (checkError) {
-        console.error('❌ Error checking existing attendee:', checkError);
-        throw checkError;
+        if (checkError1) {
+          console.error('❌ Error checking existing attendee by student_id:', checkError1);
+          throw checkError1;
+        }
+        
+        if (existingByStudent) {
+          existingAttendee = existingByStudent;
+        }
+      }
+      
+      // If not found by student_id, check by email as fallback
+      if (!existingAttendee && attendeeData.email) {
+        const { data: existingByEmail, error: checkError2 } = await supabase
+          .from('event_attendees')
+          .select('id, email')
+          .eq('event_id', eventId)
+          .eq('email', attendeeData.email)
+          .maybeSingle();
+
+        if (checkError2) {
+          console.error('❌ Error checking existing attendee by email:', checkError2);
+          throw checkError2;
+        }
+        
+        if (existingByEmail) {
+          existingAttendee = existingByEmail;
+        }
       }
 
       if (existingAttendee) {
@@ -688,16 +726,23 @@ class SupabaseService {
         throw new Error('Event is at full capacity');
       }
 
+      // Prepare attendee data
+      const attendeeInsertData = {
+        event_id: eventId,
+        name: attendeeData.name,
+        email: attendeeData.email,
+        registered_at: new Date().toISOString()
+      };
+      
+      // Add student_id if available
+      if (studentId) {
+        attendeeInsertData.student_id = studentId;
+      }
+
       // Add attendee
       const { data, error } = await supabase
         .from('event_attendees')
-        .insert([{
-          event_id: eventId,
-          name: attendeeData.name,
-          email: attendeeData.email,
-          s_number: attendeeData.sNumber || null,
-          registered_at: new Date().toISOString()
-        }])
+        .insert([attendeeInsertData])
         .select()
         .single();
 
@@ -737,6 +782,7 @@ class SupabaseService {
         name: attendee.name,
         email: attendee.email,
         sNumber: attendee.s_number,
+        studentId: attendee.student_id,
         registeredAt: attendee.registered_at
       }));
 
@@ -749,17 +795,37 @@ class SupabaseService {
   }
 
   /**
-   * Unregister from an event
+   * Unregister from an event - UPDATED TO USE STUDENT_ID
    */
-  static async unregisterFromEvent(eventId, email) {
+  static async unregisterFromEvent(eventId, email, sNumber = null) {
     try {
-      console.log('🚫 Unregistering from event:', eventId, email);
+      console.log('🚫 Unregistering from event:', eventId, email, sNumber);
       
-      const { error } = await supabase
+      let studentId = null;
+      
+      // If sNumber is provided, get the student ID
+      if (sNumber) {
+        const student = await this.getStudent(sNumber);
+        if (student) {
+          studentId = student.id;
+          console.log('👤 Found student ID:', studentId, 'for sNumber:', sNumber);
+        }
+      }
+      
+      let deleteQuery = supabase
         .from('event_attendees')
         .delete()
-        .eq('event_id', eventId)
-        .eq('email', email);
+        .eq('event_id', eventId);
+      
+      // Try to delete by student_id first if available
+      if (studentId) {
+        deleteQuery = deleteQuery.eq('student_id', studentId);
+      } else {
+        // Fallback to email
+        deleteQuery = deleteQuery.eq('email', email);
+      }
+      
+      const { error } = await deleteQuery;
 
       if (error) {
         console.error('❌ Error unregistering from event:', error);
