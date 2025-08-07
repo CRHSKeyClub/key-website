@@ -175,7 +175,7 @@ export default function AuthScreen({ navigation }) {
                   transform: [{
                     translateX: slideAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0, screenWidth * 0.5],
+                      outputRange: ['0%', '100%'], // Use percentage for proper sliding
                     })
                   }]
                 }
@@ -221,14 +221,16 @@ export default function AuthScreen({ navigation }) {
             {/* Forms Container - On top */}
             <View style={styles.formsContainer}>
               {/* Sign In Form */}
-              {!isActive && (
-                <Animated.View 
-                  style={[
-                    styles.formBox,
-                    styles.rightForm,
-                    { opacity: fadeAnim }
-                  ]}
-                >
+              <Animated.View 
+                style={[
+                  styles.formBox,
+                  styles.rightForm,
+                  { 
+                    opacity: !isActive ? fadeAnim : 0,
+                    pointerEvents: !isActive ? 'auto' : 'none'
+                  }
+                ]}
+              >
                   <Image 
                     source={require('../assets/images/keyclublogo.png')} 
                     style={styles.logo}
@@ -290,17 +292,18 @@ export default function AuthScreen({ navigation }) {
                     </TouchableOpacity>
                   </View>
                 </Animated.View>
-              )}
               
               {/* Sign Up Form */}
-              {isActive && (
-                <Animated.View 
-                  style={[
-                    styles.formBox,
-                    styles.leftForm,
-                    { opacity: fadeAnim }
-                  ]}
-                >
+              <Animated.View 
+                style={[
+                  styles.formBox,
+                  styles.leftForm,
+                  { 
+                    opacity: isActive ? fadeAnim : 0,
+                    pointerEvents: isActive ? 'auto' : 'none'
+                  }
+                ]}
+              >
                   <Image 
                     source={require('../assets/images/keyclublogo.png')} 
                     style={styles.logo}
@@ -380,7 +383,6 @@ export default function AuthScreen({ navigation }) {
                     </TouchableOpacity>
                   </View>
                 </Animated.View>
-              )}
             </View>
           </View>
         </ScrollView>
