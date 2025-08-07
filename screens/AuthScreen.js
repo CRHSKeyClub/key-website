@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     width: '50%',
     height: '100%',
     backgroundColor: '#1e40af',
-    zIndex: 1,
+    zIndex: 10,
   },
   panelContent: {
     flex: 1,
@@ -475,7 +475,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
-    zIndex: 2,
+    zIndex: 1,
   },
   formBox: {
     position: 'absolute',
@@ -485,6 +485,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
+    zIndex: 5,
   },
   rightForm: {
     right: 0,
