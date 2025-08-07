@@ -38,13 +38,17 @@ export default function AuthScreen({ navigation }) {
 
   const toggleAuthMode = () => {
     console.log('Toggling auth mode:', { current: isActive, new: !isActive });
+    const newValue = !isActive ? 1 : 0;
+    console.log('Animation target value:', newValue);
     setIsActive(!isActive);
     
     Animated.timing(slideAnim, {
-      toValue: !isActive ? 1 : 0,
+      toValue: newValue,
       duration: 600,
-      useNativeDriver: true,
-    }).start();
+      useNativeDriver: false,
+    }).start(() => {
+      console.log('Animation completed');
+    });
   };
 
   const handleSignIn = async () => {
@@ -146,12 +150,10 @@ export default function AuthScreen({ navigation }) {
               style={[
                 styles.bluePanel,
                 {
-                  transform: [{
-                    translateX: slideAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, screenWidth * 0.5],
-                    })
-                  }],
+                  left: slideAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 200], // Test with a smaller value first
+                  }),
                 },
               ]}
             >
