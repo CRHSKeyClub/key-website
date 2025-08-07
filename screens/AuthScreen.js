@@ -206,22 +206,6 @@ export default function AuthScreen({ navigation }) {
                 <View style={styles.panelContent}>
                   {!isSignUpActive ? (
                     <>
-                      <Text style={styles.panelTitle}>Welcome Back!</Text>
-                      <Text style={styles.panelSubtitle}>
-                        Already have an account?
-                      </Text>
-                      <Text style={styles.panelDescription}>
-                        Sign in to access your Key Club account
-                      </Text>
-                      <TouchableOpacity 
-                        style={styles.panelButton}
-                        onPress={toggleAuthMode}
-                      >
-                        <Text style={styles.panelButtonText}>Login</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <>
                       <Text style={styles.panelTitle}>Hello, Friend!</Text>
                       <Text style={styles.panelSubtitle}>
                         New to Key Club?
@@ -233,7 +217,23 @@ export default function AuthScreen({ navigation }) {
                         style={styles.panelButton}
                         onPress={toggleAuthMode}
                       >
-                        <Text style={styles.panelButtonText}>Register</Text>
+                        <Text style={styles.panelButtonText}>Sign Up</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={styles.panelTitle}>Welcome Back!</Text>
+                      <Text style={styles.panelSubtitle}>
+                        Already have an account?
+                      </Text>
+                      <Text style={styles.panelDescription}>
+                        Sign in to access your Key Club account
+                      </Text>
+                      <TouchableOpacity 
+                        style={styles.panelButton}
+                        onPress={toggleAuthMode}
+                      >
+                        <Text style={styles.panelButtonText}>Sign In</Text>
                       </TouchableOpacity>
                     </>
                   )}
