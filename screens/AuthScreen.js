@@ -43,24 +43,11 @@ export default function AuthScreen({ navigation }) {
     const newIsActive = !isActive;
     setIsActive(newIsActive);
     
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: newIsActive ? 1 : 0,
-        duration: 600,
-        useNativeDriver: false,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: false,
-      }),
-    ]).start(() => {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    });
+    Animated.timing(slideAnim, {
+      toValue: newIsActive ? 1 : 0,
+      duration: 600,
+      useNativeDriver: false,
+    }).start();
   };
 
   const handleSignIn = async () => {
@@ -166,7 +153,7 @@ export default function AuthScreen({ navigation }) {
                     {
                       translateX: slideAnim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [0, screenWidth * 0.5],
+                        outputRange: [0, 450],
                       }),
                     },
                   ],
