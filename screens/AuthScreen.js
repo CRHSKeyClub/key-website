@@ -152,7 +152,7 @@ export default function AuthScreen({ navigation }) {
                 {
                   left: slideAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0, 200], // Test with a smaller value first
+                    outputRange: [0, 450], // Move by half the max container width (900/2)
                   }),
                 },
               ]}
