@@ -46,7 +46,7 @@ export default function AuthScreen({ navigation }) {
     Animated.timing(slideAnim, {
       toValue: newIsActive ? 1 : 0,
       duration: 600,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   };
 
