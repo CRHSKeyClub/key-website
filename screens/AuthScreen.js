@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 10,
-    overflow: 'hidden',
+    overflow: 'visible',
     alignSelf: 'center',
   },
   bluePanel: {
@@ -414,7 +414,8 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#1e40af',
     zIndex: 10,
-    borderRadius: 25,
+    borderTopLeftRadius: 25,
+    borderBottomLeftRadius: 25,
   },
   panelContent: {
     flex: 1,
@@ -472,6 +473,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 40,
     backgroundColor: '#fff',
+    borderRadius: 25,
   },
   leftForm: {
     left: 0,
