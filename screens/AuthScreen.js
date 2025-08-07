@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
   Platform,
   ScrollView,
   Dimensions,
-  Image
+  Image,
+  Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +24,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 export default function AuthScreen({ navigation }) {
   const { loginAsStudent, registerStudent } = useAuth();
   const [isActive, setIsActive] = useState(false);
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
   // State
   const [signInSNumber, setSignInSNumber] = useState('');
@@ -37,6 +39,12 @@ export default function AuthScreen({ navigation }) {
   const toggleAuthMode = () => {
     console.log('Toggling auth mode:', { current: isActive, new: !isActive });
     setIsActive(!isActive);
+    
+    Animated.timing(slideAnim, {
+      toValue: !isActive ? 1 : 0,
+      duration: 600,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleSignIn = async () => {
@@ -134,12 +142,16 @@ export default function AuthScreen({ navigation }) {
         >
           <View style={styles.mainContainer}>
             {/* Sliding Blue Panel */}
-            <View
+            <Animated.View
               style={[
                 styles.bluePanel,
                 {
-                  transform: `translateX(${isActive ? '50%' : '0%'})`,
-                  transition: 'transform 0.6s ease-in-out',
+                  transform: [{
+                    translateX: slideAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, screenWidth * 0.5],
+                    })
+                  }],
                 },
               ]}
             >
@@ -180,20 +192,21 @@ export default function AuthScreen({ navigation }) {
                   </>
                 )}
               </View>
-            </View>
+            </Animated.View>
 
             {/* Forms Container */}
             <View style={styles.formsContainer}>
               {/* Sign In Form */}
-              <View 
+              <Animated.View 
                 style={[
                   styles.formBox,
                   styles.rightForm,
                   { 
-                    opacity: !isActive ? 1 : 0,
-                    pointerEvents: !isActive ? 'auto' : 'none',
+                    opacity: slideAnim.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: [1, 0.5, 0],
+                    }),
                     zIndex: !isActive ? 5 : 1,
-                    transition: 'opacity 0.3s ease-in-out',
                   }
                 ]}
               >
@@ -257,18 +270,19 @@ export default function AuthScreen({ navigation }) {
                     <Text style={styles.mobileToggleLink}>Sign Up</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </Animated.View>
              
               {/* Sign Up Form */}
-              <View 
+              <Animated.View 
                 style={[
                   styles.formBox,
                   styles.leftForm,
                   { 
-                    opacity: isActive ? 1 : 0,
-                    pointerEvents: isActive ? 'auto' : 'none',
+                    opacity: slideAnim.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: [0, 0.5, 1],
+                    }),
                     zIndex: isActive ? 5 : 1,
-                    transition: 'opacity 0.3s ease-in-out',
                   }
                 ]}
               >
@@ -350,7 +364,7 @@ export default function AuthScreen({ navigation }) {
                     <Text style={styles.mobileToggleLink}>Sign In</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+              </Animated.View>
             </View>
           </View>
         </ScrollView>
