@@ -25,7 +25,7 @@ export default function AuthScreen({ navigation }) {
   const { loginAsStudent, registerStudent } = useAuth();
   const [isActive, setIsActive] = useState(false);
 
-  // Animation values - removed useNativeDriver to fix animation issues
+  // Animation values
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -209,7 +209,8 @@ export default function AuthScreen({ navigation }) {
                   styles.rightForm,
                   { 
                     opacity: !isActive ? 1 : 0,
-                    pointerEvents: !isActive ? 'auto' : 'none'
+                    pointerEvents: !isActive ? 'auto' : 'none',
+                    zIndex: !isActive ? 5 : 1
                   }
                 ]}
               >
@@ -282,7 +283,8 @@ export default function AuthScreen({ navigation }) {
                   styles.leftForm,
                   { 
                     opacity: isActive ? 1 : 0,
-                    pointerEvents: isActive ? 'auto' : 'none'
+                    pointerEvents: isActive ? 'auto' : 'none',
+                    zIndex: isActive ? 5 : 1
                   }
                 ]}
               >
@@ -472,11 +474,9 @@ const styles = StyleSheet.create({
   },
   leftForm: {
     left: 0,
-    zIndex: 5,
   },
   rightForm: {
     right: 0,
-    zIndex: 5,
   },
   logo: {
     width: 60,
