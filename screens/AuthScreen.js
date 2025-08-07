@@ -414,8 +414,7 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#1e40af',
     zIndex: 10,
-    borderTopLeftRadius: 25,
-    borderBottomLeftRadius: 25,
+    borderRadius: 25,
   },
   panelContent: {
     flex: 1,
