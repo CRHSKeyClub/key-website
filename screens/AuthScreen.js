@@ -208,7 +208,7 @@ export default function AuthScreen({ navigation }) {
                   {
                     left: circularSlideAnim.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [-screenWidth * 1.25, screenWidth * 0.25],
+                      outputRange: [-screenWidth * 0.9, screenWidth * 0.1],
                     }),
                   }
                 ]}
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 16,
+    padding: 20,
     minHeight: screenHeight,
     alignItems: 'center',
   },
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     width: '100%',
     maxWidth: 700,
   },
@@ -494,20 +494,21 @@ const styles = StyleSheet.create({
     elevation: 8,
     overflow: 'hidden',
     alignSelf: 'center',
+    marginHorizontal: 20,
   },
   circularBackground: {
     position: 'absolute',
-    width: screenWidth * 2.5,
+    width: screenWidth * 1.8,
     height: '100%',
     backgroundColor: '#1e40af',
-    borderRadius: screenWidth * 1.25,
+    borderRadius: screenWidth * 0.9,
     zIndex: 2,
     overflow: 'hidden',
   },
   formContainer: {
     position: 'absolute',
     right: 0,
-    width: '50%',
+    width: '55%',
     height: '100%',
     backgroundColor: '#fff',
     zIndex: 1,
@@ -622,7 +623,7 @@ const styles = StyleSheet.create({
   },
   togglePanel: {
     position: 'absolute',
-    width: '50%',
+    width: '45%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
