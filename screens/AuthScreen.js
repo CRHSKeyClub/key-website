@@ -46,7 +46,7 @@ export default function AuthScreen({ navigation }) {
     Animated.timing(slideAnim, {
       toValue: newIsActive ? 1 : 0,
       duration: 600,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   };
 
@@ -153,7 +153,7 @@ export default function AuthScreen({ navigation }) {
                     {
                       translateX: slideAnim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [0, 450],
+                        outputRange: [0, '50%'],
                       }),
                     },
                   ],
