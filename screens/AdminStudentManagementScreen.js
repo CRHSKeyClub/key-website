@@ -198,11 +198,12 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   modalOverlay: {
-    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    ...(Platform.OS === 'web' ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 } : {}),
+    ...(Platform.OS === 'web'
+      ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh' }
+      : { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }),
   },
   modalContent: {
     backgroundColor: '#1a365d',
