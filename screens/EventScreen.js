@@ -690,56 +690,59 @@ export default function EventScreen({ route, navigation }) {
                   {isAlreadyRegistered ? (
                     // Show registration status and management options
                     <View style={styles.registeredContainer}>
-                      <View style={styles.registeredStatus}>
-                        <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
-                        <Text style={styles.registeredText}>You're already registered!</Text>
-                      </View>
-                      <Text style={styles.registeredDetails}>
-                        Registered as: {currentRegistration?.name}
-                        {currentRegistration?.email && ` (${currentRegistration.email})`}
-                      </Text>
-                      
-                      {/* Email Update Section */}
-                      <View style={styles.emailUpdateSection}>
-                        <Text style={styles.emailUpdateLabel}>Update Email Address:</Text>
-                        <TextInput
-                          style={[
-                            styles.emailUpdateInput,
-                            email.trim() && !isValidEmail(email.trim()) && styles.invalidInput
-                          ]}
-                          value={email}
-                          onChangeText={handleEmailChange}
-                          placeholder="Enter new email address"
-                          keyboardType="email-address"
-                          autoCapitalize="none"
-                        />
-                        {email.trim() && !isValidEmail(email.trim()) && (
-                          <Text style={styles.validationError}>Please enter a valid email address</Text>
-                        )}
+                      <View style={styles.registeredPanel}>
+                        <View style={styles.registeredStatus}>
+                          <Ionicons name="checkmark-circle" size={28} color="#4CAF50" />
+                          <Text style={styles.registeredText}>You're already registered!</Text>
+                        </View>
+                        <Text style={styles.registeredDetails}>
+                          Registered as: {currentRegistration?.name}
+                          {currentRegistration?.email && ` (${currentRegistration.email})`}
+                        </Text>
+                        
+                        {/* Email Update Section */}
+                        <View style={styles.emailUpdateSection}>
+                          <Text style={styles.emailUpdateLabel}>Update Email Address:</Text>
+                          <TextInput
+                            style={[
+                              styles.emailUpdateInput,
+                              email.trim() && !isValidEmail(email.trim()) && styles.invalidInput
+                            ]}
+                            value={email}
+                            onChangeText={handleEmailChange}
+                            placeholder="Enter new email address"
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                          />
+                          {email.trim() && !isValidEmail(email.trim()) && (
+                            <Text style={styles.validationError}>Please enter a valid email address</Text>
+                          )}
+                          <TouchableOpacity
+                            style={[
+                              styles.updateEmailButton,
+                              styles.fullWidthButton,
+                              (loading || !isValidEmail(email.trim())) && styles.disabledButton
+                            ]}
+                            onPress={handleUpdateEmail}
+                            disabled={loading || !isValidEmail(email.trim())}
+                          >
+                            <Text style={styles.updateEmailButtonText}>
+                              {loading ? 'Updating...' : 'Update Email'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        
+                        {/* Unregister Button */}
                         <TouchableOpacity
-                          style={[
-                            styles.updateEmailButton, 
-                            (loading || !isValidEmail(email.trim())) && styles.disabledButton
-                          ]}
-                          onPress={handleUpdateEmail}
-                          disabled={loading || !isValidEmail(email.trim())}
+                          style={[styles.unregisterButton, styles.fullWidthButton, loading && styles.disabledButton]}
+                          onPress={handleUnregister}
+                          disabled={loading}
                         >
-                          <Text style={styles.updateEmailButtonText}>
-                            {loading ? 'Updating...' : 'Update Email'}
+                          <Text style={styles.unregisterButtonText}>
+                            {loading ? 'Unregistering...' : 'Unregister from Event'}
                           </Text>
                         </TouchableOpacity>
                       </View>
-                      
-                      {/* Unregister Button */}
-                      <TouchableOpacity
-                        style={[styles.unregisterButton, loading && styles.disabledButton]}
-                        onPress={handleUnregister}
-                        disabled={loading}
-                      >
-                        <Text style={styles.unregisterButtonText}>
-                          {loading ? 'Unregistering...' : 'Unregister from Event'}
-                        </Text>
-                      </TouchableOpacity>
                     </View>
                   ) : (
                     // Show normal signup form (buttons only here; inputs above)
@@ -1010,10 +1013,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
   },
+  registeredPanel: {
+    width: '100%',
+    maxWidth: 520,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
   registeredStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
+    justifyContent: 'center',
   },
   registeredText: {
     fontSize: 18,
@@ -1024,7 +1043,7 @@ const styles = StyleSheet.create({
   registeredDetails: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 15,
+    marginBottom: 18,
     textAlign: 'center',
   },
   unregisterButton: {
@@ -1085,6 +1104,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 4,
     alignItems: 'center',
+  },
+  fullWidthButton: {
+    width: '100%',
   },
   updateEmailButtonText: {
     color: 'white',
