@@ -623,7 +623,7 @@ export default function CalendarScreen({ navigation, route }) {
             onPress={prevMonth}
             activeOpacity={0.7}
           >
-            <Ionicons name="chevron-back" size={24} color="#4299e1" />
+            <Ionicons name="chevron-back" size={24} color="#FFCC00" />
           </TouchableOpacity>
           
           <Animated.Text 
@@ -643,7 +643,7 @@ export default function CalendarScreen({ navigation, route }) {
             onPress={nextMonth}
             activeOpacity={0.7}
           >
-            <Ionicons name="chevron-forward" size={24} color="#4299e1" />
+            <Ionicons name="chevron-forward" size={24} color="#FFCC00" />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -788,12 +788,12 @@ export default function CalendarScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a365d', // Deep navy blue background
+    backgroundColor: '#0b1c5a',
   },
   header: {
-    backgroundColor: 'rgba(66, 153, 225, 0.1)', // Professional blue with transparency
+    backgroundColor: 'rgba(0, 32, 128, 0.35)',
     borderBottomWidth: 1,
-    borderBottomColor: '#4299e1',
+    borderBottomColor: '#FFCC00',
     paddingVertical: 15,
     paddingHorizontal: 20,
     shadowColor: '#000',
@@ -810,24 +810,26 @@ const styles = StyleSheet.create({
   monthButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: 'rgba(66, 153, 225, 0.2)',
+    backgroundColor: 'rgba(255, 204, 0, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 204, 0, 0.35)'
   },
   monthText: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4299e1', // Professional blue
-    textShadowColor: 'rgba(66, 153, 225, 0.3)',
+    color: '#FFCC00',
+    textShadowColor: 'rgba(255, 204, 0, 0.35)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   calendarContainer: {
     flex: 1,
-    paddingHorizontal: 10,
-    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingTop: 24,
   },
   dayHeaders: {
     flexDirection: 'row',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   dayHeader: {
     flex: 1,
@@ -835,12 +837,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   dayHeaderText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#4299e1', // Professional blue
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFCC00',
+    opacity: 0.95,
   },
   calendarGrid: {
     flexGrow: 1,
+    paddingBottom: 12,
   },
   dayContainer: {
     flex: 1,
@@ -912,59 +916,62 @@ const styles = StyleSheet.create({
   },
   calendarDay: {
     flex: 1,
-    minHeight: 100,
-    borderWidth: 0.5,
-    borderColor: 'rgba(66, 153, 225, 0.2)',
-    padding: 6,
+    minHeight: 120,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 204, 0, 0.28)',
+    padding: 10,
+    margin: 4,
     width: '14.28%',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(0, 51, 204, 0.18)',
+    borderRadius: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 6,
   },
   emptyDay: {
-    backgroundColor: 'rgba(248, 249, 250, 0.8)',
+    backgroundColor: 'rgba(0, 51, 204, 0.08)',
   },
   todayDay: {
-    backgroundColor: 'rgba(66, 153, 225, 0.1)',
-    borderColor: '#4299e1',
+    backgroundColor: 'rgba(255, 204, 0, 0.22)',
+    borderColor: '#FFCC00',
     borderWidth: 2,
   },
   dayNumberContainer: {
     alignItems: 'flex-start',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   dayNumber: {
-    fontWeight: 'bold',
-    color: '#2d3748', // Dark gray
-    fontSize: 14,
+    fontWeight: '700',
+    color: '#e6e6e6',
+    fontSize: 18,
   },
   todayDayNumber: {
-    color: '#4299e1', // Professional blue
-    fontSize: 16,
+    color: '#0b1c5a',
+    fontSize: 20,
     fontWeight: '800',
   },
   eventItem: {
-    borderRadius: 6,
-    padding: 4,
-    marginBottom: 2,
+    borderRadius: 8,
+    padding: 6,
+    marginBottom: 4,
+    backgroundColor: '#0033CC',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
   },
   eventTitle: {
-    color: 'white',
-    fontSize: 11,
+    color: '#FFCC00',
+    fontSize: 12,
     fontWeight: 'bold',
   },
   eventTime: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 9,
+    color: '#ffffff',
+    fontSize: 10,
+    marginTop: 2,
   },
   fabShadow: {
     shadowColor: '#000',
