@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
-  ActivityIndicator
+  ActivityIndicator,
+  Animated,
+  Easing
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useEvents } from '../contexts/EventsContext';
@@ -29,26 +31,51 @@ export default function EventScreen({ route, navigation }) {
   const [sNumber, setSNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [wasDeleted, setWasDeleted] = useState(false);
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
   const [currentRegistration, setCurrentRegistration] = useState(null);
   const [initializing, setInitializing] = useState(true);
+
+  // Success animation overlay (same pattern as EventCreationScreen)
+  const successAnim = useRef(new Animated.Value(0)).current;
+  const animateSuccess = () => {
+    return new Promise((resolve) => {
+      Animated.sequence([
+        Animated.timing(successAnim, {
+          toValue: 1,
+          duration: 400,
+          easing: Easing.out(Easing.back(1.2)),
+          useNativeDriver: false,
+        }),
+        Animated.timing(successAnim, {
+          toValue: 0,
+          duration: 200,
+          delay: 300,
+          useNativeDriver: false,
+        }),
+      ]).start(() => resolve());
+    });
+  };
 
   useEffect(() => {
     const eventData = getEventById(eventId);
     if (eventData) {
       setEvent(eventData);
     } else {
-      showModal({
-        title: 'Error',
-        message: 'Event not found',
-        onCancel: () => navigation.goBack(),
-        onConfirm: () => navigation.goBack(),
-        cancelText: '',
-        confirmText: 'OK',
-        icon: 'alert-circle'
-      });
+      // If we're in the middle of a deletion flow, skip the not-found modal
+      if (!deleting && !wasDeleted) {
+        showModal({
+          title: 'Error',
+          message: 'Event not found',
+          onCancel: () => navigation.goBack(),
+          onConfirm: () => navigation.goBack(),
+          cancelText: '',
+          confirmText: 'OK',
+          icon: 'alert-circle'
+        });
+      }
     }
-  }, [eventId, getEventById, navigation, showModal]);
+  }, [eventId, getEventById, navigation, showModal, deleting, wasDeleted]);
 
   // Populate form with user data when logged in
   useEffect(() => {
@@ -309,43 +336,20 @@ export default function EventScreen({ route, navigation }) {
       // Refresh events to ensure sync
       await refreshEvents();
       
-      console.log('Delete succeeded, navigating back');
-      
-      // Show success message briefly then navigate
-      showModal({
-        title: 'Success',
-        message: 'Event deleted successfully',
-        onCancel: () => {
-          navigation.goBack();
-        },
-        onConfirm: () => {
-          navigation.goBack();
-        },
-        cancelText: '',
-        confirmText: 'OK',
-        icon: 'checkmark-circle',
-        iconColor: '#4CAF50'
-      });
-      
-      // Navigate back after showing success
-      setTimeout(() => {
+      console.log('Delete succeeded, animating success and navigating to calendar');
+      setWasDeleted(true);
+
+      // Play the same success animation as creation, then navigate to Calendar
+      await animateSuccess();
+      try {
+        navigation.navigate('CalendarMain');
+      } catch (e1) {
         try {
-          navigation.navigate('CalendarMain');
-        } catch (e1) {
-          try {
-            navigation.navigate('Calendar');
-          } catch (e2) {
-            try {
-              navigation.goBack();
-            } catch (e3) {
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Main' }],
-              });
-            }
-          }
+          navigation.navigate('Calendar');
+        } catch (e2) {
+          navigation.goBack();
         }
-      }, 1500);
+      }
       
     } catch (error) {
       console.error('Delete failed:', error);
@@ -774,6 +778,23 @@ export default function EventScreen({ route, navigation }) {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Success Animation Overlay */}
+      <Animated.View
+        style={[
+          styles.successOverlay,
+          {
+            opacity: successAnim,
+            transform: [{ scale: successAnim }],
+            pointerEvents: successAnim._value > 0 ? 'auto' : 'none',
+          }
+        ]}
+      >
+        <View style={styles.successContainer}>
+          <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+          <Text style={styles.successText}>Deleted!</Text>
+        </View>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -1122,5 +1143,32 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
+  },
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  successContainer: {
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 40,
+    borderRadius: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  successText: {
+    marginTop: 10,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4CAF50',
   },
 });
