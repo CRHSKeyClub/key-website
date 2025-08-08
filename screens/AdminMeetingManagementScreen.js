@@ -85,7 +85,25 @@ export default function AdminMeetingManagementScreen({ navigation }) {
       console.log('📅 Loading admin meeting data...');
       
       const allMeetings = await SupabaseService.getAllMeetings();
-      setMeetings(allMeetings);
+
+      // Sort by proximity to today: upcoming first (nearest), then past (nearest)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const sorted = [...allMeetings].sort((a, b) => {
+        const da = new Date(a.meeting_date);
+        const db = new Date(b.meeting_date);
+        da.setHours(0,0,0,0); db.setHours(0,0,0,0);
+        const diffA = da.getTime() - today.getTime();
+        const diffB = db.getTime() - today.getTime();
+        const aFuture = diffA >= 0;
+        const bFuture = diffB >= 0;
+        if (aFuture && !bFuture) return -1; // future before past
+        if (!aFuture && bFuture) return 1;
+        // both future or both past: closest first
+        return Math.abs(diffA) - Math.abs(diffB);
+      });
+
+      setMeetings(sorted);
       
       console.log(`✅ Loaded ${allMeetings.length} meetings`);
     } catch (error) {
