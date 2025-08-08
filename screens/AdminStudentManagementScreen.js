@@ -11,6 +11,17 @@ export default function AdminStudentManagementScreen({ navigation }) {
   const [editHours, setEditHours] = useState('');
   const [editReason, setEditReason] = useState('');
   const [saving, setSaving] = useState(false);
+  const isWeb = Platform.OS === 'web';
+  let ReactDOMRef = null;
+  try {
+    if (isWeb) {
+      // Lazy require to avoid bundling issues on native
+      // eslint-disable-next-line global-require
+      ReactDOMRef = require('react-dom');
+    }
+  } catch (e) {
+    ReactDOMRef = null;
+  }
 
   useEffect(() => {
     fetchStudents();
@@ -64,6 +75,43 @@ export default function AdminStudentManagementScreen({ navigation }) {
     }
   };
 
+  const overlayContent = (
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Edit Hours</Text>
+        <Text style={styles.modalStudentName}>{selectedStudent?.name || selectedStudent?.s_number}</Text>
+        <Text style={styles.modalStudentSNumber}>{selectedStudent?.s_number}</Text>
+        <Text style={styles.modalCurrentHours}>Current Hours: <Text style={{ color: '#4299e1', fontWeight: 'bold', fontSize: 18 }}>{selectedStudent?.total_hours || 0}</Text></Text>
+        <Text style={styles.inputLabel}>Add or Remove Hours</Text>
+        <View style={styles.inputRowCompact}>
+          <TouchableOpacity style={styles.quickButtonCompact} onPress={() => handleQuickAdjust(-1)}>
+            <Text style={styles.quickButtonText}>-1</Text>
+          </TouchableOpacity>
+          <TextInput
+            style={styles.inputCompact}
+            placeholder="e.g. 2 or -1"
+            keyboardType="numeric"
+            value={editHours}
+            onChangeText={setEditHours}
+            textAlign="center"
+            maxLength={5}
+          />
+          <TouchableOpacity style={styles.quickButtonCompact} onPress={() => handleQuickAdjust(1)}>
+            <Text style={styles.quickButtonText}>+1</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.modalButtons}>
+          <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)} disabled={saving}>
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
+            <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.header}>Student Management</Text>
@@ -92,49 +140,20 @@ export default function AdminStudentManagementScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         />
       )}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="fade"
-        presentationStyle="overFullScreen"
-        statusBarTranslucent
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Hours</Text>
-            <Text style={styles.modalStudentName}>{selectedStudent?.name || selectedStudent?.s_number}</Text>
-            <Text style={styles.modalStudentSNumber}>{selectedStudent?.s_number}</Text>
-            <Text style={styles.modalCurrentHours}>Current Hours: <Text style={{ color: '#4299e1', fontWeight: 'bold', fontSize: 18 }}>{selectedStudent?.total_hours || 0}</Text></Text>
-            <Text style={styles.inputLabel}>Add or Remove Hours</Text>
-            <View style={styles.inputRowCompact}>
-              <TouchableOpacity style={styles.quickButtonCompact} onPress={() => handleQuickAdjust(-1)}>
-                <Text style={styles.quickButtonText}>-1</Text>
-              </TouchableOpacity>
-              <TextInput
-                style={styles.inputCompact}
-                placeholder="e.g. 2 or -1"
-                keyboardType="numeric"
-                value={editHours}
-                onChangeText={setEditHours}
-                textAlign="center"
-                maxLength={5}
-              />
-              <TouchableOpacity style={styles.quickButtonCompact} onPress={() => handleQuickAdjust(1)}>
-                <Text style={styles.quickButtonText}>+1</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)} disabled={saving}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={saving}>
-                <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {isWeb ? (
+        modalVisible && ReactDOMRef && ReactDOMRef.createPortal(overlayContent, document.body)
+      ) : (
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="fade"
+          presentationStyle="overFullScreen"
+          statusBarTranslucent
+          onRequestClose={() => setModalVisible(false)}
+        >
+          {overlayContent}
+        </Modal>
+      )}
     </View>
   );
 }
