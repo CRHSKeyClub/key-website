@@ -428,8 +428,34 @@ class SupabaseService {
       }
 
       console.log(`✅ Found ${attendeesData?.length || 0} total attendees across all events`);
-      
-      // Step 3: Group attendees by event_id
+
+      // Step 2.5: Resolve sNumbers in batch via auth_users lookup (using student_id UUIDs)
+      let authUserMap = {};
+      if (attendeesData && attendeesData.length > 0) {
+        const uniqueStudentIds = Array.from(
+          new Set(
+            attendeesData
+              .map(a => a.student_id)
+              .filter(id => typeof id === 'string' && id.length > 0)
+          )
+        );
+        if (uniqueStudentIds.length > 0) {
+          const { data: authUsers, error: authErr } = await supabase
+            .from('auth_users')
+            .select('id, s_number')
+            .in('id', uniqueStudentIds);
+          if (!authErr && authUsers) {
+            authUserMap = authUsers.reduce((map, au) => {
+              map[au.id] = au.s_number;
+              return map;
+            }, {});
+          } else if (authErr) {
+            console.warn('⚠️ Could not resolve auth users for attendees:', authErr.message);
+          }
+        }
+      }
+
+      // Step 3: Group attendees by event_id (with sNumber when available)
       const attendeesByEvent = {};
       if (attendeesData) {
         attendeesData.forEach(attendee => {
@@ -440,6 +466,7 @@ class SupabaseService {
             id: attendee.id,
             name: attendee.name,
             email: attendee.email,
+            sNumber: authUserMap[attendee.student_id] || null,
             studentId: attendee.student_id,
             registeredAt: attendee.registered_at
           });
@@ -462,7 +489,7 @@ class SupabaseService {
           endTime: event.end_time,
           capacity: event.capacity,
           color: event.color,
-          attendees: eventAttendees, // ✅ FIXED: Now includes actual attendees
+          attendees: eventAttendees, // includes attendees for counts in public view
           createdBy: event.created_by,
           createdAt: event.created_at
         };
@@ -772,6 +799,7 @@ class SupabaseService {
         throw error;
       }
 
+      // Join to students to expose s_number in public events modal
       const attendees = (attendeesData || []).map(attendee => ({
         id: attendee.id,
         name: attendee.name,

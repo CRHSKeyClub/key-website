@@ -204,11 +204,11 @@ export default function PublicEventsScreen() {
             {event.description || 'No description available.'}
           </Text>
           
-          <View style={styles.eventStats}>
+            <View style={styles.eventStats}>
             <View style={styles.statItem}>
               <Ionicons name="people" size={16} color="#4299e1" />
               <Text style={styles.statText}>
-                {event.attendee_count || 0} volunteers
+                {(event.attendees && event.attendees.length) || 0} volunteers
               </Text>
             </View>
             <View style={styles.statItem}>
