@@ -653,34 +653,38 @@ export default function EventScreen({ route, navigation }) {
                   </View>
                 )}
                 
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Name</Text>
-                  <TextInput
-                    style={[styles.input, isAuthenticated && styles.disabledInput]}
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="Enter your name"
-                    editable={!isAuthenticated}
-                  />
-                </View>
-                
-                <View style={styles.formGroup}>
-                  <Text style={styles.label}>Email</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      email.trim() && !isValidEmail(email.trim()) && styles.invalidInput
-                    ]}
-                    value={email}
-                    onChangeText={handleEmailChange}
-                    placeholder="Enter your email"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                  {email.trim() && !isValidEmail(email.trim()) && (
-                    <Text style={styles.validationError}>Please enter a valid email address</Text>
-                  )}
-                </View>
+                {!isAlreadyRegistered && (
+                  <>
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Name</Text>
+                      <TextInput
+                        style={[styles.input, isAuthenticated && styles.disabledInput]}
+                        value={name}
+                        onChangeText={setName}
+                        placeholder="Enter your name"
+                        editable={!isAuthenticated}
+                      />
+                    </View>
+
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>Email</Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          email.trim() && !isValidEmail(email.trim()) && styles.invalidInput
+                        ]}
+                        value={email}
+                        onChangeText={handleEmailChange}
+                        placeholder="Enter your email"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                      {email.trim() && !isValidEmail(email.trim()) && (
+                        <Text style={styles.validationError}>Please enter a valid email address</Text>
+                      )}
+                    </View>
+                  </>
+                )}
                 
                 <View style={styles.buttonContainer}>
                   {isAlreadyRegistered ? (
@@ -738,7 +742,7 @@ export default function EventScreen({ route, navigation }) {
                       </TouchableOpacity>
                     </View>
                   ) : (
-                    // Show normal signup form
+                    // Show normal signup form (buttons only here; inputs above)
                     <>
                       <TouchableOpacity
                         style={[
