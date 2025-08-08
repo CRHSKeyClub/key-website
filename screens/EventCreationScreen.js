@@ -259,19 +259,9 @@ export default function EventCreationScreen({ route, navigation }) {
         
         await updateEvent(updatedEvent);
         
-        // Success animation
+        // Success animation then return to calendar
         await animateSuccess();
-        
-        showModal({
-          title: 'Event Updated! ✨',
-          message: `"${title}" has been successfully updated with all your changes.`,
-          onCancel: () => { navigation.goBack(); },
-          onConfirm: () => { navigation.goBack(); },
-          cancelText: '',
-          confirmText: 'OK',
-          icon: 'checkmark-circle',
-          iconColor: '#4CAF50'
-        });
+        navigation.navigate('CalendarMain');
       } else {
         // Create new event
         const newEvent = {
@@ -291,19 +281,9 @@ export default function EventCreationScreen({ route, navigation }) {
 
         await addEvent(newEvent);
         
-        // Success animation
+        // Success animation then return to calendar
         await animateSuccess();
-        
-        showModal({
-          title: 'Event Created! 🎉',
-          message: `"${title}" has been successfully created and added to the calendar. People can now sign up for this amazing event!`,
-          onCancel: () => { navigation.navigate('Calendar'); },
-          onConfirm: () => { navigation.navigate('Calendar'); },
-          cancelText: '',
-          confirmText: 'OK',
-          icon: 'checkmark-circle',
-          iconColor: '#4CAF50'
-        });
+        navigation.navigate('CalendarMain');
       }
     } catch (err) {
       console.error('Event creation/update error:', err);
