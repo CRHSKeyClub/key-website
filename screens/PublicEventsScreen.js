@@ -239,9 +239,9 @@ export default function PublicEventsScreen() {
         <Text style={styles.attendeeName}>
           {item.name || 'Unknown Student'}
         </Text>
-        <Text style={styles.attendeeNumber}>
-          {item.sNumber || 'No S-Number'}
-        </Text>
+        {item.sNumber ? (
+          <Text style={styles.attendeeNumber}>{item.sNumber}</Text>
+        ) : null}
       </View>
       <View style={styles.attendeeStatus}>
         <Ionicons 

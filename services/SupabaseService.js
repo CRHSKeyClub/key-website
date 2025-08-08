@@ -725,6 +725,7 @@ class SupabaseService {
           studentUuid = auth.id; // UUID from auth_users
         }
       }
+      const sNumberLower = attendeeData.sNumber ? attendeeData.sNumber.toLowerCase() : null;
       
       // Check if already registered (by student_id if available, otherwise by email)
       let existingAttendee = null;
@@ -744,7 +745,29 @@ class SupabaseService {
         if (existingByStudentId) existingAttendee = existingByStudentId;
       }
 
-      // If not found by student_id, check by email as fallback
+      // If not found by student_id, check by s_number if column exists
+      if (!existingAttendee && sNumberLower) {
+        try {
+          const { data: existingBySNumber, error: checkErrorSn } = await supabase
+            .from('event_attendees')
+            .select('id')
+            .eq('event_id', eventId)
+            .eq('s_number', sNumberLower)
+            .maybeSingle();
+          if (checkErrorSn) {
+            // If column missing, skip silently
+            if (checkErrorSn.code !== '42703') {
+              console.warn('⚠️ s_number check error:', checkErrorSn.message);
+            }
+          } else if (existingBySNumber) {
+            existingAttendee = existingBySNumber;
+          }
+        } catch (e) {
+          // ignore unknown column errors
+        }
+      }
+
+      // If not found by student_id/s_number, check by email as fallback
       if (!existingAttendee && attendeeData.email) {
         const { data: existingByEmail, error: checkError2 } = await supabase
           .from('event_attendees')
@@ -786,13 +809,31 @@ class SupabaseService {
       };
       // Include student_id when we have a UUID
       if (studentUuid) attendeeInsertData.student_id = studentUuid;
+      // Also store s_number if the column exists (attempt and fallback below)
+      if (sNumberLower) attendeeInsertData.s_number = sNumberLower;
 
-      // Add attendee
-      const { data, error } = await supabase
-        .from('event_attendees')
-        .insert([attendeeInsertData])
-        .select()
-        .single();
+      // Add attendee with graceful fallback if s_number column does not exist
+      let data, error;
+      try {
+        const resp = await supabase
+          .from('event_attendees')
+          .insert([attendeeInsertData])
+          .select()
+          .single();
+        data = resp.data; error = resp.error;
+      } catch (e) {
+        error = e;
+      }
+      if (error && error.code === '42703' && attendeeInsertData.s_number) {
+        // Retry without s_number
+        const { s_number, ...withoutSNumber } = attendeeInsertData;
+        const retry = await supabase
+          .from('event_attendees')
+          .insert([withoutSNumber])
+          .select()
+          .single();
+        data = retry.data; error = retry.error;
+      }
 
       if (error) {
         console.error('❌ Error signing up for event:', error);
