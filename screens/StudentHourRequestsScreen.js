@@ -134,10 +134,7 @@ export default function StudentHourRequestsScreen({ navigation }) {
                   {desc.replace(/\[PHOTO_DATA:[^\]]+\]/g, '').trim()}
                 </Text>
               )}
-              <Image
-                source={{ uri: `data:image/jpeg;base64,${match[1]}` }}
-                style={styles.proofImage}
-              />
+              <AutoImage base64={match[1]} />
             </>
           );
         }
@@ -255,6 +252,29 @@ export default function StudentHourRequestsScreen({ navigation }) {
         </View>
       )}
     </SafeAreaView>
+  );
+}
+
+// Auto-sizing image that grows the container based on intrinsic size
+function AutoImage({ base64 }) {
+  const [aspectRatio, setAspectRatio] = useState(null);
+  const uri = `data:image/jpeg;base64,${base64}`;
+
+  return (
+    <Image
+      source={{ uri }}
+      onLoad={({ nativeEvent }) => {
+        const { width, height } = nativeEvent?.source || {};
+        if (width && height) {
+          setAspectRatio(width / height);
+        }
+      }}
+      style={[
+        styles.proofImage,
+        aspectRatio ? { aspectRatio } : styles.proofImageFallback,
+      ]}
+      resizeMode="contain"
+    />
   );
 }
 
@@ -385,11 +405,13 @@ const styles = StyleSheet.create({
   },
   proofImage: {
     width: '100%',
-    height: 220,
     borderRadius: 8,
     marginTop: 8,
     marginBottom: 6,
     backgroundColor: '#eee'
+  },
+  proofImageFallback: {
+    aspectRatio: 16 / 9,
   },
   approvalInfo: {
     backgroundColor: '#e8f5e9',
