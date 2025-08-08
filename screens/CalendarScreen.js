@@ -680,6 +680,8 @@ export default function CalendarScreen({ navigation, route }) {
           key={refreshKey}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.calendarGrid}
+          columnWrapperStyle={styles.columnWrapper}
+          getItemLayout={(data, index) => ({ length: 1, offset: index, index })}
         />
       </Animated.View>
 
@@ -915,13 +917,12 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   calendarDay: {
-    flex: 1,
+    width: `${100 / 7}%`,
     minHeight: 120,
     borderWidth: 1,
     borderColor: 'rgba(255, 204, 0, 0.28)',
     padding: 10,
     margin: 4,
-    width: '14.28%',
     backgroundColor: 'rgba(0, 51, 204, 0.18)',
     borderRadius: 12,
     shadowColor: '#000',
@@ -929,6 +930,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 16,
     elevation: 6,
+  },
+  columnWrapper: {
+    justifyContent: 'space-between'
   },
   emptyDay: {
     backgroundColor: 'rgba(0, 51, 204, 0.08)',

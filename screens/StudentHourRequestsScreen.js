@@ -6,7 +6,8 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useHours } from '../contexts/HourContext';
@@ -121,9 +122,31 @@ export default function StudentHourRequestsScreen({ navigation }) {
         </View>
       </View>
       
-      <Text style={styles.description} numberOfLines={2}>
-        {item.description || 'No description provided'}
-      </Text>
+      {/* Render image if embedded as [PHOTO_DATA:...] in description */}
+      {(() => {
+        const desc = item.description || '';
+        const match = desc.match(/\[PHOTO_DATA:([A-Za-z0-9+/=]+)\]/);
+        if (match && match[1]) {
+          return (
+            <>
+              {desc.replace(/\[PHOTO_DATA:[^\]]+\]/g, '').trim().length > 0 && (
+                <Text style={styles.description}>
+                  {desc.replace(/\[PHOTO_DATA:[^\]]+\]/g, '').trim()}
+                </Text>
+              )}
+              <Image
+                source={{ uri: `data:image/jpeg;base64,${match[1]}` }}
+                style={styles.proofImage}
+              />
+            </>
+          );
+        }
+        return (
+          <Text style={styles.description} numberOfLines={2}>
+            {desc || 'No description provided'}
+          </Text>
+        );
+      })()}
       
       {item.status === 'approved' && item.reviewed_at && (
         <View style={styles.approvalInfo}>
@@ -359,6 +382,14 @@ const styles = StyleSheet.create({
     color: '#555',
     fontStyle: 'italic',
     marginBottom: 10,
+  },
+  proofImage: {
+    width: '100%',
+    height: 220,
+    borderRadius: 8,
+    marginTop: 8,
+    marginBottom: 6,
+    backgroundColor: '#eee'
   },
   approvalInfo: {
     backgroundColor: '#e8f5e9',
