@@ -539,10 +539,36 @@ class SupabaseService {
         // Continue without attendees rather than failing
       }
 
+      // Resolve sNumbers from auth_users using student_id UUIDs
+      let sNumberByStudentId = {};
+      if (attendeesData && attendeesData.length > 0) {
+        const uniqueStudentIds = Array.from(new Set(
+          attendeesData
+            .map(a => a.student_id)
+            .filter(id => typeof id === 'string' && id.length > 0)
+        ));
+        if (uniqueStudentIds.length > 0) {
+          const { data: authUsers, error: authErr } = await supabase
+            .from('auth_users')
+            .select('id, s_number')
+            .in('id', uniqueStudentIds);
+          if (!authErr && authUsers) {
+            sNumberByStudentId = authUsers.reduce((acc, au) => {
+              acc[au.id] = au.s_number;
+              return acc;
+            }, {});
+          } else if (authErr) {
+            console.warn('⚠️ Could not resolve auth users for single event:', authErr.message);
+          }
+        }
+      }
+
       const attendees = (attendeesData || []).map(attendee => ({
         id: attendee.id,
         name: attendee.name,
         email: attendee.email,
+        sNumber: sNumberByStudentId[attendee.student_id] || null,
+        studentId: attendee.student_id,
         registeredAt: attendee.registered_at
       }));
 
