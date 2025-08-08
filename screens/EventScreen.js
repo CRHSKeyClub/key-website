@@ -31,6 +31,7 @@ export default function EventScreen({ route, navigation }) {
   const [deleting, setDeleting] = useState(false);
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
   const [currentRegistration, setCurrentRegistration] = useState(null);
+  const [initializing, setInitializing] = useState(true);
 
   useEffect(() => {
     const eventData = getEventById(eventId);
@@ -51,17 +52,42 @@ export default function EventScreen({ route, navigation }) {
 
   // Populate form with user data when logged in
   useEffect(() => {
-    if (isAuthenticated && user) {
-      setName(user.name || '');
-      setEmail(user.email || ''); // If user has email stored
-      setSNumber(user.sNumber || '');
-      
-      // Check if they're already registered
-      if (event && event.attendees) {
-        checkRegistrationStatus(user.email);
+    const init = async () => {
+      try {
+        if (!event) return;
+        if (isAuthenticated && user) {
+          setName(user.name || '');
+          setEmail(user.email || '');
+          setSNumber(user.sNumber || '');
+          // Server check first to avoid any flicker
+          try {
+            const reg = await SupabaseService.findEventRegistration(
+              eventId,
+              user.sNumber,
+              user.email || null
+            );
+            if (reg) {
+              setIsAlreadyRegistered(true);
+              setCurrentRegistration({
+                name: reg.name,
+                email: reg.email,
+                sNumber: user.sNumber,
+                studentId: reg.studentId,
+              });
+            } else {
+              setIsAlreadyRegistered(false);
+              setCurrentRegistration(null);
+            }
+          } catch (e) {
+            console.warn('Registration pre-check failed:', e?.message || e);
+          }
+        }
+      } finally {
+        setInitializing(false);
       }
-    }
-  }, [isAuthenticated, user, event]);
+    };
+    init();
+  }, [event, isAuthenticated, user, eventId]);
 
   // Check if user is already registered for this event
   const checkRegistrationStatus = (userEmail) => {
@@ -466,7 +492,7 @@ export default function EventScreen({ route, navigation }) {
     </View>
   );
 
-  if (!event) {
+  if (!event || initializing) {
     return (
       <View style={styles.loadingContainer}>
         <Text>Loading event...</Text>

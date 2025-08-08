@@ -790,6 +790,67 @@ class SupabaseService {
   }
 
   /**
+   * Find a user's registration for an event using student UUID (auth_users.id) or email
+   */
+  static async findEventRegistration(eventId, sNumber = null, email = null) {
+    try {
+      // 1) Try by student_id via auth_users UUID
+      if (sNumber) {
+        const auth = await this.getAuthUser(sNumber);
+        if (auth && auth.id) {
+          const { data, error } = await supabase
+            .from('event_attendees')
+            .select('*')
+            .eq('event_id', eventId)
+            .eq('student_id', auth.id)
+            .maybeSingle();
+
+          if (error && error.code !== 'PGRST116') {
+            throw error;
+          }
+          if (data) {
+            return {
+              id: data.id,
+              name: data.name,
+              email: data.email,
+              studentId: data.student_id,
+              registeredAt: data.registered_at,
+            };
+          }
+        }
+      }
+
+      // 2) Fallback by email
+      if (email) {
+        const { data, error } = await supabase
+          .from('event_attendees')
+          .select('*')
+          .eq('event_id', eventId)
+          .eq('email', email)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') {
+          throw error;
+        }
+        if (data) {
+          return {
+            id: data.id,
+            name: data.name,
+            email: data.email,
+            studentId: data.student_id,
+            registeredAt: data.registered_at,
+          };
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('❌ Error finding event registration:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Unregister from an event - UPDATED TO USE STUDENT_ID
    */
   static async unregisterFromEvent(eventId, email, sNumber = null) {
