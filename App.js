@@ -205,6 +205,28 @@ export default function App() {
       `;
       document.head.appendChild(style);
       
+      // Inject Google Analytics (gtag.js) for web builds
+      const existingGtagScript = document.querySelector(
+        'script[src*="googletagmanager.com/gtag/js?id=G-83LGR20KDG"]'
+      );
+      if (!existingGtagScript) {
+        const gtagScriptElement = document.createElement('script');
+        gtagScriptElement.async = true;
+        gtagScriptElement.src =
+          'https://www.googletagmanager.com/gtag/js?id=G-83LGR20KDG';
+        document.head.appendChild(gtagScriptElement);
+
+        const gtagInlineScript = document.createElement('script');
+        gtagInlineScript.text = `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);} 
+          gtag('js', new Date());
+
+          gtag('config', 'G-83LGR20KDG');
+        `;
+        document.head.appendChild(gtagInlineScript);
+      }
+
       // Apply focus management
       preventFocusOnHidden();
       
