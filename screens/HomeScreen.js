@@ -503,6 +503,8 @@ export default function HomeScreen() {
         }
       } else if (screen === 'socialMedia') {
         navigation.navigate('SocialMedia');
+      } else if (screen === 'newsletter' || screen === 'Newsletter') {
+        navigation.navigate('Newsletter');
       } else if (screen === 'AdminMeetingManagement') {
         navigation.navigate('AdminMeetingManagement');
       } else if (screen === 'StudentMeetingAttendance') {
@@ -559,6 +561,13 @@ export default function HomeScreen() {
       icon: isAdmin ? 'settings' : 'checkmark-circle',
       gradient: ['#f59e0b', '#d97706'],
       action: () => navigateTo(isAdmin ? 'AdminMeetingManagement' : 'StudentMeetingAttendance')
+    },
+    {
+      id: 'newsletter',
+      title: 'Newsletter',
+      icon: 'document-text',
+      gradient: ['#2b6cb0', '#2c5282'],
+      action: () => navigateTo('newsletter')
     },
     {
       id: 'socialMedia',

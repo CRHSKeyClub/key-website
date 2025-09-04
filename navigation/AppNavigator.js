@@ -34,6 +34,7 @@ import AdminMeetingManagementScreen from '../screens/AdminMeetingManagementScree
 import StudentMeetingAttendanceScreen from '../screens/StudentMeetingAttendanceScreen';
 import SocialMediaScreen from '../screens/SocialMediaScreen';
 import PublicEventsScreen from '../screens/PublicEventsScreen';
+import NewsletterScreen from '../screens/NewsletterScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -247,6 +248,17 @@ function MainStackNavigator() {
         component={SocialMediaScreen}
         options={{
           headerShown: false,
+        }}
+      />
+
+      <Stack.Screen
+        name="Newsletter"
+        component={NewsletterScreen}
+        options={{
+          headerShown: true,
+          headerTitle: 'Newsletters',
+          headerStyle: { backgroundColor: '#1a365d' },
+          headerTintColor: '#fff',
         }}
       />
 
