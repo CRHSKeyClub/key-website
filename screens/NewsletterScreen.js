@@ -11,8 +11,8 @@ export default function NewsletterScreen() {
     // Single PDF only (web)
     if (Platform.OS === 'web') {
       setNewsletters([{
-        title: 'Monthly Newsletter',
-        file: '/newsletters/latest.pdf',
+        title: 'August 2025 Monthly Newsletter',
+        file: '/newsletters/August 2025 Newsletter.pdf',
       }]);
     }
     setLoading(false);
