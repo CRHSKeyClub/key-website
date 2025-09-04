@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, Linking, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function NewsletterScreen() {
@@ -13,6 +13,7 @@ export default function NewsletterScreen() {
       setNewsletters([{
         title: 'August 2025 Monthly Newsletter',
         file: '/newsletters/August 2025 Newsletter.pdf',
+        cover: '/newsletters/aug-2025-cover.png'
       }]);
     }
     setLoading(false);
@@ -40,6 +41,8 @@ export default function NewsletterScreen() {
     );
   }
 
+  const item = newsletters[0];
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Monthly Newsletter</Text>
@@ -47,30 +50,26 @@ export default function NewsletterScreen() {
         <Text style={styles.infoText}>Loading...</Text>
       ) : error ? (
         <Text style={styles.errorText}>Error: {error}</Text>
-      ) : newsletters.length === 0 ? (
+      ) : !item ? (
         <Text style={styles.infoText}>No newsletter available yet.</Text>
       ) : (
-        <FlatList
-          data={newsletters}
-          keyExtractor={(item, index) => `${item.year}-${item.month}-${index}`}
-          contentContainerStyle={{ paddingBottom: 20 }}
-          renderItem={({ item }) => (
-            <View style={styles.item}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.itemTitle}>{item.title || `Monthly Newsletter`}</Text>
-                <Text style={styles.itemSub}></Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => handleDownload(item.file)}
-                style={styles.downloadButton}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="download-outline" size={18} color="#ffffff" />
-                <Text style={styles.downloadText}>Download</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        />
+        <View style={styles.card}>
+          <TouchableOpacity
+            onPress={() => handleDownload(item.file)}
+            activeOpacity={0.85}
+            accessibilityRole="link"
+            accessibilityLabel={`Open ${item.title}`}
+          >
+            <Image
+              source={{ uri: item.cover || item.file.replace(/\.pdf$/i, '.png') }}
+              style={styles.coverImage}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
+          <Text style={[styles.itemTitle, { marginTop: 12, textAlign: 'center' }]}>
+            {item.title || 'Monthly Newsletter'}
+          </Text>
+        </View>
       )}
     </View>
   );
@@ -106,6 +105,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#e2e8f0',
+  },
+  coverImage: {
+    width: 600,
+    height: 850,
+    maxWidth: '100%',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff'
   },
   item: {
     backgroundColor: '#ffffff',
