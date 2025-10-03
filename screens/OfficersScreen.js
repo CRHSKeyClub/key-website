@@ -77,7 +77,6 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   const rotateYAnim = useRef(new Animated.Value(0)).current;
   const rotateZAnim = useRef(new Animated.Value(0)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
-  const [isVisible, setIsVisible] = useState(false);
 
   // Generate random flying direction for each card
   const flyDirection = useRef({
@@ -88,99 +87,102 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
 
   // Reset animations when component mounts
   useEffect(() => {
+    // Set initial off-screen values
     fadeAnim.setValue(0);
     translateXAnim.setValue(flyDirection.x);
     translateYAnim.setValue(flyDirection.y);
-    scaleAnim.setValue(0.3);
-    rotateXAnim.setValue((Math.random() - 0.5) * 90);
-    rotateYAnim.setValue((Math.random() - 0.5) * 90);
+    scaleAnim.setValue(0.5);
+    rotateXAnim.setValue((Math.random() - 0.5) * 60);
+    rotateYAnim.setValue((Math.random() - 0.5) * 60);
     rotateZAnim.setValue(flyDirection.rotate);
     floatAnim.setValue(0);
-    setIsVisible(false);
-
-    // Start floating animation
-    const floatingAnimation = () => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(floatAnim, {
-            toValue: 1,
-            duration: 3000 + Math.random() * 2000,
-            useNativeDriver: false,
-          }),
-          Animated.timing(floatAnim, {
-            toValue: 0,
-            duration: 3000 + Math.random() * 2000,
-            useNativeDriver: false,
-          })
-        ])
-      ).start();
-    };
-    floatingAnimation();
-
-    // Auto-trigger animation after a short delay
-    setTimeout(() => {
-      animateIn();
-    }, 100);
-  }, []);
-
-  const animateIn = () => {
-    if (isVisible) return;
-    setIsVisible(true);
-
+    
     // Stagger animation based on index for a cascading effect
-    const delay = index * 80;
+    const delay = index * 100;
 
-    Animated.parallel([
+    // Main entrance animation
+    const entranceAnimation = Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 1000,
+        duration: 800,
         delay,
         useNativeDriver: false,
       }),
       Animated.spring(translateXAnim, {
         toValue: 0,
         delay,
-        tension: 40,
-        friction: 10,
+        tension: 50,
+        friction: 12,
         useNativeDriver: false,
       }),
       Animated.spring(translateYAnim, {
         toValue: 0,
         delay,
-        tension: 40,
-        friction: 10,
+        tension: 50,
+        friction: 12,
         useNativeDriver: false,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
         delay,
-        tension: 40,
-        friction: 8,
+        tension: 50,
+        friction: 10,
         useNativeDriver: false,
       }),
       Animated.spring(rotateXAnim, {
         toValue: 0,
         delay,
-        tension: 40,
-        friction: 10,
+        tension: 50,
+        friction: 12,
         useNativeDriver: false,
       }),
       Animated.spring(rotateYAnim, {
         toValue: 0,
         delay,
-        tension: 40,
-        friction: 10,
+        tension: 50,
+        friction: 12,
         useNativeDriver: false,
       }),
       Animated.spring(rotateZAnim, {
         toValue: 0,
         delay,
-        tension: 40,
-        friction: 10,
+        tension: 50,
+        friction: 12,
         useNativeDriver: false,
       }),
-    ]).start();
-  };
+    ]);
+
+    // Start entrance animation
+    entranceAnimation.start(() => {
+      // After entrance completes, start the floating animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(floatAnim, {
+            toValue: 1,
+            duration: 3000,
+            useNativeDriver: false,
+          }),
+          Animated.timing(floatAnim, {
+            toValue: 0,
+            duration: 3000,
+            useNativeDriver: false,
+          })
+        ])
+      ).start();
+    });
+
+    return () => {
+      // Cleanup animations on unmount
+      fadeAnim.stopAnimation();
+      translateXAnim.stopAnimation();
+      translateYAnim.stopAnimation();
+      scaleAnim.stopAnimation();
+      rotateXAnim.stopAnimation();
+      rotateYAnim.stopAnimation();
+      rotateZAnim.stopAnimation();
+      floatAnim.stopAnimation();
+    };
+  }, [index]);
 
   const handlePress = () => {
     // 3D flip animation on press
