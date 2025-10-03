@@ -11,7 +11,8 @@ import {
   ImageBackground,
   ScrollView,
   Animated,
-  TouchableOpacity
+  TouchableOpacity,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -69,108 +70,209 @@ const FloatingSparkles = () => {
 
 const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, isWeb, isMobile }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const translateXAnim = useRef(new Animated.Value(0)).current;
+  const translateYAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.3)).current;
+  const rotateXAnim = useRef(new Animated.Value(0)).current;
+  const rotateYAnim = useRef(new Animated.Value(0)).current;
+  const rotateZAnim = useRef(new Animated.Value(0)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
   const [isVisible, setIsVisible] = useState(false);
+
+  // Generate random flying direction for each card
+  const flyDirection = useRef({
+    x: (Math.random() - 0.5) * 800, // Random horizontal distance
+    y: (Math.random() - 0.5) * 800, // Random vertical distance
+    rotate: (Math.random() - 0.5) * 360, // Random rotation
+  }).current;
 
   // Reset animations when component mounts
   useEffect(() => {
     fadeAnim.setValue(0);
-    slideAnim.setValue(50);
-    scaleAnim.setValue(0.8);
-    rotateAnim.setValue(0);
-    pulseAnim.setValue(1);
+    translateXAnim.setValue(flyDirection.x);
+    translateYAnim.setValue(flyDirection.y);
+    scaleAnim.setValue(0.3);
+    rotateXAnim.setValue((Math.random() - 0.5) * 90);
+    rotateYAnim.setValue((Math.random() - 0.5) * 90);
+    rotateZAnim.setValue(flyDirection.rotate);
+    floatAnim.setValue(0);
     setIsVisible(false);
 
-    // Start pulsing animation
-    const pulseAnimation = () => {
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.02,
-          duration: 3000,
-          useNativeDriver: false,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 3000,
-          useNativeDriver: false,
-        })
-      ]).start(pulseAnimation);
+    // Start floating animation
+    const floatingAnimation = () => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(floatAnim, {
+            toValue: 1,
+            duration: 3000 + Math.random() * 2000,
+            useNativeDriver: false,
+          }),
+          Animated.timing(floatAnim, {
+            toValue: 0,
+            duration: 3000 + Math.random() * 2000,
+            useNativeDriver: false,
+          })
+        ])
+      ).start();
     };
-    pulseAnimation();
+    floatingAnimation();
 
     // Auto-trigger animation after a short delay
     setTimeout(() => {
       animateIn();
-    }, 200);
+    }, 100);
   }, []);
 
   const animateIn = () => {
     if (isVisible) return;
     setIsVisible(true);
 
-    // Stagger animation based on index
-    const delay = (index % numColumns) * 150;
+    // Stagger animation based on index for a cascading effect
+    const delay = index * 80;
 
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 1000,
         delay,
         useNativeDriver: false,
       }),
-      Animated.spring(slideAnim, {
+      Animated.spring(translateXAnim, {
         toValue: 0,
         delay,
-        tension: 80,
-        friction: 8,
+        tension: 40,
+        friction: 10,
+        useNativeDriver: false,
+      }),
+      Animated.spring(translateYAnim, {
+        toValue: 0,
+        delay,
+        tension: 40,
+        friction: 10,
         useNativeDriver: false,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
         delay,
-        tension: 80,
+        tension: 40,
         friction: 8,
         useNativeDriver: false,
       }),
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 800,
+      Animated.spring(rotateXAnim, {
+        toValue: 0,
         delay,
+        tension: 40,
+        friction: 10,
+        useNativeDriver: false,
+      }),
+      Animated.spring(rotateYAnim, {
+        toValue: 0,
+        delay,
+        tension: 40,
+        friction: 10,
+        useNativeDriver: false,
+      }),
+      Animated.spring(rotateZAnim, {
+        toValue: 0,
+        delay,
+        tension: 40,
+        friction: 10,
         useNativeDriver: false,
       }),
     ]).start();
   };
 
   const handlePress = () => {
-    // Bounce animation on press
+    // 3D flip animation on press
     Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 100,
+      Animated.parallel([
+        Animated.timing(rotateYAnim, {
+          toValue: 180,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(rotateYAnim, {
+          toValue: 360,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 300,
+          friction: 6,
+          useNativeDriver: false,
+        }),
+      ]),
+    ]).start(() => {
+      rotateYAnim.setValue(0); // Reset rotation value
+    });
+  };
+
+  // Handle mouse move for 3D tilt effect (web only)
+  const handleMouseMove = (event) => {
+    if (!isWeb) return;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    const tiltX = ((y - centerY) / centerY) * -15; // -15 to 15 degrees
+    const tiltY = ((x - centerX) / centerX) * 15; // -15 to 15 degrees
+    
+    Animated.parallel([
+      Animated.spring(rotateXAnim, {
+        toValue: tiltX,
+        tension: 100,
+        friction: 10,
         useNativeDriver: false,
       }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 300,
-        friction: 6,
+      Animated.spring(rotateYAnim, {
+        toValue: tiltY,
+        tension: 100,
+        friction: 10,
         useNativeDriver: false,
       }),
     ]).start();
   };
 
-  // Handle scroll-based visibility
-  const handleViewableChange = (isViewable) => {
-    if (isViewable && !isVisible) {
-      animateIn();
-    }
+  const handleMouseLeave = () => {
+    if (!isWeb) return;
+    
+    Animated.parallel([
+      Animated.spring(rotateXAnim, {
+        toValue: 0,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: false,
+      }),
+      Animated.spring(rotateYAnim, {
+        toValue: 0,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: false,
+      }),
+    ]).start();
   };
 
-  const rotation = rotateAnim.interpolate({
+  // Calculate floating offset
+  const floatY = floatAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
+    outputRange: [0, -15],
+  });
+
+  const floatRotate = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-2deg', '2deg'],
   });
 
   return (
@@ -181,18 +283,29 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           width: cardWidth,
           marginLeft: index % numColumns === 0 ? 0 : 10,
           marginBottom: isWeb ? 25 : 20,
-          opacity: fadeAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0.3, 1]
-          }),
+          opacity: fadeAnim,
           transform: [
-            { translateY: slideAnim },
+            { translateX: translateXAnim },
+            { translateY: Animated.add(translateYAnim, floatY) },
             { scale: scaleAnim },
-            { scale: pulseAnim },
-            { rotateY: rotation }
+            { perspective: 1000 },
+            { rotateX: rotateXAnim.interpolate({
+              inputRange: [-90, 90],
+              outputRange: ['-90deg', '90deg'],
+            }) },
+            { rotateY: rotateYAnim.interpolate({
+              inputRange: [-180, 180],
+              outputRange: ['-180deg', '180deg'],
+            }) },
+            { rotateZ: Animated.add(rotateZAnim, floatRotate).interpolate({
+              inputRange: [-360, 360],
+              outputRange: ['-360deg', '360deg'],
+            }) },
           ],
         },
       ]}
+      onMouseMove={isWeb ? handleMouseMove : undefined}
+      onMouseLeave={isWeb ? handleMouseLeave : undefined}
     >
       <TouchableOpacity
         style={[styles.officerCard, { height: cardHeight }]}
@@ -205,7 +318,14 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           style={[
             styles.keyClubLogo,
             {
-              transform: [{ rotate: rotation }],
+              transform: [
+                { 
+                  rotate: rotateZAnim.interpolate({
+                    inputRange: [-360, 360],
+                    outputRange: ['-360deg', '360deg'],
+                  })
+                }
+              ],
             },
           ]}
           resizeMode="contain"
@@ -809,18 +929,20 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     marginBottom: 20,
+    perspective: 1000,
   },
   officerCard: {
     margin: 8,
     borderRadius: 16,
     overflow: 'visible',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(66, 153, 225, 0.2)',
+    shadowColor: '#4299e1',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 15,
+    borderWidth: 2,
+    borderColor: 'rgba(66, 153, 225, 0.3)',
+    backfaceVisibility: 'hidden',
   },
   keyClubLogo: {
     position: 'absolute',
@@ -967,4 +1089,5 @@ const styles = StyleSheet.create({
     elevation: 3,
     zIndex: 1,
   },
+});
 });
