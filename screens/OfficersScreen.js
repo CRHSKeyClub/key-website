@@ -270,9 +270,10 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     outputRange: [0, -15],
   });
 
-  const floatRotate = floatAnim.interpolate({
+  // Float rotation as a number (not string) so we can combine it
+  const floatRotateValue = floatAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: ['-2deg', '2deg'],
+    outputRange: [-2, 2],
   });
 
   return (
@@ -297,7 +298,7 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
               inputRange: [-180, 180],
               outputRange: ['-180deg', '180deg'],
             }) },
-            { rotateZ: Animated.add(rotateZAnim, floatRotate).interpolate({
+            { rotateZ: Animated.add(rotateZAnim, floatRotateValue).interpolate({
               inputRange: [-360, 360],
               outputRange: ['-360deg', '360deg'],
             }) },
