@@ -356,13 +356,10 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
             />
           </Animated.View>
           
-          {/* Officer name with slide animation */}
+          {/* Officer name with fade animation */}
           <Animated.View
             style={[
               styles.nameContainer,
-              {
-                transform: [{ translateX: slideAnim }],
-              },
             ]}
           >
             <Text style={[
