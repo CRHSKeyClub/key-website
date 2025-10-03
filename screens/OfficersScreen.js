@@ -69,178 +69,70 @@ const FloatingSparkles = () => {
 };
 
 const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, isWeb, isMobile }) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const translateXAnim = useRef(new Animated.Value(0)).current;
-  const translateYAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.3)).current;
-  const rotateXAnim = useRef(new Animated.Value(0)).current;
-  const rotateYAnim = useRef(new Animated.Value(0)).current;
-  const rotateZAnim = useRef(new Animated.Value(0)).current;
-  const floatAnim = useRef(new Animated.Value(0)).current;
+  // Simpler animation values for better compatibility
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(100)).current;
+  const scale = useRef(new Animated.Value(0.8)).current;
 
-  // Generate random flying start position and rotation for "flying posters" effect
-  const randomStart = useRef({
-    x: (Math.random() - 0.5) * (isWeb ? 600 : 400),
-    y: (Math.random() - 0.5) * (isWeb ? 600 : 400),
-    rotateX: (Math.random() - 0.5) * 90,
-    rotateY: (Math.random() - 0.5) * 90,
-    rotateZ: (Math.random() - 0.5) * 180,
-  }).current;
-
-  // Flying Posters Animation - inspired by ReactBits
+  // Grid Stagger Animation - inspired by ReactBits
   useEffect(() => {
-    console.log(`Card ${index} (${item.name}): Flying posters animation starting...`);
+    console.log(`Card ${index} (${item.name}): Grid stagger animation starting...`);
     
-    // Set initial off-screen flying position with random 3D rotation
-    fadeAnim.setValue(0);
-    translateXAnim.setValue(randomStart.x);
-    translateYAnim.setValue(randomStart.y);
-    scaleAnim.setValue(0.3);
-    rotateXAnim.setValue(randomStart.rotateX);
-    rotateYAnim.setValue(randomStart.rotateY);
-    rotateZAnim.setValue(randomStart.rotateZ);
-    floatAnim.setValue(0);
+    // Calculate stagger based on position in grid
+    const row = Math.floor(index / numColumns);
+    const col = index % numColumns;
+    const delay = (row * 150) + (col * 100);
     
-    // Stagger delay for cascading effect
-    const delay = index * 120;
-    
-    console.log(`Card ${index}: Starting with delay ${delay}ms from position:`, randomStart);
+    console.log(`Card ${index}: Row ${row}, Col ${col}, Delay ${delay}ms`);
 
-    // Flying posters entrance animation with 3D transforms
-    const flyInAnimation = Animated.parallel([
-      // Fade in
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 1000,
-        delay,
-        useNativeDriver: false,
-      }),
-      // Fly to center from random position
-      Animated.spring(translateXAnim, {
-        toValue: 0,
-        delay,
-        tension: 35,
-        friction: 12,
-        useNativeDriver: false,
-      }),
-      Animated.spring(translateYAnim, {
-        toValue: 0,
-        delay,
-        tension: 35,
-        friction: 12,
-        useNativeDriver: false,
-      }),
-      // Scale up
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        delay,
-        tension: 40,
-        friction: 10,
-        useNativeDriver: false,
-      }),
-      // Rotate to flat on X axis
-      Animated.spring(rotateXAnim, {
-        toValue: 0,
-        delay,
-        tension: 35,
-        friction: 12,
-        useNativeDriver: false,
-      }),
-      // Rotate to flat on Y axis
-      Animated.spring(rotateYAnim, {
-        toValue: 0,
-        delay,
-        tension: 35,
-        friction: 12,
-        useNativeDriver: false,
-      }),
-      // Rotate to flat on Z axis
-      Animated.spring(rotateZAnim, {
-        toValue: 0,
-        delay,
-        tension: 35,
-        friction: 12,
-        useNativeDriver: false,
-      }),
-    ]);
-
-    // Start the flying animation
-    flyInAnimation.start(({ finished }) => {
-      console.log(`Card ${index}: Flying animation finished:`, finished);
-      
-      // After flying in, start gentle floating
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(floatAnim, {
-            toValue: 1,
-            duration: 2500 + Math.random() * 1000,
-            useNativeDriver: false,
-          }),
-          Animated.timing(floatAnim, {
-            toValue: 0,
-            duration: 2500 + Math.random() * 1000,
-            useNativeDriver: false,
-          })
-        ])
-      ).start();
-    });
+    // Simple but effective staggered reveal
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.spring(translateY, {
+          toValue: 0,
+          tension: 60,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          tension: 60,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        console.log(`Card ${index}: Animation completed:`, finished);
+      });
+    }, delay);
 
     return () => {
-      // Cleanup
-      fadeAnim.stopAnimation();
-      translateXAnim.stopAnimation();
-      translateYAnim.stopAnimation();
-      scaleAnim.stopAnimation();
-      rotateXAnim.stopAnimation();
-      rotateYAnim.stopAnimation();
-      rotateZAnim.stopAnimation();
-      floatAnim.stopAnimation();
+      opacity.stopAnimation();
+      translateY.stopAnimation();
+      scale.stopAnimation();
     };
-  }, [index]);
+  }, [index, numColumns]);
 
   const handlePress = () => {
     // Bounce animation on press
     Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.9,
+      Animated.timing(scale, {
+        toValue: 0.95,
         duration: 100,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
-      Animated.spring(scaleAnim, {
+      Animated.spring(scale, {
         toValue: 1,
         tension: 300,
         friction: 6,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     ]).start();
   };
-
-  // Calculate floating offset with slight rotation
-  const floatY = floatAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -12],
-  });
-
-  const floatRotate = floatAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['-3deg', '3deg'],
-  });
-
-  // Interpolate rotation values
-  const rotateXDeg = rotateXAnim.interpolate({
-    inputRange: [-90, 90],
-    outputRange: ['-90deg', '90deg'],
-  });
-
-  const rotateYDeg = rotateYAnim.interpolate({
-    inputRange: [-90, 90],
-    outputRange: ['-90deg', '90deg'],
-  });
-
-  const rotateZDeg = rotateZAnim.interpolate({
-    inputRange: [-180, 180],
-    outputRange: ['-180deg', '180deg'],
-  });
 
   return (
     <Animated.View
@@ -250,15 +142,10 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           width: cardWidth,
           marginLeft: index % numColumns === 0 ? 0 : 10,
           marginBottom: isWeb ? 25 : 20,
-          opacity: fadeAnim,
+          opacity: opacity,
           transform: [
-            { perspective: 1200 },
-            { translateX: translateXAnim },
-            { translateY: Animated.add(translateYAnim, floatY) },
-            { scale: scaleAnim },
-            { rotateX: rotateXDeg },
-            { rotateY: rotateYDeg },
-            { rotateZ: rotateZDeg },
+            { translateY: translateY },
+            { scale: scale },
           ],
         },
       ]}
@@ -268,15 +155,10 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
         onPress={handlePress}
         activeOpacity={0.9}
       >
-        {/* Animated Key Club logo */}
-        <Animated.Image
+        {/* Key Club logo */}
+        <Image
           source={require('../assets/images/keyclublogo.png')}
-          style={[
-            styles.keyClubLogo,
-            {
-              transform: [{ rotate: rotateZDeg }],
-            },
-          ]}
+          style={styles.keyClubLogo}
           resizeMode="contain"
         />
         
@@ -286,15 +168,14 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           style={styles.cardBackground}
           resizeMode="cover"
         >
-          {/* Officer photo with scale animation */}
-          <Animated.View
+          {/* Officer photo */}
+          <View
             style={[
               styles.photoContainer,
               {
                 width: cardWidth - 40,
                 height: isWeb ? 220 : 200,
                 marginTop: isWeb ? 35 : 30,
-                transform: [{ scale: scaleAnim }],
               },
             ]}
           >
@@ -303,31 +184,20 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
               style={styles.officerImage}
               resizeMode="cover"
             />
-          </Animated.View>
+          </View>
           
-          {/* Officer name with fade animation */}
-          <Animated.View
-            style={[
-              styles.nameContainer,
-            ]}
-          >
+          {/* Officer name */}
+          <View style={styles.nameContainer}>
             <Text style={[
               styles.officerName,
               { fontSize: isWeb ? 22 : isMobile ? 16 : 18 }
             ]}>
               {item.name}
             </Text>
-          </Animated.View>
+          </View>
           
-          {/* Officer details with fade animation */}
-          <Animated.View
-            style={[
-              styles.detailsContainer,
-              {
-                opacity: fadeAnim,
-              },
-            ]}
-          >
+          {/* Officer details */}
+          <View style={styles.detailsContainer}>
             <Text style={[
               styles.classInfo,
               { fontSize: isWeb ? 16 : 14 }
@@ -340,7 +210,7 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
             ]}>
               {item.memberYears}-year member
             </Text>
-          </Animated.View>
+          </View>
         </ImageBackground>
         
         {/* Floral border */}
