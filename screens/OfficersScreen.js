@@ -292,6 +292,72 @@ const AnimatedPositionBanner = ({ position, isWeb, isMobile, delay }) => {
   );
 };
 
+// Role-based Carousel Component
+const RoleCarousel = ({ role, officers, cardWidth, cardHeight, isWeb, isMobile }) => {
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = useRef(null);
+
+  useEffect(() => {
+    // Auto-scroll carousel every 4 seconds
+    const interval = setInterval(() => {
+      if (flatListRef.current && officers.length > 1) {
+        const nextIndex = (currentIndex + 1) % officers.length;
+        setCurrentIndex(nextIndex);
+        flatListRef.current.scrollToIndex({
+          index: nextIndex,
+          animated: true,
+        });
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [currentIndex, officers.length]);
+
+  const renderCarouselItem = ({ item, index }) => (
+    <AnimatedOfficerCard
+      item={item}
+      index={index}
+      cardWidth={cardWidth}
+      cardHeight={cardHeight}
+      numColumns={1}
+      isWeb={isWeb}
+      isMobile={isMobile}
+    />
+  );
+
+  return (
+    <View style={styles.roleSection}>
+      <Text style={styles.roleTitle}>{role}</Text>
+      <FlatList
+        ref={flatListRef}
+        data={officers}
+        renderItem={renderCarouselItem}
+        keyExtractor={item => item.id}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={cardWidth + 20}
+        decelerationRate="fast"
+        contentContainerStyle={styles.carouselContainer}
+        onScrollToIndexFailed={() => {}}
+      />
+      {/* Carousel indicators */}
+      <View style={styles.indicatorContainer}>
+        {officers.map((_, idx) => (
+          <View
+            key={idx}
+            style={[
+              styles.indicator,
+              idx === currentIndex && styles.activeIndicator,
+            ]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+};
+
 export default function OfficersScreen({ navigation }) {
   const [screenData, setScreenData] = useState(Dimensions.get('window'));
   const headerFadeAnim = useRef(new Animated.Value(0)).current;
@@ -346,15 +412,7 @@ export default function OfficersScreen({ navigation }) {
   const isTablet = screenData.width > 480 && screenData.width <= 768;
   const isMobile = screenData.width <= 480;
   
-  // Determine number of columns based on screen size
-  const getNumColumns = () => {
-    if (isWeb) return screenData.width > 1200 ? 4 : 3;
-    if (isTablet) return 3;
-    return 2; // mobile
-  };
-  
-  const numColumns = getNumColumns();
-  const cardWidth = (screenData.width - (20 * 2) - (10 * (numColumns - 1))) / numColumns;
+  const cardWidth = isWeb ? 350 : screenData.width - 80;
   const cardHeight = isWeb ? 520 : 480;
 
   // Officer data
@@ -537,96 +595,36 @@ export default function OfficersScreen({ navigation }) {
     },
   ];
 
-  const renderOfficerCard = ({ item, index }) => (
-    <AnimatedOfficerCard
-      item={item}
-      index={index}
-      cardWidth={cardWidth}
-      cardHeight={cardHeight}
-      numColumns={numColumns}
-      isWeb={isWeb}
-      isMobile={isMobile}
-    />
-  );
+  // Group officers by position/role
+  const groupedOfficers = officers.reduce((groups, officer) => {
+    const role = officer.position;
+    if (!groups[role]) {
+      groups[role] = [];
+    }
+    groups[role].push(officer);
+    return groups;
+  }, {});
 
+  // Define the order of roles for display
+  const roleOrder = [
+    "President",
+    "Vice President",
+    "Treasurer",
+    "Secretary",
+    "Web Master",
+    "Event Chairmen",
+    "Editor",
+    "Publicity",
+    "Hours Manager",
+    "Communications"
+  ];
 
-
-  // Use ScrollView with flexWrap for web, FlatList for mobile
-  if (isWeb) {
-    return (
-      <SafeAreaView style={[styles.container, Platform.OS === 'web' && { flex: 1, minHeight: '100vh' }]}>
-        <StatusBar barStyle="light-content" backgroundColor="#0d1b2a" />
-        
-        {/* Floating Sparkles Background */}
-        <FloatingSparkles />
-        
-        {/* Header */}
-        <Animated.View 
-          style={[
-            styles.header,
-            { transform: [{ translateY: headerAnim }] }
-          ]}
-        >
-          <View style={styles.headerContent}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
-              <Ionicons name="arrow-back" size={24} color="#4299e1" />
-            </TouchableOpacity>
-            
-            <View style={styles.headerTitleContainer}>
-              <Animated.Text 
-                style={[
-                  styles.headerTitle,
-                  { opacity: titleAnim }
-                ]}
-              >
-                Meet Our Officers
-              </Animated.Text>
-              <Animated.Text 
-                style={[
-                  styles.headerSubtitle,
-                  { opacity: titleAnim }
-                ]}
-              >
-                The dedicated leaders of Cypress Ranch Key Club
-              </Animated.Text>
-            </View>
-            
-            <View style={styles.headerSpacer} />
-          </View>
-        </Animated.View>
-
-        <ScrollView 
-          style={Platform.OS === 'web' ? { flex: 1 } : undefined}
-          contentContainerStyle={Platform.OS === 'web' ? [styles.webContainer, { padding: 20, justifyContent: 'flex-start' }] : [styles.webContainer, { padding: 20 }]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={[styles.webGrid, { maxWidth: 1400, alignSelf: 'center' }]}>
-            {officers.map((item, index) => 
-              <View key={item.id} style={{ marginBottom: 25 }}>
-                <AnimatedOfficerCard
-                  item={item}
-                  index={index}
-                  cardWidth={cardWidth}
-                  cardHeight={cardHeight}
-                  numColumns={numColumns}
-                  isWeb={isWeb}
-                  isMobile={isMobile}
-                />
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  // Mobile/Tablet layout with FlatList
   return (
     <SafeAreaView style={[styles.container, Platform.OS === 'web' && { flex: 1, minHeight: '100vh' }]}>
       <StatusBar barStyle="light-content" backgroundColor="#0d1b2a" />
+      
+      {/* Floating Sparkles Background */}
+      <FloatingSparkles />
       
       {/* Header */}
       <Animated.View 
@@ -666,15 +664,28 @@ export default function OfficersScreen({ navigation }) {
         </View>
       </Animated.View>
 
-      <FlatList
-        data={officers}
-        renderItem={renderOfficerCard}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContainer}
-        numColumns={numColumns}
-        key={numColumns} // Force re-render when columns change
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-      />
+      >
+        {roleOrder.map((role) => {
+          const roleOfficers = groupedOfficers[role];
+          if (!roleOfficers || roleOfficers.length === 0) return null;
+          
+          return (
+            <RoleCarousel
+              key={role}
+              role={role}
+              officers={roleOfficers}
+              cardWidth={cardWidth}
+              cardHeight={cardHeight}
+              isWeb={isWeb}
+              isMobile={isMobile}
+            />
+          );
+        })}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -683,6 +694,47 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1a365d', // Deep navy blue background
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingVertical: 20,
+  },
+  roleSection: {
+    marginBottom: 40,
+    paddingHorizontal: 20,
+  },
+  roleTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#4299e1',
+    marginBottom: 20,
+    textAlign: 'center',
+    textShadowColor: 'rgba(66, 153, 225, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  carouselContainer: {
+    paddingVertical: 10,
+  },
+  indicatorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 15,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(66, 153, 225, 0.3)',
+    marginHorizontal: 4,
+  },
+  activeIndicator: {
+    backgroundColor: '#4299e1',
+    width: 24,
+    borderRadius: 4,
   },
   header: {
     backgroundColor: 'rgba(66, 153, 225, 0.1)', // Professional blue with transparency
@@ -723,25 +775,11 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-  listContainer: {
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    paddingBottom: 30,
-  },
-  webContainer: {
-    flexGrow: 1,
-    minHeight: screenHeight + 100,
-  },
-  webGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-evenly',
-    width: '100%',
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(66, 153, 225, 0.8)',
+    marginTop: 5,
+    textAlign: 'center',
   },
   cardContainer: {
     marginBottom: 20,
