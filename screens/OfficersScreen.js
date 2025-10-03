@@ -78,31 +78,31 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   useEffect(() => {
     console.log(`Card ${index} (${item.name}): Grid stagger animation starting...`);
     
-    // Calculate stagger based on position in grid
+    // Calculate stagger based on position in grid (slower timing)
     const row = Math.floor(index / numColumns);
     const col = index % numColumns;
-    const delay = (row * 150) + (col * 100);
+    const delay = (row * 300) + (col * 200); // Doubled the delays for slower cascade
     
     console.log(`Card ${index}: Row ${row}, Col ${col}, Delay ${delay}ms`);
 
-    // Simple but effective staggered reveal
+    // Simple but effective staggered reveal with slower timing
     setTimeout(() => {
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 800,
+          duration: 1200, // Increased from 800ms
           useNativeDriver: true,
         }),
         Animated.spring(translateY, {
           toValue: 0,
-          tension: 60,
-          friction: 10,
+          tension: 40, // Reduced tension for slower, more dramatic movement
+          friction: 12, // Increased friction for smoother deceleration
           useNativeDriver: true,
         }),
         Animated.spring(scale, {
           toValue: 1,
-          tension: 60,
-          friction: 8,
+          tension: 40, // Reduced tension
+          friction: 10, // Increased friction
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
