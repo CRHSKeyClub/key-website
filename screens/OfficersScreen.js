@@ -140,8 +140,6 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
         styles.cardContainer,
         {
           width: cardWidth,
-          marginLeft: index % numColumns === 0 ? 0 : 10,
-          marginBottom: isWeb ? 25 : 20,
           opacity: opacity,
           transform: [
             { translateY: translateY },
@@ -292,69 +290,58 @@ const AnimatedPositionBanner = ({ position, isWeb, isMobile, delay }) => {
   );
 };
 
-// Role-based Carousel Component
-const RoleCarousel = ({ role, officers, cardWidth, cardHeight, isWeb, isMobile }) => {
-  const scrollX = useRef(new Animated.Value(0)).current;
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef(null);
+// Role Section Component with animated cards
+const RoleSection = ({ role, officers, cardWidth, cardHeight, isWeb, isMobile, sectionIndex }) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    // Auto-scroll carousel every 4 seconds
-    const interval = setInterval(() => {
-      if (flatListRef.current && officers.length > 1) {
-        const nextIndex = (currentIndex + 1) % officers.length;
-        setCurrentIndex(nextIndex);
-        flatListRef.current.scrollToIndex({
-          index: nextIndex,
-          animated: true,
-        });
-      }
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [currentIndex, officers.length]);
-
-  const renderCarouselItem = ({ item, index }) => (
-    <AnimatedOfficerCard
-      item={item}
-      index={index}
-      cardWidth={cardWidth}
-      cardHeight={cardHeight}
-      numColumns={1}
-      isWeb={isWeb}
-      isMobile={isMobile}
-    />
-  );
+    // Animate the entire section with a delay based on section index
+    const delay = sectionIndex * 300;
+    
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        delay,
+        tension: 50,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [sectionIndex]);
 
   return (
-    <View style={styles.roleSection}>
+    <Animated.View 
+      style={[
+        styles.roleSection,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
       <Text style={styles.roleTitle}>{role}</Text>
-      <FlatList
-        ref={flatListRef}
-        data={officers}
-        renderItem={renderCarouselItem}
-        keyExtractor={item => item.id}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={cardWidth + 20}
-        decelerationRate="fast"
-        contentContainerStyle={styles.carouselContainer}
-        onScrollToIndexFailed={() => {}}
-      />
-      {/* Carousel indicators */}
-      <View style={styles.indicatorContainer}>
-        {officers.map((_, idx) => (
-          <View
-            key={idx}
-            style={[
-              styles.indicator,
-              idx === currentIndex && styles.activeIndicator,
-            ]}
+      <View style={styles.roleCardsContainer}>
+        {officers.map((officer, index) => (
+          <AnimatedOfficerCard
+            key={officer.id}
+            item={officer}
+            index={index}
+            cardWidth={cardWidth}
+            cardHeight={cardHeight}
+            numColumns={officers.length}
+            isWeb={isWeb}
+            isMobile={isMobile}
           />
         ))}
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -412,7 +399,7 @@ export default function OfficersScreen({ navigation }) {
   const isTablet = screenData.width > 480 && screenData.width <= 768;
   const isMobile = screenData.width <= 480;
   
-  const cardWidth = isWeb ? 350 : screenData.width - 80;
+  const cardWidth = isWeb ? 320 : screenData.width - 60;
   const cardHeight = isWeb ? 520 : 480;
 
   // Officer data
@@ -669,12 +656,12 @@ export default function OfficersScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {roleOrder.map((role) => {
+        {roleOrder.map((role, sectionIndex) => {
           const roleOfficers = groupedOfficers[role];
           if (!roleOfficers || roleOfficers.length === 0) return null;
           
           return (
-            <RoleCarousel
+            <RoleSection
               key={role}
               role={role}
               officers={roleOfficers}
@@ -682,6 +669,7 @@ export default function OfficersScreen({ navigation }) {
               cardHeight={cardHeight}
               isWeb={isWeb}
               isMobile={isMobile}
+              sectionIndex={sectionIndex}
             />
           );
         })}
@@ -702,39 +690,28 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
   },
   roleSection: {
-    marginBottom: 40,
+    marginBottom: 60,
     paddingHorizontal: 20,
+    alignItems: 'center',
   },
   roleTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#4299e1',
-    marginBottom: 20,
+    marginBottom: 30,
     textAlign: 'center',
     textShadowColor: 'rgba(66, 153, 225, 0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
+    letterSpacing: 1,
   },
-  carouselContainer: {
-    paddingVertical: 10,
-  },
-  indicatorContainer: {
+  roleCardsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 15,
-  },
-  indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(66, 153, 225, 0.3)',
-    marginHorizontal: 4,
-  },
-  activeIndicator: {
-    backgroundColor: '#4299e1',
-    width: 24,
-    borderRadius: 4,
+    alignItems: 'flex-start',
+    gap: 25,
+    maxWidth: 1200,
   },
   header: {
     backgroundColor: 'rgba(66, 153, 225, 0.1)', // Professional blue with transparency
@@ -782,7 +759,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cardContainer: {
-    marginBottom: 20,
+    // Spacing handled by gap in roleCardsContainer
   },
   officerCard: {
     margin: 8,
