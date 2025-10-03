@@ -78,99 +78,107 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   const rotateZAnim = useRef(new Animated.Value(0)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
-  // Generate random flying direction for each card
-  const flyDirection = useRef({
-    x: (Math.random() - 0.5) * 400, // Random horizontal distance (-200 to 200)
-    y: (Math.random() - 0.5) * 400, // Random vertical distance (-200 to 200)
-    rotate: (Math.random() - 0.5) * 180, // Random rotation (-90 to 90 deg)
+  // Generate random flying start position and rotation for "flying posters" effect
+  const randomStart = useRef({
+    x: (Math.random() - 0.5) * (isWeb ? 600 : 400),
+    y: (Math.random() - 0.5) * (isWeb ? 600 : 400),
+    rotateX: (Math.random() - 0.5) * 90,
+    rotateY: (Math.random() - 0.5) * 90,
+    rotateZ: (Math.random() - 0.5) * 180,
   }).current;
 
-  // Reset animations when component mounts
+  // Flying Posters Animation - inspired by ReactBits
   useEffect(() => {
-    console.log(`Card ${index} (${item.name}): Initializing animation...`);
-    console.log(`Fly direction:`, flyDirection);
+    console.log(`Card ${index} (${item.name}): Flying posters animation starting...`);
     
-    // Set initial off-screen values
+    // Set initial off-screen flying position with random 3D rotation
     fadeAnim.setValue(0);
-    translateXAnim.setValue(flyDirection.x);
-    translateYAnim.setValue(flyDirection.y);
-    scaleAnim.setValue(0.5);
-    rotateXAnim.setValue((Math.random() - 0.5) * 60);
-    rotateYAnim.setValue((Math.random() - 0.5) * 60);
-    rotateZAnim.setValue(flyDirection.rotate);
+    translateXAnim.setValue(randomStart.x);
+    translateYAnim.setValue(randomStart.y);
+    scaleAnim.setValue(0.3);
+    rotateXAnim.setValue(randomStart.rotateX);
+    rotateYAnim.setValue(randomStart.rotateY);
+    rotateZAnim.setValue(randomStart.rotateZ);
     floatAnim.setValue(0);
     
-    // Stagger animation based on index for a cascading effect
-    const delay = index * 100;
+    // Stagger delay for cascading effect
+    const delay = index * 120;
     
-    console.log(`Card ${index}: Starting animation with delay ${delay}ms`);
+    console.log(`Card ${index}: Starting with delay ${delay}ms from position:`, randomStart);
 
-    // Main entrance animation
-    const entranceAnimation = Animated.parallel([
+    // Flying posters entrance animation with 3D transforms
+    const flyInAnimation = Animated.parallel([
+      // Fade in
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 1000,
         delay,
         useNativeDriver: false,
       }),
+      // Fly to center from random position
       Animated.spring(translateXAnim, {
         toValue: 0,
         delay,
-        tension: 50,
+        tension: 35,
         friction: 12,
         useNativeDriver: false,
       }),
       Animated.spring(translateYAnim, {
         toValue: 0,
         delay,
-        tension: 50,
+        tension: 35,
         friction: 12,
         useNativeDriver: false,
       }),
+      // Scale up
       Animated.spring(scaleAnim, {
         toValue: 1,
         delay,
-        tension: 50,
+        tension: 40,
         friction: 10,
         useNativeDriver: false,
       }),
+      // Rotate to flat on X axis
       Animated.spring(rotateXAnim, {
         toValue: 0,
         delay,
-        tension: 50,
+        tension: 35,
         friction: 12,
         useNativeDriver: false,
       }),
+      // Rotate to flat on Y axis
       Animated.spring(rotateYAnim, {
         toValue: 0,
         delay,
-        tension: 50,
+        tension: 35,
         friction: 12,
         useNativeDriver: false,
       }),
+      // Rotate to flat on Z axis
       Animated.spring(rotateZAnim, {
         toValue: 0,
         delay,
-        tension: 50,
+        tension: 35,
         friction: 12,
         useNativeDriver: false,
       }),
     ]);
 
-    // Start entrance animation
-    entranceAnimation.start(({ finished }) => {
-      console.log(`Card ${index}: Entrance animation finished:`, finished);
-      // After entrance completes, start the floating animation
+    // Start the flying animation
+    flyInAnimation.start(({ finished }) => {
+      console.log(`Card ${index}: Flying animation finished:`, finished);
+      
+      // After flying in, start gentle floating
       Animated.loop(
         Animated.sequence([
           Animated.timing(floatAnim, {
             toValue: 1,
-            duration: 3000,
+            duration: 2500 + Math.random() * 1000,
             useNativeDriver: false,
           }),
           Animated.timing(floatAnim, {
             toValue: 0,
-            duration: 3000,
+            duration: 2500 + Math.random() * 1000,
             useNativeDriver: false,
           })
         ])
@@ -178,7 +186,7 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     });
 
     return () => {
-      // Cleanup animations on unmount
+      // Cleanup
       fadeAnim.stopAnimation();
       translateXAnim.stopAnimation();
       translateYAnim.stopAnimation();
@@ -191,112 +199,47 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   }, [index]);
 
   const handlePress = () => {
-    // 3D flip animation on press
+    // Bounce animation on press
     Animated.sequence([
-      Animated.parallel([
-        Animated.timing(rotateYAnim, {
-          toValue: 180,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 0.95,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(rotateYAnim, {
-          toValue: 360,
-          duration: 300,
-          useNativeDriver: false,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 300,
-          friction: 6,
-          useNativeDriver: false,
-        }),
-      ]),
-    ]).start(() => {
-      rotateYAnim.setValue(0); // Reset rotation value
-    });
-  };
-
-  // Handle mouse move for 3D tilt effect (web only)
-  const handleMouseMove = (event) => {
-    if (!isWeb) return;
-    
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
-    
-    const tiltX = ((y - centerY) / centerY) * -15; // -15 to 15 degrees
-    const tiltY = ((x - centerX) / centerX) * 15; // -15 to 15 degrees
-    
-    Animated.parallel([
-      Animated.spring(rotateXAnim, {
-        toValue: tiltX,
-        tension: 100,
-        friction: 10,
+      Animated.timing(scaleAnim, {
+        toValue: 0.9,
+        duration: 100,
         useNativeDriver: false,
       }),
-      Animated.spring(rotateYAnim, {
-        toValue: tiltY,
-        tension: 100,
-        friction: 10,
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 300,
+        friction: 6,
         useNativeDriver: false,
       }),
     ]).start();
   };
 
-  const handleMouseLeave = () => {
-    if (!isWeb) return;
-    
-    Animated.parallel([
-      Animated.spring(rotateXAnim, {
-        toValue: 0,
-        tension: 100,
-        friction: 10,
-        useNativeDriver: false,
-      }),
-      Animated.spring(rotateYAnim, {
-        toValue: 0,
-        tension: 100,
-        friction: 10,
-        useNativeDriver: false,
-      }),
-    ]).start();
-  };
-
-  // Calculate floating offset
+  // Calculate floating offset with slight rotation
   const floatY = floatAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, -15],
+    outputRange: [0, -12],
   });
 
-  // Float rotation as a number (not string) so we can combine it
-  const floatRotateValue = floatAnim.interpolate({
+  const floatRotate = floatAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-2, 2],
+    outputRange: ['-3deg', '3deg'],
   });
 
+  // Interpolate rotation values
   const rotateXDeg = rotateXAnim.interpolate({
     inputRange: [-90, 90],
     outputRange: ['-90deg', '90deg'],
   });
 
   const rotateYDeg = rotateYAnim.interpolate({
-    inputRange: [-180, 180],
-    outputRange: ['-180deg', '180deg'],
+    inputRange: [-90, 90],
+    outputRange: ['-90deg', '90deg'],
   });
 
-  const rotateZDeg = Animated.add(rotateZAnim, floatRotateValue).interpolate({
-    inputRange: [-360, 360],
-    outputRange: ['-360deg', '360deg'],
+  const rotateZDeg = rotateZAnim.interpolate({
+    inputRange: [-180, 180],
+    outputRange: ['-180deg', '180deg'],
   });
 
   return (
@@ -309,18 +252,16 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           marginBottom: isWeb ? 25 : 20,
           opacity: fadeAnim,
           transform: [
-            { perspective: 1000 },
+            { perspective: 1200 },
             { translateX: translateXAnim },
             { translateY: Animated.add(translateYAnim, floatY) },
+            { scale: scaleAnim },
             { rotateX: rotateXDeg },
             { rotateY: rotateYDeg },
             { rotateZ: rotateZDeg },
-            { scale: scaleAnim },
           ],
         },
       ]}
-      onMouseMove={isWeb ? handleMouseMove : undefined}
-      onMouseLeave={isWeb ? handleMouseLeave : undefined}
     >
       <TouchableOpacity
         style={[styles.officerCard, { height: cardHeight }]}
@@ -333,14 +274,7 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           style={[
             styles.keyClubLogo,
             {
-              transform: [
-                { 
-                  rotate: rotateZAnim.interpolate({
-                    inputRange: [-360, 360],
-                    outputRange: ['-360deg', '360deg'],
-                  })
-                }
-              ],
+              transform: [{ rotate: rotateZDeg }],
             },
           ]}
           resizeMode="contain"
@@ -941,20 +875,19 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     marginBottom: 20,
-    perspective: 1000,
   },
   officerCard: {
     margin: 8,
     borderRadius: 16,
     overflow: 'visible',
     shadowColor: '#4299e1',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.4,
-    shadowRadius: 20,
-    elevation: 15,
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.5,
+    shadowRadius: 25,
+    elevation: 20,
     borderWidth: 2,
-    borderColor: 'rgba(66, 153, 225, 0.3)',
-    backfaceVisibility: 'hidden',
+    borderColor: 'rgba(66, 153, 225, 0.4)',
+    backgroundColor: '#2d3748',
   },
   keyClubLogo: {
     position: 'absolute',
