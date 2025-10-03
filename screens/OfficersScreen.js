@@ -80,13 +80,16 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
 
   // Generate random flying direction for each card
   const flyDirection = useRef({
-    x: (Math.random() - 0.5) * 800, // Random horizontal distance
-    y: (Math.random() - 0.5) * 800, // Random vertical distance
-    rotate: (Math.random() - 0.5) * 360, // Random rotation
+    x: (Math.random() - 0.5) * 400, // Random horizontal distance (-200 to 200)
+    y: (Math.random() - 0.5) * 400, // Random vertical distance (-200 to 200)
+    rotate: (Math.random() - 0.5) * 180, // Random rotation (-90 to 90 deg)
   }).current;
 
   // Reset animations when component mounts
   useEffect(() => {
+    console.log(`Card ${index} (${item.name}): Initializing animation...`);
+    console.log(`Fly direction:`, flyDirection);
+    
     // Set initial off-screen values
     fadeAnim.setValue(0);
     translateXAnim.setValue(flyDirection.x);
@@ -99,6 +102,8 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     
     // Stagger animation based on index for a cascading effect
     const delay = index * 100;
+    
+    console.log(`Card ${index}: Starting animation with delay ${delay}ms`);
 
     // Main entrance animation
     const entranceAnimation = Animated.parallel([
@@ -153,7 +158,8 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     ]);
 
     // Start entrance animation
-    entranceAnimation.start(() => {
+    entranceAnimation.start(({ finished }) => {
+      console.log(`Card ${index}: Entrance animation finished:`, finished);
       // After entrance completes, start the floating animation
       Animated.loop(
         Animated.sequence([
@@ -278,6 +284,21 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     outputRange: [-2, 2],
   });
 
+  const rotateXDeg = rotateXAnim.interpolate({
+    inputRange: [-90, 90],
+    outputRange: ['-90deg', '90deg'],
+  });
+
+  const rotateYDeg = rotateYAnim.interpolate({
+    inputRange: [-180, 180],
+    outputRange: ['-180deg', '180deg'],
+  });
+
+  const rotateZDeg = Animated.add(rotateZAnim, floatRotateValue).interpolate({
+    inputRange: [-360, 360],
+    outputRange: ['-360deg', '360deg'],
+  });
+
   return (
     <Animated.View
       style={[
@@ -288,22 +309,13 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           marginBottom: isWeb ? 25 : 20,
           opacity: fadeAnim,
           transform: [
+            { perspective: 1000 },
             { translateX: translateXAnim },
             { translateY: Animated.add(translateYAnim, floatY) },
+            { rotateX: rotateXDeg },
+            { rotateY: rotateYDeg },
+            { rotateZ: rotateZDeg },
             { scale: scaleAnim },
-            { perspective: 1000 },
-            { rotateX: rotateXAnim.interpolate({
-              inputRange: [-90, 90],
-              outputRange: ['-90deg', '90deg'],
-            }) },
-            { rotateY: rotateYAnim.interpolate({
-              inputRange: [-180, 180],
-              outputRange: ['-180deg', '180deg'],
-            }) },
-            { rotateZ: Animated.add(rotateZAnim, floatRotateValue).interpolate({
-              inputRange: [-360, 360],
-              outputRange: ['-360deg', '360deg'],
-            }) },
           ],
         },
       ]}
