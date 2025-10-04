@@ -88,425 +88,152 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     }, delay);
   }, [index]);
 
-  // Grid Stagger Animation - inspired by ReactBits
-  useEffect(() => {
-    console.log(`Card ${index} (${item.name}): Animated card loading...`);
-    
-    // Calculate stagger based on position in grid
-    const row = Math.floor(index / numColumns);
-    const col = index % numColumns;
-    const delay = (row * 300) + (col * 200);
-    
-    console.log(`Card ${index}: Row ${row}, Col ${col}, Delay ${delay}ms`);
-
-    // Entrance animation
-    setTimeout(() => {
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-        Animated.spring(translateY, {
-          toValue: 0,
-          tension: 40,
-          friction: 12,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scale, {
-          toValue: 1,
-          tension: 40,
-          friction: 10,
-          useNativeDriver: true,
-        }),
-      ]).start(({ finished }) => {
-        if (finished) {
-          console.log(`Card ${index}: Animation completed, starting continuous effects`);
-          startContinuousAnimations();
-        }
-      });
-    }, delay);
-
-    return () => {
-      opacity.stopAnimation();
-      translateY.stopAnimation();
-      scale.stopAnimation();
-      floatAnim.stopAnimation();
-      rotateAnim.stopAnimation();
-      glowAnim.stopAnimation();
-      tiltX.stopAnimation();
-      tiltY.stopAnimation();
-      shineX.stopAnimation();
-      shineY.stopAnimation();
-    };
-  }, [index, numColumns]);
-
-  // Continuous floating and subtle rotation
-  const startContinuousAnimations = () => {
-    // Floating animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: 1,
-          duration: 3000 + (index * 200), // Stagger the float timing
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 3000 + (index * 200),
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Subtle rotation animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 8000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 8000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    // Glow pulse animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: false,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0,
-          duration: 2000,
-          useNativeDriver: false,
-        }),
-      ])
-    ).start();
-  };
-
-  const handlePress = () => {
-    // Bounce animation on press
-    Animated.sequence([
-      Animated.timing(scale, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scale, {
-        toValue: 1,
-        tension: 300,
-        friction: 6,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  // Tilted Card effect - Enhanced 3D tilt with shine (web only)
+  // Tilted Card effect - Following ReactBits pattern exactly
   const handleMouseMove = (event) => {
-    if (!isWeb) return;
+    if (!isWeb || !cardRef.current) return;
     
-    const rect = event.currentTarget.getBoundingClientRect();
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+    const rect = cardRef.current.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left - rect.width / 2;
+    const offsetY = event.clientY - rect.top - rect.height / 2;
     
-    const centerX = rect.width / 2;
-    const centerY = rect.height / 2;
+    const rotateAmplitude = 20;
+    const rotationX = (offsetY / (rect.height / 2)) * -rotateAmplitude;
+    const rotationY = (offsetX / (rect.width / 2)) * rotateAmplitude;
     
-    // Calculate tilt based on mouse position (stronger effect)
-    const rotateXValue = ((y - centerY) / centerY) * -25; // Even more pronounced
-    const rotateYValue = ((x - centerX) / centerX) * 25; // Even more pronounced
-    
-    console.log(`Card ${index}: Tilt X: ${rotateXValue.toFixed(1)}, Tilt Y: ${rotateYValue.toFixed(1)}`);
-    
-    // Calculate shine position (percentage)
-    const shineXValue = (x / rect.width) * 100;
-    const shineYValue = (y / rect.height) * 100;
-    
-    // Update web transform state for CSS
-    setWebTransform({
-      rotateX: rotateXValue,
-      rotateY: rotateYValue,
-      shineX: shineXValue,
-      shineY: shineYValue,
+    setTransform({
+      rotateX: rotationX,
+      rotateY: rotationY,
+      scale: 1.05,
     });
-    
-    // Also update animations for mobile compatibility
-    Animated.parallel([
-      Animated.spring(tiltX, {
-        toValue: rotateXValue,
-        tension: 80,
-        friction: 12,
-        useNativeDriver: true,
-      }),
-      Animated.spring(tiltY, {
-        toValue: rotateYValue,
-        tension: 80,
-        friction: 12,
-        useNativeDriver: true,
-      }),
-      Animated.spring(shineX, {
-        toValue: shineXValue,
-        tension: 80,
-        friction: 12,
-        useNativeDriver: false,
-      }),
-      Animated.spring(shineY, {
-        toValue: shineYValue,
-        tension: 80,
-        friction: 12,
-        useNativeDriver: false,
-      }),
-    ]).start();
+  };
+
+  const handleMouseEnter = () => {
+    if (!isWeb) return;
+    setTransform(prev => ({ ...prev, scale: 1.05 }));
   };
 
   const handleMouseLeave = () => {
     if (!isWeb) return;
-    setMouseOver(false);
-    
-    // Reset to default tilted position
-    setWebTransform({
-      rotateX: 8,
-      rotateY: -8,
-      shineX: 50,
-      shineY: 50,
+    setTransform({
+      rotateX: 0,
+      rotateY: 0,
+      scale: 1,
     });
-    
-    // Return to default tilted position (not flat)
-    Animated.parallel([
-      Animated.spring(tiltX, {
-        toValue: 8,
-        tension: 80,
-        friction: 12,
-        useNativeDriver: true,
-      }),
-      Animated.spring(tiltY, {
-        toValue: -8,
-        tension: 80,
-        friction: 12,
-        useNativeDriver: true,
-      }),
-      Animated.spring(shineX, {
-        toValue: 50,
-        tension: 80,
-        friction: 12,
-        useNativeDriver: false,
-      }),
-      Animated.spring(shineY, {
-        toValue: 50,
-        tension: 80,
-        friction: 12,
-        useNativeDriver: false,
-      }),
-    ]).start();
-  };
-  
-  const handleMouseEnter = () => {
-    if (!isWeb) return;
-    setMouseOver(true);
   };
 
-  // Interpolations
-  const floatTranslate = floatAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -15],
-  });
+  // Tilted Card styles following ReactBits pattern
+  const figureStyle = {
+    position: 'relative',
+    width: cardWidth,
+    height: cardHeight,
+    perspective: isWeb ? 800 : undefined,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: opacity,
+    transition: 'opacity 0.8s ease-in-out',
+  };
 
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['-2deg', '2deg'],
-  });
-
-  const shadowOpacity = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.5, 0.9],
-  });
-
-  const tiltXDeg = tiltX.interpolate({
-    inputRange: [-25, 25],
-    outputRange: ['-25deg', '25deg'],
-  });
-
-  const tiltYDeg = tiltY.interpolate({
-    inputRange: [-25, 25],
-    outputRange: ['-25deg', '25deg'],
-  });
-
-  // Shine gradient position
-  const shineLeft = shineX.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
-  });
-
-  const shineTop = shineY.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
-  });
-
-  // Build CSS transform string for web - matching ReactBits implementation
-  const webTransformStyle = isWeb ? {
-    transform: `rotateX(${webTransform.rotateX}deg) rotateY(${webTransform.rotateY}deg)`,
+  const innerStyle = isWeb ? {
+    width: cardWidth,
+    height: cardHeight,
+    transform: `rotateX(${transform.rotateX}deg) rotateY(${transform.rotateY}deg) scale(${transform.scale})`,
     transformStyle: 'preserve-3d',
-    willChange: 'transform',
-    transition: 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-    WebkitTransform: `rotateX(${webTransform.rotateX}deg) rotateY(${webTransform.rotateY}deg)`, // Safari
-  } : {};
-  
-  // Debug log
-  if (isWeb && mouseOver) {
-    console.log(`Card ${index} transform style:`, webTransformStyle.transform);
-  }
+    transition: 'transform 0.1s ease-out',
+    position: 'relative',
+  } : {
+    width: cardWidth,
+    height: cardHeight,
+  };
 
   return (
-    <Animated.View
-      style={[
-        styles.cardContainer,
-        {
-          width: cardWidth,
-          opacity: opacity,
-        },
-      ]}
+    <View
+      ref={cardRef}
+      style={figureStyle}
+      onMouseMove={isWeb ? handleMouseMove : undefined}
+      onMouseEnter={isWeb ? handleMouseEnter : undefined}
+      onMouseLeave={isWeb ? handleMouseLeave : undefined}
     >
-      <View
-        style={{
-          perspective: isWeb ? 1200 : undefined,
-          perspectiveOrigin: 'center',
-        }}
-      >
-        <Animated.View
-          style={[
-            {
-              transform: [
-                { translateY: Animated.add(translateY, floatTranslate) },
-                { rotateZ: rotate },
-                { scale: scale },
-              ],
-            },
-          ]}
-        >
-          <View
-            style={[
-              isWeb && webTransformStyle,
-              isWeb && { display: 'block' }, // Force block display for proper transform
-            ]}
-            onMouseMove={isWeb ? handleMouseMove : undefined}
-            onMouseLeave={isWeb ? handleMouseLeave : undefined}
-            onMouseEnter={isWeb ? handleMouseEnter : undefined}
-            {...(isWeb && { accessibilityRole: 'none' })}
-          >
-      <Animated.View
-        style={[
-          styles.officerCard,
-          {
-            height: cardHeight,
-            shadowOpacity: shadowOpacity,
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.cardTouchable}
-          onPress={handlePress}
-          activeOpacity={0.9}
-        >
-        {/* Shine effect overlay - follows mouse */}
-        {isWeb && (
-          <View
-            style={[
-              styles.shineOverlay,
-              {
-                left: `${webTransform.shineX}%`,
-                top: `${webTransform.shineY}%`,
-              },
-            ]}
-            pointerEvents="none"
+      <View style={innerStyle}>
+        <View style={styles.officerCard}>
+          {/* Key Club logo */}
+          <Image
+            source={require('../assets/images/keyclublogo.png')}
+            style={styles.keyClubLogo}
+            resizeMode="contain"
           />
-        )}
-        
-        {/* Key Club logo */}
-        <Image
-          source={require('../assets/images/keyclublogo.png')}
-          style={styles.keyClubLogo}
-          resizeMode="contain"
-        />
-        
-        {/* Background with string lights */}
-        <ImageBackground
-          source={require('../assets/images/string_lights_bg.png')}
-          style={styles.cardBackground}
-          resizeMode="cover"
-        >
-          {/* Officer photo */}
-          <View
-            style={[
-              styles.photoContainer,
-              {
-                width: cardWidth - 40,
-                height: isWeb ? 220 : 200,
-                marginTop: isWeb ? 35 : 30,
-              },
-            ]}
+          
+          {/* Background with string lights */}
+          <ImageBackground
+            source={require('../assets/images/string_lights_bg.png')}
+            style={[styles.cardBackground, { height: cardHeight }]}
+            resizeMode="cover"
           >
-            <Image
-              source={item.imageSource}
-              style={styles.officerImage}
-              resizeMode="cover"
-            />
-          </View>
+            {/* Officer photo */}
+            <View
+              style={[
+                styles.photoContainer,
+                {
+                  width: cardWidth - 40,
+                  height: isWeb ? 220 : 200,
+                  marginTop: isWeb ? 35 : 30,
+                },
+              ]}
+            >
+              <Image
+                source={item.imageSource}
+                style={styles.officerImage}
+                resizeMode="cover"
+              />
+            </View>
+            
+            {/* Officer name */}
+            <View style={styles.nameContainer}>
+              <Text style={[
+                styles.officerName,
+                { fontSize: isWeb ? 22 : isMobile ? 16 : 18 }
+              ]}>
+                {item.name}
+              </Text>
+            </View>
+            
+            {/* Officer details */}
+            <View style={styles.detailsContainer}>
+              <Text style={[
+                styles.classInfo,
+                { fontSize: isWeb ? 16 : 14 }
+              ]}>
+                Class of {item.classYear}
+              </Text>
+              <Text style={[
+                styles.memberInfo,
+                { fontSize: isWeb ? 16 : 14 }
+              ]}>
+                {item.memberYears}-year member
+              </Text>
+            </View>
+          </ImageBackground>
           
-          {/* Officer name */}
-          <View style={styles.nameContainer}>
-            <Text style={[
-              styles.officerName,
-              { fontSize: isWeb ? 22 : isMobile ? 16 : 18 }
-            ]}>
-              {item.name}
-            </Text>
-          </View>
+          {/* Floral border */}
+          <Image
+            source={require('../assets/images/floral_border.png')}
+            style={styles.floralBorder}
+            resizeMode="cover"
+          />
           
-          {/* Officer details */}
-          <View style={styles.detailsContainer}>
+          {/* Position banner - overlay content */}
+          <View style={styles.positionOverlay}>
             <Text style={[
-              styles.classInfo,
-              { fontSize: isWeb ? 16 : 14 }
+              styles.positionText,
+              { fontSize: isWeb ? 16 : isMobile ? 14 : 15 }
             ]}>
-              Class of {item.classYear}
-            </Text>
-            <Text style={[
-              styles.memberInfo,
-              { fontSize: isWeb ? 16 : 14 }
-            ]}>
-              {item.memberYears}-year member
+              {item.position}
             </Text>
           </View>
-        </ImageBackground>
-        
-        {/* Floral border */}
-        <Image
-          source={require('../assets/images/floral_border.png')}
-          style={styles.floralBorder}
-          resizeMode="cover"
-        />
-        
-        {/* Position banner with pulse animation */}
-        <AnimatedPositionBanner
-          position={item.position}
-          isWeb={isWeb}
-          isMobile={isMobile}
-          delay={(index % numColumns) * 200 + 500}
-        />
-        </TouchableOpacity>
-      </Animated.View>
-          </View>
-        </Animated.View>
+        </View>
       </View>
-    </Animated.View>
+    </View>
   );
 };
 
@@ -1042,41 +769,27 @@ const styles = StyleSheet.create({
     // Spacing handled by gap in roleCardsContainer
   },
   officerCard: {
-    margin: 8,
+    width: '100%',
+    height: '100%',
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#4299e1',
     shadowOffset: { width: 0, height: 20 },
     shadowRadius: 25,
+    shadowOpacity: 0.5,
     elevation: 20,
     borderWidth: 2,
     borderColor: 'rgba(66, 153, 225, 0.4)',
     backgroundColor: '#2d3748',
     position: 'relative',
-    willChange: 'transform',
-    transform: 'translateZ(0)', // Force GPU acceleration
   },
-  cardTouchable: {
-    width: '100%',
-    height: '100%',
-  },
-  shineOverlay: {
+  positionOverlay: {
     position: 'absolute',
-    width: 300,
-    height: 300,
-    marginLeft: -150,
-    marginTop: -150,
-    borderRadius: 150,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    shadowColor: 'rgba(255, 255, 255, 0.8)',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 50,
-    pointerEvents: 'none',
-    zIndex: 10,
-    willChange: 'transform',
-    transform: 'translateZ(30px)', // Lift above card
-    transition: 'left 0.1s ease-out, top 0.1s ease-out',
+    bottom: 25,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 5,
   },
   keyClubLogo: {
     position: 'absolute',
