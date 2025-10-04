@@ -10,7 +10,6 @@ import { ModalProvider } from './contexts/ModalContext';
 import AppNavigator from './navigation/AppNavigator';
 import { preventFocusOnHidden } from './utils/AccessibilityHelper';
 import { applyChromeOptimizations } from './utils/ChromeCompatibilityHelper';
-import './styles/globals.css';
 
 function AuthenticatedApp() {
   const { isAuthenticated, isAdmin } = useAuth();

@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { motion, useMotionValue, useSpring } from 'motion/react';
-import './TiltedCard.css';
 
 const springValues = {
   damping: 30,
@@ -76,8 +75,15 @@ export default function TiltedCard({
   return (
     <figure
       ref={ref}
-      className="tilted-card-figure"
       style={{
+        position: 'relative',
+        width: '100%',
+        height: '100%',
+        perspective: '800px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
         height: containerHeight,
         width: containerWidth
       }}
@@ -86,12 +92,19 @@ export default function TiltedCard({
       onMouseLeave={handleMouseLeave}
     >
       {showMobileWarning && (
-        <div className="tilted-card-mobile-alert">This effect is not optimized for mobile. Check on desktop.</div>
+        <div style={{
+          position: 'absolute',
+          top: '1rem',
+          textAlign: 'center',
+          fontSize: '0.875rem',
+          display: 'none'
+        }}>This effect is not optimized for mobile. Check on desktop.</div>
       )}
 
       <motion.div
-        className="tilted-card-inner"
         style={{
+          position: 'relative',
+          transformStyle: 'preserve-3d',
           width: imageWidth,
           height: imageHeight,
           rotateX,
@@ -102,22 +115,45 @@ export default function TiltedCard({
         <motion.img
           src={imageSrc}
           alt={altText}
-          className="tilted-card-img"
           style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            objectFit: 'cover',
+            borderRadius: 15,
+            willChange: 'transform',
+            transform: 'translateZ(0)',
             width: imageWidth,
             height: imageHeight
           }}
         />
 
         {displayOverlayContent && overlayContent && (
-          <motion.div className="tilted-card-overlay">{overlayContent}</motion.div>
+          <motion.div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            zIndex: 2,
+            willChange: 'transform',
+            transform: 'translateZ(30px)'
+          }}>{overlayContent}</motion.div>
         )}
       </motion.div>
 
       {showTooltip && (
         <motion.figcaption
-          className="tilted-card-caption"
           style={{
+            pointerEvents: 'none',
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            borderRadius: 4,
+            backgroundColor: '#fff',
+            padding: '4px 10px',
+            fontSize: 10,
+            color: '#2d2d2d',
+            opacity: 0,
+            zIndex: 3,
             x,
             y,
             opacity,
