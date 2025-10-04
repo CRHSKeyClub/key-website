@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   Platform
 } from 'react-native';
+import TiltedCard from '../components/TiltedCard';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -68,7 +69,7 @@ const FloatingSparkles = () => {
   return <>{sparkles}</>;
 };
 
-// EXACT ReactBits TiltedCard component adapted for officers
+// Officer card wrapper using the TiltedCard component
 const TiltedOfficerCard = ({ 
   item, 
   index, 
@@ -82,17 +83,7 @@ const TiltedOfficerCard = ({
   showTooltip = true,
   displayOverlayContent = true
 }) => {
-  const ref = useRef(null);
-  
-  // EXACT ReactBits state management
-  const [rotateX, setRotateX] = useState(0);
-  const [rotateY, setRotateY] = useState(0);
-  const [scale, setScale] = useState(1);
   const [opacity, setOpacity] = useState(0);
-  const [x, setX] = useState(0);
-  const [y, setY] = useState(0);
-  const [rotateFigcaption, setRotateFigcaption] = useState(0);
-  const [lastY, setLastY] = useState(0);
   
   // Entrance animation
   useEffect(() => {
@@ -101,108 +92,6 @@ const TiltedOfficerCard = ({
       setOpacity(1);
     }, delay);
   }, [index]);
-
-  // EXACT ReactBits handleMouse function
-  function handleMouse(e) {
-    if (!ref.current) return;
-
-    const rect = ref.current.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left - rect.width / 2;
-    const offsetY = e.clientY - rect.top - rect.height / 2;
-
-    const rotationX = (offsetY / (rect.height / 2)) * -rotateAmplitude;
-    const rotationY = (offsetX / (rect.width / 2)) * rotateAmplitude;
-
-    setRotateX(rotationX);
-    setRotateY(rotationY);
-
-    setX(e.clientX - rect.left);
-    setY(e.clientY - rect.top);
-
-    const velocityY = offsetY - lastY;
-    setRotateFigcaption(-velocityY * 0.6);
-    setLastY(offsetY);
-  }
-
-  function handleMouseEnter() {
-    setScale(scaleOnHover);
-    setOpacity(1);
-  }
-
-  function handleMouseLeave() {
-    setOpacity(0);
-    setScale(1);
-    setRotateX(0);
-    setRotateY(0);
-    setRotateFigcaption(0);
-  }
-
-  // EXACT ReactBits CSS styles
-  const figureStyle = {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
-    perspective: '800px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    opacity: opacity,
-    transition: 'opacity 0.3s ease-out',
-  };
-
-  const innerStyle = {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
-    transformStyle: 'preserve-3d',
-    transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`,
-    transition: 'transform 0.3s ease-out',
-  };
-
-  const imgStyle = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover',
-    borderRadius: 15,
-    willChange: 'transform',
-    transform: 'translateZ(0)',
-  };
-
-  const overlayStyle = {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 2,
-    willChange: 'transform',
-    transform: 'translateZ(30px)',
-  };
-
-  const captionStyle = {
-    pointerEvents: 'none',
-    position: 'absolute',
-    left: x,
-    top: y,
-    borderRadius: 4,
-    backgroundColor: '#fff',
-    padding: '4px 10px',
-    fontSize: 10,
-    color: '#2d2d2d',
-    opacity: opacity,
-    zIndex: 3,
-    transform: `rotate(${rotateFigcaption}deg)`,
-  };
-
-  const mobileAlertStyle = {
-    position: 'absolute',
-    top: '1rem',
-    textAlign: 'center',
-    fontSize: '0.875rem',
-    display: isMobile ? 'block' : 'none',
-  };
 
   if (!isWeb) {
     // Mobile fallback - simple static card
@@ -244,127 +133,110 @@ const TiltedOfficerCard = ({
     );
   }
 
-  // Web version with EXACT ReactBits structure
+  // Web version using TiltedCard component
   return (
-    <figure
-      ref={ref}
-      style={figureStyle}
-      onMouseMove={handleMouse}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {showMobileWarning && (
-        <div style={mobileAlertStyle}>This effect is not optimized for mobile. Check on desktop.</div>
-      )}
-
-      <div style={innerStyle}>
-        {/* Officer card as background image */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          borderRadius: 15,
-          overflow: 'hidden',
-          backgroundImage: `url(${item.imageSource})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }} />
-        
-        {/* Card overlay with all content */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          background: 'linear-gradient(135deg, rgba(45, 55, 72, 0.85) 0%, rgba(66, 153, 225, 0.1) 100%)',
-          borderRadius: 15,
-          padding: 10,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-        }}>
-          {/* Key Club logo */}
-          <img 
-            src={require('../assets/images/keyclublogo.png')}
-            style={{
-              position: 'absolute',
-              top: 10,
-              left: 10,
-              width: 30,
-              height: 30,
-              opacity: 0.8,
-              zIndex: 10,
-            }}
-            alt="Key Club Logo"
-          />
-          
-          {/* Officer photo */}
+    <div style={{ width: cardWidth, height: cardHeight, opacity: opacity }}>
+      <TiltedCard
+        imageSrc={item.imageSource}
+        altText={`${item.name} - ${item.position}`}
+        captionText={`${item.name} - ${item.position}`}
+        containerHeight={cardHeight}
+        containerWidth={cardWidth}
+        imageHeight={cardHeight}
+        imageWidth={cardWidth}
+        rotateAmplitude={rotateAmplitude}
+        scaleOnHover={scaleOnHover}
+        showMobileWarning={showMobileWarning}
+        showTooltip={showTooltip}
+        displayOverlayContent={displayOverlayContent}
+        overlayContent={
           <div style={{
-            width: '80%',
-            height: '60%',
-            marginTop: 35,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(135deg, rgba(45, 55, 72, 0.85) 0%, rgba(66, 153, 225, 0.1) 100%)',
             borderRadius: 15,
-            overflow: 'hidden',
-            border: '4px solid #fff',
-            boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
+            padding: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}>
-            <img
-              src={item.imageSource}
+            {/* Key Club logo */}
+            <img 
+              src={require('../assets/images/keyclublogo.png')}
               style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
+                position: 'absolute',
+                top: 10,
+                left: 10,
+                width: 30,
+                height: 30,
+                opacity: 0.8,
+                zIndex: 10,
               }}
-              alt={item.name}
+              alt="Key Club Logo"
             />
-          </div>
-          
-          {/* Officer info */}
-          <div style={{ textAlign: 'center', marginBottom: 10 }}>
+            
+            {/* Officer photo */}
             <div style={{
-              fontSize: 18,
-              fontWeight: 'bold',
-              color: '#4299e1',
-              textAlign: 'center',
-              marginBottom: 4,
-              textShadow: '0px 1px 2px rgba(0, 0, 0, 0.8)',
+              width: '80%',
+              height: '60%',
+              marginTop: 35,
+              borderRadius: 15,
+              overflow: 'hidden',
+              border: '4px solid #fff',
+              boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
             }}>
-              {item.name}
+              <img
+                src={item.imageSource}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+                alt={item.name}
+              />
             </div>
-            <div style={{ color: '#e2e8f0', fontSize: 14 }}>
-              Class of {item.classYear}
+            
+            {/* Officer info */}
+            <div style={{ textAlign: 'center', marginBottom: 10 }}>
+              <div style={{
+                fontSize: 18,
+                fontWeight: 'bold',
+                color: '#4299e1',
+                textAlign: 'center',
+                marginBottom: 4,
+                textShadow: '0px 1px 2px rgba(0, 0, 0, 0.8)',
+              }}>
+                {item.name}
+              </div>
+              <div style={{ color: '#e2e8f0', fontSize: 14 }}>
+                Class of {item.classYear}
+              </div>
+              <div style={{ color: '#e2e8f0', fontSize: 14 }}>
+                {item.memberYears}-year member
+              </div>
             </div>
-            <div style={{ color: '#e2e8f0', fontSize: 14 }}>
-              {item.memberYears}-year member
+            
+            {/* Position banner */}
+            <div style={{
+              backgroundColor: '#4299e1',
+              color: '#ffffff',
+              fontWeight: 'bold',
+              padding: '6px 16px',
+              borderRadius: 20,
+              textAlign: 'center',
+              boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
+              fontSize: 14,
+            }}>
+              {item.position}
             </div>
           </div>
-          
-          {/* Position banner */}
-          <div style={{
-            backgroundColor: '#4299e1',
-            color: '#ffffff',
-            fontWeight: 'bold',
-            padding: '6px 16px',
-            borderRadius: 20,
-            textAlign: 'center',
-            boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
-            fontSize: 14,
-          }}>
-            {item.position}
-          </div>
-        </div>
-      </div>
-
-      {showTooltip && (
-        <div style={captionStyle}>
-          {item.name} - {item.position}
-        </div>
-      )}
-    </figure>
+        }
+      />
+    </div>
   );
 };
 
@@ -748,56 +620,56 @@ export default function OfficersScreen({ navigation }) {
     "Communications"
   ];
 
-  return (
-    <SafeAreaView style={[styles.container, Platform.OS === 'web' && { flex: 1, minHeight: '100vh' }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#0d1b2a" />
-      
-      {/* Floating Sparkles Background */}
-      <FloatingSparkles />
-      
-      {/* Header */}
-      <Animated.View 
-        style={[
-          styles.header,
-          { transform: [{ translateY: headerAnim }] }
-        ]}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons name="arrow-back" size={24} color="#4299e1" />
-          </TouchableOpacity>
-          
-          <View style={styles.headerTitleContainer}>
-            <Animated.Text 
-              style={[
-                styles.headerTitle,
-                { opacity: titleAnim }
-              ]}
+    return (
+      <SafeAreaView style={[styles.container, Platform.OS === 'web' && { flex: 1, minHeight: '100vh' }]}>
+        <StatusBar barStyle="light-content" backgroundColor="#0d1b2a" />
+        
+        {/* Floating Sparkles Background */}
+        <FloatingSparkles />
+        
+        {/* Header */}
+        <Animated.View 
+          style={[
+            styles.header,
+            { transform: [{ translateY: headerAnim }] }
+          ]}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
             >
-              Meet Our Officers
-            </Animated.Text>
-            <Animated.Text 
-              style={[
-                styles.headerSubtitle,
-                { opacity: titleAnim }
-              ]}
-            >
-              The dedicated leaders of Cypress Ranch Key Club
-            </Animated.Text>
+              <Ionicons name="arrow-back" size={24} color="#4299e1" />
+            </TouchableOpacity>
+            
+            <View style={styles.headerTitleContainer}>
+              <Animated.Text 
+                style={[
+                  styles.headerTitle,
+                  { opacity: titleAnim }
+                ]}
+              >
+                Meet Our Officers
+              </Animated.Text>
+              <Animated.Text 
+                style={[
+                  styles.headerSubtitle,
+                  { opacity: titleAnim }
+                ]}
+              >
+                The dedicated leaders of Cypress Ranch Key Club
+              </Animated.Text>
+            </View>
+            
+            <View style={styles.headerSpacer} />
           </View>
-          
-          <View style={styles.headerSpacer} />
-        </View>
-      </Animated.View>
+        </Animated.View>
 
-      <ScrollView 
+        <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+          showsVerticalScrollIndicator={false}
+        >
         {roleOrder.map((role, sectionIndex) => {
           const roleOfficers = groupedOfficers[role];
           if (!roleOfficers || roleOfficers.length === 0) return null;
@@ -807,15 +679,15 @@ export default function OfficersScreen({ navigation }) {
               key={role}
               role={role}
               officers={roleOfficers}
-              cardWidth={cardWidth}
-              cardHeight={cardHeight}
-              isWeb={isWeb}
-              isMobile={isMobile}
+                  cardWidth={cardWidth}
+                  cardHeight={cardHeight}
+                  isWeb={isWeb}
+                  isMobile={isMobile}
               sectionIndex={sectionIndex}
-            />
+                />
           );
         })}
-      </ScrollView>
+        </ScrollView>
     </SafeAreaView>
   );
 }
