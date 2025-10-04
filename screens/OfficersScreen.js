@@ -81,6 +81,12 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   const shineX = useRef(new Animated.Value(50)).current; // Shine effect position
   const shineY = useRef(new Animated.Value(50)).current;
   const [mouseOver, setMouseOver] = useState(false);
+  const [webTransform, setWebTransform] = useState({
+    rotateX: 8,
+    rotateY: -8,
+    shineX: 50,
+    shineY: 50,
+  });
 
   // Grid Stagger Animation - inspired by ReactBits
   useEffect(() => {
@@ -224,6 +230,15 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     const shineXValue = (x / rect.width) * 100;
     const shineYValue = (y / rect.height) * 100;
     
+    // Update web transform state for CSS
+    setWebTransform({
+      rotateX: rotateXValue,
+      rotateY: rotateYValue,
+      shineX: shineXValue,
+      shineY: shineYValue,
+    });
+    
+    // Also update animations for mobile compatibility
     Animated.parallel([
       Animated.spring(tiltX, {
         toValue: rotateXValue,
@@ -255,6 +270,14 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   const handleMouseLeave = () => {
     if (!isWeb) return;
     setMouseOver(false);
+    
+    // Reset to default tilted position
+    setWebTransform({
+      rotateX: 8,
+      rotateY: -8,
+      shineX: 50,
+      shineY: 50,
+    });
     
     // Return to default tilted position (not flat)
     Animated.parallel([
@@ -327,6 +350,14 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     outputRange: ['0%', '100%'],
   });
 
+  // Build CSS transform string for web - matching ReactBits implementation
+  const webTransformStyle = isWeb ? {
+    transform: `rotateX(${webTransform.rotateX}deg) rotateY(${webTransform.rotateY}deg)`,
+    transformStyle: 'preserve-3d',
+    willChange: 'transform',
+    transition: 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+  } : {};
+
   return (
     <Animated.View
       style={[
@@ -334,20 +365,21 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
         {
           width: cardWidth,
           opacity: opacity,
+          perspective: isWeb ? 1200 : undefined,
         },
       ]}
     >
       <Animated.View
-        style={{
-          transform: [
-            { perspective: 2000 },
-            { translateY: Animated.add(translateY, floatTranslate) },
-            { rotateX: tiltXDeg },
-            { rotateY: tiltYDeg },
-            { rotateZ: rotate },
-            { scale: scale },
-          ],
-        }}
+        style={[
+          {
+            transform: [
+              { translateY: Animated.add(translateY, floatTranslate) },
+              { rotateZ: rotate },
+              { scale: scale },
+            ],
+          },
+          isWeb && webTransformStyle,
+        ]}
         onMouseMove={isWeb ? handleMouseMove : undefined}
         onMouseLeave={isWeb ? handleMouseLeave : undefined}
         onMouseEnter={isWeb ? handleMouseEnter : undefined}
@@ -368,12 +400,12 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
         >
         {/* Shine effect overlay - follows mouse */}
         {isWeb && (
-          <Animated.View
+          <View
             style={[
               styles.shineOverlay,
               {
-                left: shineLeft,
-                top: shineTop,
+                left: `${webTransform.shineX}%`,
+                top: `${webTransform.shineY}%`,
               },
             ]}
             pointerEvents="none"
@@ -994,7 +1026,7 @@ const styles = StyleSheet.create({
   officerCard: {
     margin: 8,
     borderRadius: 16,
-    overflow: 'hidden', // Changed to hidden for shine effect
+    overflow: 'hidden',
     shadowColor: '#4299e1',
     shadowOffset: { width: 0, height: 20 },
     shadowRadius: 25,
@@ -1003,6 +1035,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(66, 153, 225, 0.4)',
     backgroundColor: '#2d3748',
     position: 'relative',
+    willChange: 'transform',
+    transform: 'translateZ(0)', // Force GPU acceleration
   },
   cardTouchable: {
     width: '100%',
@@ -1022,6 +1056,9 @@ const styles = StyleSheet.create({
     shadowRadius: 50,
     pointerEvents: 'none',
     zIndex: 10,
+    willChange: 'transform',
+    transform: 'translateZ(30px)', // Lift above card
+    transition: 'left 0.1s ease-out, top 0.1s ease-out',
   },
   keyClubLogo: {
     position: 'absolute',
