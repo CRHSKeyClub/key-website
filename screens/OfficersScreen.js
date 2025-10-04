@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
+
 // Add floating sparkles component at the top level
 const FloatingSparkles = () => {
   const sparkles = [...Array(12)].map((_, i) => {
