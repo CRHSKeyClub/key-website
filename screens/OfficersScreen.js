@@ -162,15 +162,158 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     transform: 'translateZ(0)',
   };
 
+  // For web, we need actual DOM elements to handle CSS transforms
+  if (isWeb && Platform.OS === 'web') {
+    return (
+      <div
+        ref={ref}
+        style={figureStyle}
+        onMouseMove={handleMouse}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div style={innerStyle}>
+          <div style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: 16,
+            overflow: 'hidden',
+            boxShadow: '0px 20px 25px rgba(66, 153, 225, 0.5)',
+            border: '2px solid rgba(66, 153, 225, 0.4)',
+            backgroundColor: '#2d3748',
+            position: 'relative',
+          }}>
+          {/* Key Club logo */}
+          <img 
+            src={require('../assets/images/keyclublogo.png')}
+            style={{
+              position: 'absolute',
+              top: 10,
+              left: 10,
+              width: 30,
+              height: 30,
+              opacity: 0.8,
+              zIndex: 10,
+            }}
+            alt="Key Club Logo"
+          />
+          
+          {/* Background with string lights */}
+          <div style={{
+            width: '100%',
+            height: cardHeight,
+            backgroundImage: `url(${require('../assets/images/string_lights_bg.png')})`,
+            backgroundSize: 'cover',
+            padding: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            backgroundColor: '#2d3748',
+          }}>
+            {/* Officer photo */}
+            <div style={{
+              width: cardWidth - 40,
+              height: 220,
+              marginTop: 35,
+              marginBottom: 15,
+              borderRadius: 15,
+              overflow: 'hidden',
+              border: '4px solid #fff',
+            }}>
+              <img
+                src={item.imageSource}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+                alt={item.name}
+              />
+            </div>
+            
+            {/* Officer name */}
+            <div style={{ marginBottom: 8, paddingHorizontal: 5 }}>
+              <div style={{
+                fontSize: 22,
+                fontWeight: 'bold',
+                color: '#4299e1',
+                textAlign: 'center',
+                marginBottom: 4,
+                textShadow: '0px 1px 2px rgba(0, 0, 0, 0.8)',
+              }}>
+                {item.name}
+              </div>
+            </div>
+            
+            {/* Officer details */}
+            <div style={{ textAlign: 'center', marginTop: 5 }}>
+              <div style={{
+                color: '#e2e8f0',
+                textAlign: 'center',
+                fontSize: 16,
+              }}>
+                Class of {item.classYear}
+              </div>
+              <div style={{
+                color: '#e2e8f0',
+                textAlign: 'center',
+                marginBottom: 15,
+                fontSize: 16,
+              }}>
+                {item.memberYears}-year member
+              </div>
+            </div>
+          </div>
+          
+          {/* Floral border */}
+          <img
+            src={require('../assets/images/floral_border.png')}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 80,
+              width: '100%',
+            }}
+            alt="Floral Border"
+          />
+          
+          {/* Position banner - overlay content */}
+          <div style={{
+            position: 'absolute',
+            bottom: 25,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 5,
+          }}>
+            <div style={{
+              backgroundColor: '#4299e1',
+              color: '#ffffff',
+              fontWeight: 'bold',
+              padding: '8px 20px',
+              borderRadius: 20,
+              textAlign: 'center',
+              boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
+              border: '1px solid rgba(66, 153, 225, 0.3)',
+              fontSize: 16,
+            }}>
+              {item.position}
+            </div>
+          </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // Mobile/non-web fallback
   return (
-    <View
-      ref={ref}
-      style={figureStyle}
-      onMouseMove={isWeb ? handleMouse : undefined}
-      onMouseEnter={isWeb ? handleMouseEnter : undefined}
-      onMouseLeave={isWeb ? handleMouseLeave : undefined}
-    >
-      <View style={innerStyle}>
+    <View style={figureStyle}>
+      <View style={{ width: cardWidth, height: cardHeight }}>
         <View style={styles.officerCard}>
           {/* Key Club logo */}
           <Image
@@ -191,8 +334,8 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
                 styles.photoContainer,
                 {
                   width: cardWidth - 40,
-                  height: isWeb ? 220 : 200,
-                  marginTop: isWeb ? 35 : 30,
+                  height: 200,
+                  marginTop: 30,
                 },
               ]}
             >
@@ -205,26 +348,17 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
             
             {/* Officer name */}
             <View style={styles.nameContainer}>
-              <Text style={[
-                styles.officerName,
-                { fontSize: isWeb ? 22 : isMobile ? 16 : 18 }
-              ]}>
+              <Text style={[styles.officerName, { fontSize: 16 }]}>
                 {item.name}
               </Text>
             </View>
             
             {/* Officer details */}
             <View style={styles.detailsContainer}>
-              <Text style={[
-                styles.classInfo,
-                { fontSize: isWeb ? 16 : 14 }
-              ]}>
+              <Text style={[styles.classInfo, { fontSize: 14 }]}>
                 Class of {item.classYear}
               </Text>
-              <Text style={[
-                styles.memberInfo,
-                { fontSize: isWeb ? 16 : 14 }
-              ]}>
+              <Text style={[styles.memberInfo, { fontSize: 14 }]}>
                 {item.memberYears}-year member
               </Text>
             </View>
@@ -237,12 +371,9 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
             resizeMode="cover"
           />
           
-          {/* Position banner - overlay content */}
+          {/* Position banner */}
           <View style={styles.positionOverlay}>
-            <Text style={[
-              styles.positionText,
-              { fontSize: isWeb ? 16 : isMobile ? 14 : 15 }
-            ]}>
+            <Text style={[styles.positionText, { fontSize: 14 }]}>
               {item.position}
             </Text>
           </View>
