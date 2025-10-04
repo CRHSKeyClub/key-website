@@ -69,24 +69,24 @@ const FloatingSparkles = () => {
 };
 
 const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, isWeb, isMobile }) => {
-  // Animation values
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(100)).current;
-  const scale = useRef(new Animated.Value(0.8)).current;
-  const floatAnim = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const tiltX = useRef(new Animated.Value(8)).current; // Start with more pronounced tilt
-  const tiltY = useRef(new Animated.Value(-8)).current; // Start with more pronounced tilt
-  const shineX = useRef(new Animated.Value(50)).current; // Shine effect position
-  const shineY = useRef(new Animated.Value(50)).current;
-  const [mouseOver, setMouseOver] = useState(false);
-  const [webTransform, setWebTransform] = useState({
-    rotateX: 8,
-    rotateY: -8,
-    shineX: 50,
-    shineY: 50,
+  const cardRef = useRef(null);
+  
+  // Simplified state for tilting
+  const [transform, setTransform] = useState({
+    rotateX: 0,
+    rotateY: 0,
+    scale: 1,
   });
+  
+  const [opacity, setOpacity] = useState(0);
+  
+  // Entrance animation
+  useEffect(() => {
+    const delay = index * 150;
+    setTimeout(() => {
+      setOpacity(1);
+    }, delay);
+  }, [index]);
 
   // Grid Stagger Animation - inspired by ReactBits
   useEffect(() => {
