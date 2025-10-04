@@ -76,8 +76,10 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   const floatAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
-  const tiltX = useRef(new Animated.Value(0)).current;
-  const tiltY = useRef(new Animated.Value(0)).current;
+  const tiltX = useRef(new Animated.Value(5)).current; // Start with slight tilt
+  const tiltY = useRef(new Animated.Value(-5)).current; // Start with slight tilt
+  const shineX = useRef(new Animated.Value(50)).current; // Shine effect position
+  const shineY = useRef(new Animated.Value(50)).current;
 
   // Grid Stagger Animation - inspired by ReactBits
   useEffect(() => {
@@ -127,6 +129,8 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
       glowAnim.stopAnimation();
       tiltX.stopAnimation();
       tiltY.stopAnimation();
+      shineX.stopAnimation();
+      shineY.stopAnimation();
     };
   }, [index, numColumns]);
 
@@ -198,7 +202,7 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     ]).start();
   };
 
-  // 3D tilt effect on hover (web only)
+  // Tilted Card effect - Enhanced 3D tilt with shine (web only)
   const handleMouseMove = (event) => {
     if (!isWeb) return;
     
@@ -209,21 +213,38 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
     
-    const rotateXValue = ((y - centerY) / centerY) * -10;
-    const rotateYValue = ((x - centerX) / centerX) * 10;
+    // Calculate tilt based on mouse position (stronger effect)
+    const rotateXValue = ((y - centerY) / centerY) * -20; // Increased from -10 to -20
+    const rotateYValue = ((x - centerX) / centerX) * 20; // Increased from 10 to 20
+    
+    // Calculate shine position (percentage)
+    const shineXValue = (x / rect.width) * 100;
+    const shineYValue = (y / rect.height) * 100;
     
     Animated.parallel([
       Animated.spring(tiltX, {
         toValue: rotateXValue,
-        tension: 100,
-        friction: 10,
+        tension: 80,
+        friction: 12,
         useNativeDriver: true,
       }),
       Animated.spring(tiltY, {
         toValue: rotateYValue,
-        tension: 100,
-        friction: 10,
+        tension: 80,
+        friction: 12,
         useNativeDriver: true,
+      }),
+      Animated.spring(shineX, {
+        toValue: shineXValue,
+        tension: 80,
+        friction: 12,
+        useNativeDriver: false,
+      }),
+      Animated.spring(shineY, {
+        toValue: shineYValue,
+        tension: 80,
+        friction: 12,
+        useNativeDriver: false,
       }),
     ]).start();
   };
@@ -231,18 +252,31 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   const handleMouseLeave = () => {
     if (!isWeb) return;
     
+    // Return to default tilted position (not flat)
     Animated.parallel([
       Animated.spring(tiltX, {
-        toValue: 0,
-        tension: 100,
-        friction: 10,
+        toValue: 5,
+        tension: 80,
+        friction: 12,
         useNativeDriver: true,
       }),
       Animated.spring(tiltY, {
-        toValue: 0,
-        tension: 100,
-        friction: 10,
+        toValue: -5,
+        tension: 80,
+        friction: 12,
         useNativeDriver: true,
+      }),
+      Animated.spring(shineX, {
+        toValue: 50,
+        tension: 80,
+        friction: 12,
+        useNativeDriver: false,
+      }),
+      Animated.spring(shineY, {
+        toValue: 50,
+        tension: 80,
+        friction: 12,
+        useNativeDriver: false,
       }),
     ]).start();
   };
@@ -264,13 +298,24 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   });
 
   const tiltXDeg = tiltX.interpolate({
-    inputRange: [-10, 10],
-    outputRange: ['-10deg', '10deg'],
+    inputRange: [-20, 20],
+    outputRange: ['-20deg', '20deg'],
   });
 
   const tiltYDeg = tiltY.interpolate({
-    inputRange: [-10, 10],
-    outputRange: ['-10deg', '10deg'],
+    inputRange: [-20, 20],
+    outputRange: ['-20deg', '20deg'],
+  });
+
+  // Shine gradient position
+  const shineLeft = shineX.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
+  const shineTop = shineY.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
   });
 
   return (
@@ -281,7 +326,7 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           width: cardWidth,
           opacity: opacity,
           transform: [
-            { perspective: 1000 },
+            { perspective: 1500 }, // Increased perspective for more dramatic 3D
             { translateY: Animated.add(translateY, floatTranslate) },
             { scale: scale },
             { rotateZ: rotate },
@@ -307,6 +352,20 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           onPress={handlePress}
           activeOpacity={0.9}
         >
+        {/* Shine effect overlay - follows mouse */}
+        {isWeb && (
+          <Animated.View
+            style={[
+              styles.shineOverlay,
+              {
+                left: shineLeft,
+                top: shineTop,
+              },
+            ]}
+            pointerEvents="none"
+          />
+        )}
+        
         {/* Key Club logo */}
         <Image
           source={require('../assets/images/keyclublogo.png')}
@@ -919,7 +978,7 @@ const styles = StyleSheet.create({
   officerCard: {
     margin: 8,
     borderRadius: 16,
-    overflow: 'visible',
+    overflow: 'hidden', // Changed to hidden for shine effect
     shadowColor: '#4299e1',
     shadowOffset: { width: 0, height: 20 },
     shadowRadius: 25,
@@ -927,10 +986,26 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(66, 153, 225, 0.4)',
     backgroundColor: '#2d3748',
+    position: 'relative',
   },
   cardTouchable: {
     width: '100%',
     height: '100%',
+  },
+  shineOverlay: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    marginLeft: -150,
+    marginTop: -150,
+    borderRadius: 150,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    shadowColor: 'rgba(255, 255, 255, 0.8)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 50,
+    pointerEvents: 'none',
+    zIndex: 10,
   },
   keyClubLogo: {
     position: 'absolute',
