@@ -76,10 +76,11 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   const floatAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
-  const tiltX = useRef(new Animated.Value(5)).current; // Start with slight tilt
-  const tiltY = useRef(new Animated.Value(-5)).current; // Start with slight tilt
+  const tiltX = useRef(new Animated.Value(8)).current; // Start with more pronounced tilt
+  const tiltY = useRef(new Animated.Value(-8)).current; // Start with more pronounced tilt
   const shineX = useRef(new Animated.Value(50)).current; // Shine effect position
   const shineY = useRef(new Animated.Value(50)).current;
+  const [mouseOver, setMouseOver] = useState(false);
 
   // Grid Stagger Animation - inspired by ReactBits
   useEffect(() => {
@@ -214,8 +215,10 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     const centerY = rect.height / 2;
     
     // Calculate tilt based on mouse position (stronger effect)
-    const rotateXValue = ((y - centerY) / centerY) * -20; // Increased from -10 to -20
-    const rotateYValue = ((x - centerX) / centerX) * 20; // Increased from 10 to 20
+    const rotateXValue = ((y - centerY) / centerY) * -25; // Even more pronounced
+    const rotateYValue = ((x - centerX) / centerX) * 25; // Even more pronounced
+    
+    console.log(`Card ${index}: Tilt X: ${rotateXValue.toFixed(1)}, Tilt Y: ${rotateYValue.toFixed(1)}`);
     
     // Calculate shine position (percentage)
     const shineXValue = (x / rect.width) * 100;
@@ -251,17 +254,18 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
 
   const handleMouseLeave = () => {
     if (!isWeb) return;
+    setMouseOver(false);
     
     // Return to default tilted position (not flat)
     Animated.parallel([
       Animated.spring(tiltX, {
-        toValue: 5,
+        toValue: 8,
         tension: 80,
         friction: 12,
         useNativeDriver: true,
       }),
       Animated.spring(tiltY, {
-        toValue: -5,
+        toValue: -8,
         tension: 80,
         friction: 12,
         useNativeDriver: true,
@@ -279,6 +283,11 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
         useNativeDriver: false,
       }),
     ]).start();
+  };
+  
+  const handleMouseEnter = () => {
+    if (!isWeb) return;
+    setMouseOver(true);
   };
 
   // Interpolations
@@ -298,13 +307,13 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
   });
 
   const tiltXDeg = tiltX.interpolate({
-    inputRange: [-20, 20],
-    outputRange: ['-20deg', '20deg'],
+    inputRange: [-25, 25],
+    outputRange: ['-25deg', '25deg'],
   });
 
   const tiltYDeg = tiltY.interpolate({
-    inputRange: [-20, 20],
-    outputRange: ['-20deg', '20deg'],
+    inputRange: [-25, 25],
+    outputRange: ['-25deg', '25deg'],
   });
 
   // Shine gradient position
@@ -325,19 +334,24 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
         {
           width: cardWidth,
           opacity: opacity,
-          transform: [
-            { perspective: 1500 }, // Increased perspective for more dramatic 3D
-            { translateY: Animated.add(translateY, floatTranslate) },
-            { scale: scale },
-            { rotateZ: rotate },
-            { rotateX: tiltXDeg },
-            { rotateY: tiltYDeg },
-          ],
         },
       ]}
-      onMouseMove={isWeb ? handleMouseMove : undefined}
-      onMouseLeave={isWeb ? handleMouseLeave : undefined}
     >
+      <Animated.View
+        style={{
+          transform: [
+            { perspective: 2000 },
+            { translateY: Animated.add(translateY, floatTranslate) },
+            { rotateX: tiltXDeg },
+            { rotateY: tiltYDeg },
+            { rotateZ: rotate },
+            { scale: scale },
+          ],
+        }}
+        onMouseMove={isWeb ? handleMouseMove : undefined}
+        onMouseLeave={isWeb ? handleMouseLeave : undefined}
+        onMouseEnter={isWeb ? handleMouseEnter : undefined}
+      >
       <Animated.View
         style={[
           styles.officerCard,
@@ -439,6 +453,7 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           delay={(index % numColumns) * 200 + 500}
         />
         </TouchableOpacity>
+      </Animated.View>
       </Animated.View>
     </Animated.View>
   );
@@ -974,6 +989,7 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     // Spacing handled by gap in roleCardsContainer
+    transformStyle: 'preserve-3d',
   },
   officerCard: {
     margin: 8,
