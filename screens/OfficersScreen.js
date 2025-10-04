@@ -68,17 +68,31 @@ const FloatingSparkles = () => {
   return <>{sparkles}</>;
 };
 
-const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, isWeb, isMobile }) => {
+// EXACT ReactBits TiltedCard component adapted for officers
+const TiltedOfficerCard = ({ 
+  item, 
+  index, 
+  cardWidth, 
+  cardHeight, 
+  isWeb, 
+  isMobile,
+  rotateAmplitude = 14,
+  scaleOnHover = 1.1,
+  showMobileWarning = false,
+  showTooltip = true,
+  displayOverlayContent = true
+}) => {
   const ref = useRef(null);
   
-  // Following ReactBits TiltedCard pattern EXACTLY
+  // EXACT ReactBits state management
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
   const [scale, setScale] = useState(1);
   const [opacity, setOpacity] = useState(0);
-  
-  const rotateAmplitude = 14; // From ReactBits default
-  const scaleOnHover = 1.1; // From ReactBits
+  const [x, setX] = useState(0);
+  const [y, setY] = useState(0);
+  const [rotateFigcaption, setRotateFigcaption] = useState(0);
+  const [lastY, setLastY] = useState(0);
   
   // Entrance animation
   useEffect(() => {
@@ -90,7 +104,7 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
 
   // EXACT ReactBits handleMouse function
   function handleMouse(e) {
-    if (!isWeb || !ref.current) return;
+    if (!ref.current) return;
 
     const rect = ref.current.getBoundingClientRect();
     const offsetX = e.clientX - rect.left - rect.width / 2;
@@ -101,88 +115,178 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
 
     setRotateX(rotationX);
     setRotateY(rotationY);
-    
-    // Debug log
-    console.log(`Card ${index}: rotateX=${rotationX.toFixed(1)}°, rotateY=${rotationY.toFixed(1)}°, scale=${scale}`);
+
+    setX(e.clientX - rect.left);
+    setY(e.clientY - rect.top);
+
+    const velocityY = offsetY - lastY;
+    setRotateFigcaption(-velocityY * 0.6);
+    setLastY(offsetY);
   }
 
   function handleMouseEnter() {
-    if (!isWeb) return;
     setScale(scaleOnHover);
+    setOpacity(1);
   }
 
   function handleMouseLeave() {
-    if (!isWeb) return;
+    setOpacity(0);
     setScale(1);
     setRotateX(0);
     setRotateY(0);
+    setRotateFigcaption(0);
   }
 
-  // EXACT ReactBits CSS classes and styles
+  // EXACT ReactBits CSS styles
   const figureStyle = {
     position: 'relative',
-    width: cardWidth,
-    height: cardHeight,
-    perspective: isWeb ? '800px' : undefined,
+    width: '100%',
+    height: '100%',
+    perspective: '800px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     opacity: opacity,
-    transition: 'opacity 0.8s ease-in-out',
+    transition: 'opacity 0.3s ease-out',
   };
 
-  const transformString = isWeb ? `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})` : undefined;
-  
   const innerStyle = {
     position: 'relative',
-    width: cardWidth,
-    height: cardHeight,
-    transformStyle: isWeb ? 'preserve-3d' : undefined,
-    transform: transformString,
-    transition: 'transform 0.1s ease-out',
+    width: '100%',
+    height: '100%',
+    transformStyle: 'preserve-3d',
+    transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`,
+    transition: 'transform 0.3s ease-out',
   };
-  
-  // Debug: log transform string when it changes
-  useEffect(() => {
-    if (isWeb && (rotateX !== 0 || rotateY !== 0)) {
-      console.log(`Card ${index} transform:`, transformString);
-    }
-  }, [rotateX, rotateY, scale]);
 
   const imgStyle = {
     position: 'absolute',
     top: 0,
     left: 0,
-    width: cardWidth,
-    height: cardHeight,
+    width: '100%',
+    height: '100%',
     objectFit: 'cover',
     borderRadius: 15,
     willChange: 'transform',
     transform: 'translateZ(0)',
   };
 
-  // For web, we need actual DOM elements to handle CSS transforms
-  if (isWeb && Platform.OS === 'web') {
+  const overlayStyle = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 2,
+    willChange: 'transform',
+    transform: 'translateZ(30px)',
+  };
+
+  const captionStyle = {
+    pointerEvents: 'none',
+    position: 'absolute',
+    left: x,
+    top: y,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+    padding: '4px 10px',
+    fontSize: 10,
+    color: '#2d2d2d',
+    opacity: opacity,
+    zIndex: 3,
+    transform: `rotate(${rotateFigcaption}deg)`,
+  };
+
+  const mobileAlertStyle = {
+    position: 'absolute',
+    top: '1rem',
+    textAlign: 'center',
+    fontSize: '0.875rem',
+    display: isMobile ? 'block' : 'none',
+  };
+
+  if (!isWeb) {
+    // Mobile fallback - simple static card
     return (
-      <div
-        ref={ref}
-        style={figureStyle}
-        onMouseMove={handleMouse}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-      >
-        <div style={innerStyle}>
-          <div style={{
-            width: '100%',
-            height: '100%',
-            borderRadius: 16,
-            overflow: 'hidden',
-            boxShadow: '0px 20px 25px rgba(66, 153, 225, 0.5)',
-            border: '2px solid rgba(66, 153, 225, 0.4)',
-            backgroundColor: '#2d3748',
-            position: 'relative',
-          }}>
+      <View style={{ width: cardWidth, height: cardHeight, opacity: opacity }}>
+        <View style={styles.officerCard}>
+          <Image
+            source={require('../assets/images/keyclublogo.png')}
+            style={styles.keyClubLogo}
+            resizeMode="contain"
+          />
+          
+          <ImageBackground
+            source={require('../assets/images/string_lights_bg.png')}
+            style={[styles.cardBackground, { height: cardHeight }]}
+            resizeMode="cover"
+          >
+            <View style={[styles.photoContainer, { width: cardWidth - 40, height: 200, marginTop: 30 }]}>
+              <Image source={item.imageSource} style={styles.officerImage} resizeMode="cover" />
+            </View>
+            
+            <View style={styles.nameContainer}>
+              <Text style={[styles.officerName, { fontSize: 16 }]}>{item.name}</Text>
+            </View>
+            
+            <View style={styles.detailsContainer}>
+              <Text style={[styles.classInfo, { fontSize: 14 }]}>Class of {item.classYear}</Text>
+              <Text style={[styles.memberInfo, { fontSize: 14 }]}>{item.memberYears}-year member</Text>
+            </View>
+          </ImageBackground>
+          
+          <Image source={require('../assets/images/floral_border.png')} style={styles.floralBorder} resizeMode="cover" />
+          
+          <View style={styles.positionOverlay}>
+            <Text style={[styles.positionText, { fontSize: 14 }]}>{item.position}</Text>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  // Web version with EXACT ReactBits structure
+  return (
+    <figure
+      ref={ref}
+      style={figureStyle}
+      onMouseMove={handleMouse}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      {showMobileWarning && (
+        <div style={mobileAlertStyle}>This effect is not optimized for mobile. Check on desktop.</div>
+      )}
+
+      <div style={innerStyle}>
+        {/* Officer card as background image */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          borderRadius: 15,
+          overflow: 'hidden',
+          backgroundImage: `url(${item.imageSource})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }} />
+        
+        {/* Card overlay with all content */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(135deg, rgba(45, 55, 72, 0.85) 0%, rgba(66, 153, 225, 0.1) 100%)',
+          borderRadius: 15,
+          padding: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
           {/* Key Club logo */}
           <img 
             src={require('../assets/images/keyclublogo.png')}
@@ -198,188 +302,69 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
             alt="Key Club Logo"
           />
           
-          {/* Background with string lights */}
+          {/* Officer photo */}
           <div style={{
-            width: '100%',
-            height: cardHeight,
-            backgroundImage: `url(${require('../assets/images/string_lights_bg.png')})`,
-            backgroundSize: 'cover',
-            padding: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            backgroundColor: '#2d3748',
+            width: '80%',
+            height: '60%',
+            marginTop: 35,
+            borderRadius: 15,
+            overflow: 'hidden',
+            border: '4px solid #fff',
+            boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
           }}>
-            {/* Officer photo */}
-            <div style={{
-              width: cardWidth - 40,
-              height: 220,
-              marginTop: 35,
-              marginBottom: 15,
-              borderRadius: 15,
-              overflow: 'hidden',
-              border: '4px solid #fff',
-            }}>
-              <img
-                src={item.imageSource}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                }}
-                alt={item.name}
-              />
-            </div>
-            
-            {/* Officer name */}
-            <div style={{ marginBottom: 8, paddingHorizontal: 5 }}>
-              <div style={{
-                fontSize: 22,
-                fontWeight: 'bold',
-                color: '#4299e1',
-                textAlign: 'center',
-                marginBottom: 4,
-                textShadow: '0px 1px 2px rgba(0, 0, 0, 0.8)',
-              }}>
-                {item.name}
-              </div>
-            </div>
-            
-            {/* Officer details */}
-            <div style={{ textAlign: 'center', marginTop: 5 }}>
-              <div style={{
-                color: '#e2e8f0',
-                textAlign: 'center',
-                fontSize: 16,
-              }}>
-                Class of {item.classYear}
-              </div>
-              <div style={{
-                color: '#e2e8f0',
-                textAlign: 'center',
-                marginBottom: 15,
-                fontSize: 16,
-              }}>
-                {item.memberYears}-year member
-              </div>
-            </div>
+            <img
+              src={item.imageSource}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+              alt={item.name}
+            />
           </div>
           
-          {/* Floral border */}
-          <img
-            src={require('../assets/images/floral_border.png')}
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 80,
-              width: '100%',
-            }}
-            alt="Floral Border"
-          />
-          
-          {/* Position banner - overlay content */}
-          <div style={{
-            position: 'absolute',
-            bottom: 25,
-            left: 0,
-            right: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 5,
-          }}>
+          {/* Officer info */}
+          <div style={{ textAlign: 'center', marginBottom: 10 }}>
             <div style={{
-              backgroundColor: '#4299e1',
-              color: '#ffffff',
+              fontSize: 18,
               fontWeight: 'bold',
-              padding: '8px 20px',
-              borderRadius: 20,
+              color: '#4299e1',
               textAlign: 'center',
-              boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
-              border: '1px solid rgba(66, 153, 225, 0.3)',
-              fontSize: 16,
+              marginBottom: 4,
+              textShadow: '0px 1px 2px rgba(0, 0, 0, 0.8)',
             }}>
-              {item.position}
+              {item.name}
+            </div>
+            <div style={{ color: '#e2e8f0', fontSize: 14 }}>
+              Class of {item.classYear}
+            </div>
+            <div style={{ color: '#e2e8f0', fontSize: 14 }}>
+              {item.memberYears}-year member
             </div>
           </div>
+          
+          {/* Position banner */}
+          <div style={{
+            backgroundColor: '#4299e1',
+            color: '#ffffff',
+            fontWeight: 'bold',
+            padding: '6px 16px',
+            borderRadius: 20,
+            textAlign: 'center',
+            boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
+            fontSize: 14,
+          }}>
+            {item.position}
           </div>
         </div>
       </div>
-    );
-  }
-  
-  // Mobile/non-web fallback
-  return (
-    <View style={figureStyle}>
-      <View style={{ width: cardWidth, height: cardHeight }}>
-        <View style={styles.officerCard}>
-          {/* Key Club logo */}
-          <Image
-            source={require('../assets/images/keyclublogo.png')}
-            style={styles.keyClubLogo}
-            resizeMode="contain"
-          />
-          
-          {/* Background with string lights */}
-          <ImageBackground
-            source={require('../assets/images/string_lights_bg.png')}
-            style={[styles.cardBackground, { height: cardHeight }]}
-            resizeMode="cover"
-          >
-            {/* Officer photo */}
-            <View
-              style={[
-                styles.photoContainer,
-                {
-                  width: cardWidth - 40,
-                  height: 200,
-                  marginTop: 30,
-                },
-              ]}
-            >
-              <Image
-                source={item.imageSource}
-                style={styles.officerImage}
-                resizeMode="cover"
-              />
-            </View>
-            
-            {/* Officer name */}
-            <View style={styles.nameContainer}>
-              <Text style={[styles.officerName, { fontSize: 16 }]}>
-                {item.name}
-              </Text>
-            </View>
-            
-            {/* Officer details */}
-            <View style={styles.detailsContainer}>
-              <Text style={[styles.classInfo, { fontSize: 14 }]}>
-                Class of {item.classYear}
-              </Text>
-              <Text style={[styles.memberInfo, { fontSize: 14 }]}>
-                {item.memberYears}-year member
-              </Text>
-            </View>
-          </ImageBackground>
-          
-          {/* Floral border */}
-          <Image
-            source={require('../assets/images/floral_border.png')}
-            style={styles.floralBorder}
-            resizeMode="cover"
-          />
-          
-          {/* Position banner */}
-          <View style={styles.positionOverlay}>
-            <Text style={[styles.positionText, { fontSize: 14 }]}>
-              {item.position}
-            </Text>
-          </View>
-        </View>
-      </View>
-    </View>
+
+      {showTooltip && (
+        <div style={captionStyle}>
+          {item.name} - {item.position}
+        </div>
+      )}
+    </figure>
   );
 };
 
@@ -482,15 +467,19 @@ const RoleSection = ({ role, officers, cardWidth, cardHeight, isWeb, isMobile, s
       <Text style={styles.roleTitle}>{role}</Text>
       <View style={styles.roleCardsContainer}>
         {officers.map((officer, index) => (
-          <AnimatedOfficerCard
+          <TiltedOfficerCard
             key={officer.id}
             item={officer}
             index={index}
             cardWidth={cardWidth}
             cardHeight={cardHeight}
-            numColumns={officers.length}
             isWeb={isWeb}
             isMobile={isMobile}
+            rotateAmplitude={14}
+            scaleOnHover={1.1}
+            showMobileWarning={false}
+            showTooltip={true}
+            displayOverlayContent={true}
           />
         ))}
       </View>
