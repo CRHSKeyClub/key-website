@@ -69,16 +69,16 @@ const FloatingSparkles = () => {
 };
 
 const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, isWeb, isMobile }) => {
-  const cardRef = useRef(null);
+  const ref = useRef(null);
   
-  // Simplified state for tilting
-  const [transform, setTransform] = useState({
-    rotateX: 0,
-    rotateY: 0,
-    scale: 1,
-  });
-  
+  // Following ReactBits TiltedCard pattern EXACTLY
+  const [rotateX, setRotateX] = useState(0);
+  const [rotateY, setRotateY] = useState(0);
+  const [scale, setScale] = useState(1);
   const [opacity, setOpacity] = useState(0);
+  
+  const rotateAmplitude = 14; // From ReactBits default
+  const scaleOnHover = 1.1; // From ReactBits
   
   // Entrance animation
   useEffect(() => {
@@ -88,45 +88,42 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     }, delay);
   }, [index]);
 
-  // Tilted Card effect - Following ReactBits pattern exactly
-  const handleMouseMove = (event) => {
-    if (!isWeb || !cardRef.current) return;
-    
-    const rect = cardRef.current.getBoundingClientRect();
-    const offsetX = event.clientX - rect.left - rect.width / 2;
-    const offsetY = event.clientY - rect.top - rect.height / 2;
-    
-    const rotateAmplitude = 20;
+  // EXACT ReactBits handleMouse function
+  function handleMouse(e) {
+    if (!isWeb || !ref.current) return;
+
+    const rect = ref.current.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left - rect.width / 2;
+    const offsetY = e.clientY - rect.top - rect.height / 2;
+
     const rotationX = (offsetY / (rect.height / 2)) * -rotateAmplitude;
     const rotationY = (offsetX / (rect.width / 2)) * rotateAmplitude;
+
+    setRotateX(rotationX);
+    setRotateY(rotationY);
     
-    setTransform({
-      rotateX: rotationX,
-      rotateY: rotationY,
-      scale: 1.05,
-    });
-  };
+    // Debug log
+    console.log(`Card ${index}: rotateX=${rotationX.toFixed(1)}°, rotateY=${rotationY.toFixed(1)}°, scale=${scale}`);
+  }
 
-  const handleMouseEnter = () => {
+  function handleMouseEnter() {
     if (!isWeb) return;
-    setTransform(prev => ({ ...prev, scale: 1.05 }));
-  };
+    setScale(scaleOnHover);
+  }
 
-  const handleMouseLeave = () => {
+  function handleMouseLeave() {
     if (!isWeb) return;
-    setTransform({
-      rotateX: 0,
-      rotateY: 0,
-      scale: 1,
-    });
-  };
+    setScale(1);
+    setRotateX(0);
+    setRotateY(0);
+  }
 
-  // Tilted Card styles following ReactBits pattern
+  // EXACT ReactBits CSS classes and styles
   const figureStyle = {
     position: 'relative',
     width: cardWidth,
     height: cardHeight,
-    perspective: isWeb ? 800 : undefined,
+    perspective: isWeb ? '800px' : undefined,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -135,23 +132,41 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     transition: 'opacity 0.8s ease-in-out',
   };
 
-  const innerStyle = isWeb ? {
-    width: cardWidth,
-    height: cardHeight,
-    transform: `rotateX(${transform.rotateX}deg) rotateY(${transform.rotateY}deg) scale(${transform.scale})`,
-    transformStyle: 'preserve-3d',
-    transition: 'transform 0.1s ease-out',
+  const transformString = isWeb ? `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})` : undefined;
+  
+  const innerStyle = {
     position: 'relative',
-  } : {
     width: cardWidth,
     height: cardHeight,
+    transformStyle: isWeb ? 'preserve-3d' : undefined,
+    transform: transformString,
+    transition: 'transform 0.1s ease-out',
+  };
+  
+  // Debug: log transform string when it changes
+  useEffect(() => {
+    if (isWeb && (rotateX !== 0 || rotateY !== 0)) {
+      console.log(`Card ${index} transform:`, transformString);
+    }
+  }, [rotateX, rotateY, scale]);
+
+  const imgStyle = {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: cardWidth,
+    height: cardHeight,
+    objectFit: 'cover',
+    borderRadius: 15,
+    willChange: 'transform',
+    transform: 'translateZ(0)',
   };
 
   return (
     <View
-      ref={cardRef}
+      ref={ref}
       style={figureStyle}
-      onMouseMove={isWeb ? handleMouseMove : undefined}
+      onMouseMove={isWeb ? handleMouse : undefined}
       onMouseEnter={isWeb ? handleMouseEnter : undefined}
       onMouseLeave={isWeb ? handleMouseLeave : undefined}
     >
