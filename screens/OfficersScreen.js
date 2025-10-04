@@ -69,44 +69,52 @@ const FloatingSparkles = () => {
 };
 
 const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, isWeb, isMobile }) => {
-  // Simpler animation values for better compatibility
+  // Animation values
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(100)).current;
   const scale = useRef(new Animated.Value(0.8)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const tiltX = useRef(new Animated.Value(0)).current;
+  const tiltY = useRef(new Animated.Value(0)).current;
 
   // Grid Stagger Animation - inspired by ReactBits
   useEffect(() => {
-    console.log(`Card ${index} (${item.name}): Grid stagger animation starting...`);
+    console.log(`Card ${index} (${item.name}): Animated card loading...`);
     
-    // Calculate stagger based on position in grid (slower timing)
+    // Calculate stagger based on position in grid
     const row = Math.floor(index / numColumns);
     const col = index % numColumns;
-    const delay = (row * 300) + (col * 200); // Doubled the delays for slower cascade
+    const delay = (row * 300) + (col * 200);
     
     console.log(`Card ${index}: Row ${row}, Col ${col}, Delay ${delay}ms`);
 
-    // Simple but effective staggered reveal with slower timing
+    // Entrance animation
     setTimeout(() => {
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 1,
-          duration: 1200, // Increased from 800ms
+          duration: 1200,
           useNativeDriver: true,
         }),
         Animated.spring(translateY, {
           toValue: 0,
-          tension: 40, // Reduced tension for slower, more dramatic movement
-          friction: 12, // Increased friction for smoother deceleration
+          tension: 40,
+          friction: 12,
           useNativeDriver: true,
         }),
         Animated.spring(scale, {
           toValue: 1,
-          tension: 40, // Reduced tension
-          friction: 10, // Increased friction
+          tension: 40,
+          friction: 10,
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
-        console.log(`Card ${index}: Animation completed:`, finished);
+        if (finished) {
+          console.log(`Card ${index}: Animation completed, starting continuous effects`);
+          startContinuousAnimations();
+        }
       });
     }, delay);
 
@@ -114,8 +122,64 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
       opacity.stopAnimation();
       translateY.stopAnimation();
       scale.stopAnimation();
+      floatAnim.stopAnimation();
+      rotateAnim.stopAnimation();
+      glowAnim.stopAnimation();
+      tiltX.stopAnimation();
+      tiltY.stopAnimation();
     };
   }, [index, numColumns]);
+
+  // Continuous floating and subtle rotation
+  const startContinuousAnimations = () => {
+    // Floating animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: 1,
+          duration: 3000 + (index * 200), // Stagger the float timing
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 3000 + (index * 200),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Subtle rotation animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 8000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 0,
+          duration: 8000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Glow pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
+  };
 
   const handlePress = () => {
     // Bounce animation on press
@@ -134,6 +198,81 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     ]).start();
   };
 
+  // 3D tilt effect on hover (web only)
+  const handleMouseMove = (event) => {
+    if (!isWeb) return;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    const rotateXValue = ((y - centerY) / centerY) * -10;
+    const rotateYValue = ((x - centerX) / centerX) * 10;
+    
+    Animated.parallel([
+      Animated.spring(tiltX, {
+        toValue: rotateXValue,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.spring(tiltY, {
+        toValue: rotateYValue,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleMouseLeave = () => {
+    if (!isWeb) return;
+    
+    Animated.parallel([
+      Animated.spring(tiltX, {
+        toValue: 0,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.spring(tiltY, {
+        toValue: 0,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  // Interpolations
+  const floatTranslate = floatAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -15],
+  });
+
+  const rotate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['-2deg', '2deg'],
+  });
+
+  const shadowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.5, 0.9],
+  });
+
+  const tiltXDeg = tiltX.interpolate({
+    inputRange: [-10, 10],
+    outputRange: ['-10deg', '10deg'],
+  });
+
+  const tiltYDeg = tiltY.interpolate({
+    inputRange: [-10, 10],
+    outputRange: ['-10deg', '10deg'],
+  });
+
   return (
     <Animated.View
       style={[
@@ -142,17 +281,32 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           width: cardWidth,
           opacity: opacity,
           transform: [
-            { translateY: translateY },
+            { perspective: 1000 },
+            { translateY: Animated.add(translateY, floatTranslate) },
             { scale: scale },
+            { rotateZ: rotate },
+            { rotateX: tiltXDeg },
+            { rotateY: tiltYDeg },
           ],
         },
       ]}
+      onMouseMove={isWeb ? handleMouseMove : undefined}
+      onMouseLeave={isWeb ? handleMouseLeave : undefined}
     >
-      <TouchableOpacity
-        style={[styles.officerCard, { height: cardHeight }]}
-        onPress={handlePress}
-        activeOpacity={0.9}
+      <Animated.View
+        style={[
+          styles.officerCard,
+          {
+            height: cardHeight,
+            shadowOpacity: shadowOpacity,
+          },
+        ]}
       >
+        <TouchableOpacity
+          style={styles.cardTouchable}
+          onPress={handlePress}
+          activeOpacity={0.9}
+        >
         {/* Key Club logo */}
         <Image
           source={require('../assets/images/keyclublogo.png')}
@@ -225,7 +379,8 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
           isMobile={isMobile}
           delay={(index % numColumns) * 200 + 500}
         />
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </Animated.View>
     </Animated.View>
   );
 };
@@ -767,12 +922,15 @@ const styles = StyleSheet.create({
     overflow: 'visible',
     shadowColor: '#4299e1',
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.5,
     shadowRadius: 25,
     elevation: 20,
     borderWidth: 2,
     borderColor: 'rgba(66, 153, 225, 0.4)',
     backgroundColor: '#2d3748',
+  },
+  cardTouchable: {
+    width: '100%',
+    height: '100%',
   },
   keyClubLogo: {
     position: 'absolute',
