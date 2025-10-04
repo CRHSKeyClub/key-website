@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   Platform
 } from 'react-native';
-import TiltedCard from '../components/TiltedCard';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -69,174 +68,144 @@ const FloatingSparkles = () => {
   return <>{sparkles}</>;
 };
 
-// Officer card wrapper using the TiltedCard component
-const TiltedOfficerCard = ({ 
-  item, 
-  index, 
-  cardWidth, 
-  cardHeight, 
-  isWeb, 
-  isMobile,
-  rotateAmplitude = 14,
-  scaleOnHover = 1.1,
-  showMobileWarning = false,
-  showTooltip = true,
-  displayOverlayContent = true
-}) => {
-  const [opacity, setOpacity] = useState(0);
-  
-  // Entrance animation
+const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, isWeb, isMobile }) => {
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+
   useEffect(() => {
     const delay = index * 150;
-    setTimeout(() => {
-      setOpacity(1);
-    }, delay);
-  }, [index]);
+    
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        delay: delay,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        delay: delay,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 600,
+        delay: delay,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [index, slideAnim, fadeAnim, scaleAnim]);
 
-  if (!isWeb) {
-    // Mobile fallback - simple static card
-    return (
-      <View style={{ width: cardWidth, height: cardHeight, opacity: opacity }}>
-        <View style={styles.officerCard}>
-          <Image
-            source={require('../assets/images/keyclublogo.png')}
-            style={styles.keyClubLogo}
-            resizeMode="contain"
-          />
-          
-          <ImageBackground
-            source={require('../assets/images/string_lights_bg.png')}
-            style={[styles.cardBackground, { height: cardHeight }]}
-            resizeMode="cover"
-          >
-            <View style={[styles.photoContainer, { width: cardWidth - 40, height: 200, marginTop: 30 }]}>
-              <Image source={item.imageSource} style={styles.officerImage} resizeMode="cover" />
-            </View>
-            
-            <View style={styles.nameContainer}>
-              <Text style={[styles.officerName, { fontSize: 16 }]}>{item.name}</Text>
-            </View>
-            
-            <View style={styles.detailsContainer}>
-              <Text style={[styles.classInfo, { fontSize: 14 }]}>Class of {item.classYear}</Text>
-              <Text style={[styles.memberInfo, { fontSize: 14 }]}>{item.memberYears}-year member</Text>
-            </View>
-          </ImageBackground>
-          
-          <Image source={require('../assets/images/floral_border.png')} style={styles.floralBorder} resizeMode="cover" />
-          
-          <View style={styles.positionOverlay}>
-            <Text style={[styles.positionText, { fontSize: 14 }]}>{item.position}</Text>
-          </View>
-        </View>
-      </View>
-    );
-  }
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(scaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
-  // Web version using TiltedCard component
   return (
-    <div style={{ width: cardWidth, height: cardHeight, opacity: opacity }}>
-      <TiltedCard
-        imageSrc={item.imageSource}
-        altText={`${item.name} - ${item.position}`}
-        captionText={`${item.name} - ${item.position}`}
-        containerHeight={cardHeight}
-        containerWidth={cardWidth}
-        imageHeight={cardHeight}
-        imageWidth={cardWidth}
-        rotateAmplitude={rotateAmplitude}
-        scaleOnHover={scaleOnHover}
-        showMobileWarning={showMobileWarning}
-        showTooltip={showTooltip}
-        displayOverlayContent={displayOverlayContent}
-        overlayContent={
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            background: 'linear-gradient(135deg, rgba(45, 55, 72, 0.85) 0%, rgba(66, 153, 225, 0.1) 100%)',
-            borderRadius: 15,
-            padding: 10,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}>
-            {/* Key Club logo */}
-            <img 
-              src={require('../assets/images/keyclublogo.png')}
-              style={{
-                position: 'absolute',
-                top: 10,
-                left: 10,
-                width: 30,
-                height: 30,
-                opacity: 0.8,
-                zIndex: 10,
-              }}
-              alt="Key Club Logo"
+    <Animated.View
+      style={[
+        {
+          width: cardWidth,
+          height: cardHeight,
+          transform: [
+            { translateY: slideAnim },
+            { scale: scaleAnim }
+          ],
+          opacity: fadeAnim,
+        },
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.officerCard}
+        onPress={handlePress}
+        activeOpacity={0.9}
+      >
+        {/* Key Club logo */}
+        <Image
+          source={require('../assets/images/keyclublogo.png')}
+          style={styles.keyClubLogo}
+          resizeMode="contain"
+        />
+        
+        {/* Background with string lights */}
+        <ImageBackground
+          source={require('../assets/images/string_lights_bg.png')}
+          style={[styles.cardBackground, { height: cardHeight }]}
+          resizeMode="cover"
+        >
+          {/* Officer photo */}
+          <View
+            style={[
+              styles.photoContainer,
+              {
+                width: cardWidth - 40,
+                height: isWeb ? 220 : 200,
+                marginTop: isWeb ? 35 : 30,
+              },
+            ]}
+          >
+            <Image
+              source={item.imageSource}
+              style={styles.officerImage}
+              resizeMode="cover"
             />
-            
-            {/* Officer photo */}
-            <div style={{
-              width: '80%',
-              height: '60%',
-              marginTop: 35,
-              borderRadius: 15,
-              overflow: 'hidden',
-              border: '4px solid #fff',
-              boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
-            }}>
-              <img
-                src={item.imageSource}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                }}
-                alt={item.name}
-              />
-            </div>
-            
-            {/* Officer info */}
-            <div style={{ textAlign: 'center', marginBottom: 10 }}>
-              <div style={{
-                fontSize: 18,
-                fontWeight: 'bold',
-                color: '#4299e1',
-                textAlign: 'center',
-                marginBottom: 4,
-                textShadow: '0px 1px 2px rgba(0, 0, 0, 0.8)',
-              }}>
-                {item.name}
-              </div>
-              <div style={{ color: '#e2e8f0', fontSize: 14 }}>
-                Class of {item.classYear}
-              </div>
-              <div style={{ color: '#e2e8f0', fontSize: 14 }}>
-                {item.memberYears}-year member
-              </div>
-            </div>
-            
-            {/* Position banner */}
-            <div style={{
-              backgroundColor: '#4299e1',
-              color: '#ffffff',
-              fontWeight: 'bold',
-              padding: '6px 16px',
-              borderRadius: 20,
-              textAlign: 'center',
-              boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
-              fontSize: 14,
-            }}>
-              {item.position}
-            </div>
-          </div>
-        }
-      />
-    </div>
+          </View>
+          
+          {/* Officer name */}
+          <View style={styles.nameContainer}>
+            <Text style={[
+              styles.officerName,
+              { fontSize: isWeb ? 22 : isMobile ? 16 : 18 }
+            ]}>
+              {item.name}
+            </Text>
+          </View>
+          
+          {/* Officer details */}
+          <View style={styles.detailsContainer}>
+            <Text style={[
+              styles.classInfo,
+              { fontSize: isWeb ? 16 : 14 }
+            ]}>
+              Class of {item.classYear}
+            </Text>
+            <Text style={[
+              styles.memberInfo,
+              { fontSize: isWeb ? 16 : 14 }
+            ]}>
+              {item.memberYears}-year member
+            </Text>
+          </View>
+        </ImageBackground>
+        
+        {/* Floral border */}
+        <Image
+          source={require('../assets/images/floral_border.png')}
+          style={styles.floralBorder}
+          resizeMode="cover"
+        />
+        
+        {/* Position banner */}
+        <AnimatedPositionBanner
+          position={item.position}
+          isWeb={isWeb}
+          isMobile={isMobile}
+          delay={index * 150 + 300}
+        />
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -339,19 +308,15 @@ const RoleSection = ({ role, officers, cardWidth, cardHeight, isWeb, isMobile, s
       <Text style={styles.roleTitle}>{role}</Text>
       <View style={styles.roleCardsContainer}>
         {officers.map((officer, index) => (
-          <TiltedOfficerCard
+          <AnimatedOfficerCard
             key={officer.id}
             item={officer}
             index={index}
             cardWidth={cardWidth}
             cardHeight={cardHeight}
+            numColumns={officers.length}
             isWeb={isWeb}
             isMobile={isMobile}
-            rotateAmplitude={14}
-            scaleOnHover={1.1}
-            showMobileWarning={false}
-            showTooltip={true}
-            displayOverlayContent={true}
           />
         ))}
       </View>
