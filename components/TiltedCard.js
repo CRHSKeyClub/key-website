@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { View, Image, Text, Platform } from 'react-native';
+import { useRef, useEffect } from 'react';
+import { View, Image, Platform } from 'react-native';
 
 export default function TiltedCard({
   imageSrc,
@@ -16,51 +16,77 @@ export default function TiltedCard({
   overlayContent = null,
   displayOverlayContent = false
 }) {
-  const ref = useRef(null);
+  const containerRef = useRef(null);
+  const innerRef = useRef(null);
+  const tooltipRef = useRef(null);
 
-  const [rotateX, setRotateX] = useState(0);
-  const [rotateY, setRotateY] = useState(0);
-  const [scale, setScale] = useState(1);
-  const [opacity, setOpacity] = useState(0);
-  const [x, setX] = useState(0);
-  const [y, setY] = useState(0);
-  const [lastY, setLastY] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !containerRef.current || !innerRef.current) return;
 
-  function handleMouse(e) {
-    if (!ref.current || Platform.OS !== 'web') return;
+    const container = containerRef.current;
+    const inner = innerRef.current;
+    const tooltip = tooltipRef.current;
 
-    const rect = ref.current.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left - rect.width / 2;
-    const offsetY = e.clientY - rect.top - rect.height / 2;
+    let rotateX = 0;
+    let rotateY = 0;
+    let scale = 1;
+    let opacity = 0;
 
-    const rotationX = (offsetY / (rect.height / 2)) * -rotateAmplitude;
-    const rotationY = (offsetX / (rect.width / 2)) * rotateAmplitude;
+    function handleMouse(e) {
+      const rect = container.getBoundingClientRect();
+      const offsetX = e.clientX - rect.left - rect.width / 2;
+      const offsetY = e.clientY - rect.top - rect.height / 2;
 
-    setRotateX(rotationX);
-    setRotateY(rotationY);
-    setX(e.clientX - rect.left);
-    setY(e.clientY - rect.top);
-    setLastY(offsetY);
-  }
+      rotateX = (offsetY / (rect.height / 2)) * -rotateAmplitude;
+      rotateY = (offsetX / (rect.width / 2)) * rotateAmplitude;
 
-  function handleMouseEnter() {
-    if (Platform.OS !== 'web') return;
-    setScale(scaleOnHover);
-    setOpacity(1);
-  }
+      // Apply transform directly to DOM element
+      inner.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`;
 
-  function handleMouseLeave() {
-    if (Platform.OS !== 'web') return;
-    setOpacity(0);
-    setScale(1);
-    setRotateX(0);
-    setRotateY(0);
-  }
+      // Update tooltip position
+      if (tooltip && showTooltip) {
+        tooltip.style.left = `${e.clientX - rect.left}px`;
+        tooltip.style.top = `${e.clientY - rect.top}px`;
+      }
+    }
+
+    function handleMouseEnter() {
+      scale = scaleOnHover;
+      opacity = 1;
+      inner.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`;
+      if (tooltip) {
+        tooltip.style.opacity = opacity;
+      }
+    }
+
+    function handleMouseLeave() {
+      scale = 1;
+      rotateX = 0;
+      rotateY = 0;
+      opacity = 0;
+      inner.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`;
+      if (tooltip) {
+        tooltip.style.opacity = opacity;
+      }
+    }
+
+    // Add event listeners
+    container.addEventListener('mousemove', handleMouse);
+    container.addEventListener('mouseenter', handleMouseEnter);
+    container.addEventListener('mouseleave', handleMouseLeave);
+
+    // Cleanup
+    return () => {
+      container.removeEventListener('mousemove', handleMouse);
+      container.removeEventListener('mouseenter', handleMouseEnter);
+      container.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [rotateAmplitude, scaleOnHover, showTooltip]);
 
   if (Platform.OS === 'web') {
     return (
       <div
-        ref={ref}
+        ref={containerRef}
         style={{
           position: 'relative',
           width: containerWidth,
@@ -71,17 +97,14 @@ export default function TiltedCard({
           alignItems: 'center',
           justifyContent: 'center',
         }}
-        onMouseMove={handleMouse}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
       >
         <div
+          ref={innerRef}
           style={{
             position: 'relative',
             width: imageWidth,
             height: imageHeight,
             transformStyle: 'preserve-3d',
-            transform: `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(${scale})`,
             transition: 'transform 0.1s ease-out',
           }}
         >
@@ -113,18 +136,20 @@ export default function TiltedCard({
 
         {showTooltip && (
           <div
+            ref={tooltipRef}
             style={{
               pointerEvents: 'none',
               position: 'absolute',
-              left: x,
-              top: y,
+              left: 0,
+              top: 0,
               borderRadius: 4,
               backgroundColor: '#fff',
               padding: '4px 10px',
               fontSize: 10,
               color: '#2d2d2d',
-              opacity: opacity,
+              opacity: 0,
               zIndex: 3,
+              transition: 'opacity 0.2s ease-out',
             }}
           >
             {captionText}
