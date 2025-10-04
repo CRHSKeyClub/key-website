@@ -356,7 +356,13 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
     transformStyle: 'preserve-3d',
     willChange: 'transform',
     transition: 'transform 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+    WebkitTransform: `rotateX(${webTransform.rotateX}deg) rotateY(${webTransform.rotateY}deg)`, // Safari
   } : {};
+  
+  // Debug log
+  if (isWeb && mouseOver) {
+    console.log(`Card ${index} transform style:`, webTransformStyle.transform);
+  }
 
   return (
     <Animated.View
@@ -365,25 +371,36 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
         {
           width: cardWidth,
           opacity: opacity,
-          perspective: isWeb ? 1200 : undefined,
         },
       ]}
     >
-      <Animated.View
-        style={[
-          {
-            transform: [
-              { translateY: Animated.add(translateY, floatTranslate) },
-              { rotateZ: rotate },
-              { scale: scale },
-            ],
-          },
-          isWeb && webTransformStyle,
-        ]}
-        onMouseMove={isWeb ? handleMouseMove : undefined}
-        onMouseLeave={isWeb ? handleMouseLeave : undefined}
-        onMouseEnter={isWeb ? handleMouseEnter : undefined}
+      <View
+        style={{
+          perspective: isWeb ? 1200 : undefined,
+          perspectiveOrigin: 'center',
+        }}
       >
+        <Animated.View
+          style={[
+            {
+              transform: [
+                { translateY: Animated.add(translateY, floatTranslate) },
+                { rotateZ: rotate },
+                { scale: scale },
+              ],
+            },
+          ]}
+        >
+          <View
+            style={[
+              isWeb && webTransformStyle,
+              isWeb && { display: 'block' }, // Force block display for proper transform
+            ]}
+            onMouseMove={isWeb ? handleMouseMove : undefined}
+            onMouseLeave={isWeb ? handleMouseLeave : undefined}
+            onMouseEnter={isWeb ? handleMouseEnter : undefined}
+            {...(isWeb && { accessibilityRole: 'none' })}
+          >
       <Animated.View
         style={[
           styles.officerCard,
@@ -486,7 +503,9 @@ const AnimatedOfficerCard = ({ item, index, cardWidth, cardHeight, numColumns, i
         />
         </TouchableOpacity>
       </Animated.View>
-      </Animated.View>
+          </View>
+        </Animated.View>
+      </View>
     </Animated.View>
   );
 };
@@ -1021,7 +1040,6 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     // Spacing handled by gap in roleCardsContainer
-    transformStyle: 'preserve-3d',
   },
   officerCard: {
     margin: 8,
