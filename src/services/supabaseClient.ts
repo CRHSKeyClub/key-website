@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Get environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.EXPO_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.EXPO_PUBLIC_SUPABASE_ANON_KEY
 
 // Debug environment variables
 console.log('🔍 Supabase URL:', supabaseUrl);

@@ -18,6 +18,6 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
   },
-  envPrefix: 'VITE_',
+  envPrefix: 'EXPO_PUBLIC_',
 })
 
