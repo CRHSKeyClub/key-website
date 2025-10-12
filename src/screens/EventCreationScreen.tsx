@@ -311,7 +311,12 @@ export default function EventCreationScreen() {
             <input
               type="date"
               value={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`}
-              onChange={(e) => setDate(new Date(e.target.value))}
+              onChange={(e) => {
+                // Parse date string locally to avoid timezone issues
+                const [year, month, day] = e.target.value.split('-').map(Number);
+                const localDate = new Date(year, month - 1, day);
+                setDate(localDate);
+              }}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:border-blue-500 focus:outline-none transition-colors bg-white"
             />
           </div>
