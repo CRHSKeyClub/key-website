@@ -231,8 +231,8 @@ export default function HourRequestScreen() {
     }
   };
 
-  // Calculate progress percentage (assuming 25 hours goal)
-  const goalHours = 25;
+  // Calculate progress percentage (assuming 20 hours goal)
+  const goalHours = 20;
   const progressPercentage = Math.min((currentHours / goalHours) * 100, 100);
 
   return (
