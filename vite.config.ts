@@ -19,6 +19,6 @@ export default defineConfig({
     outDir: 'dist',
     sourcemap: true,
   },
-  envPrefix: 'VITE_',
+  envPrefix: ['VITE_', 'EXPO_PUBLIC_'],
 })
 
