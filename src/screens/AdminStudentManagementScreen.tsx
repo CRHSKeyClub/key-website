@@ -42,6 +42,7 @@ export default function AdminStudentManagementScreen() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [tshirtSizeFilter, setTshirtSizeFilter] = useState<string>('all');
+  const [tshirtSizeSummary, setTshirtSizeSummary] = useState<{[key: string]: number}>({});
 
   useEffect(() => {
     if (!isAdmin) {
@@ -89,8 +90,60 @@ export default function AdminStudentManagementScreen() {
     }
   };
 
+  const calculateTshirtSummary = () => {
+    const summary: {[key: string]: number} = {};
+    students.forEach(student => {
+      const size = student.tshirt_size || 'No Size';
+      summary[size] = (summary[size] || 0) + 1;
+    });
+    setTshirtSizeSummary(summary);
+  };
+
+  const exportTshirtOrder = () => {
+    const orderData = {
+      'XS': tshirtSizeSummary['XS'] || 0,
+      'S': tshirtSizeSummary['S'] || 0,
+      'M': tshirtSizeSummary['M'] || 0,
+      'L': tshirtSizeSummary['L'] || 0,
+      'XL': tshirtSizeSummary['XL'] || 0,
+      'XXL': tshirtSizeSummary['XXL'] || 0,
+      'XXXL': tshirtSizeSummary['XXXL'] || 0,
+      'No Size Set': tshirtSizeSummary['No Size'] || 0,
+      'Total Students': students.length
+    };
+
+    // Create CSV content
+    const csvContent = [
+      'Size,Quantity',
+      ...Object.entries(orderData).map(([size, quantity]) => `${size},${quantity}`)
+    ].join('\n');
+
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `key_club_tshirt_order_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showModal({
+      title: 'Export Complete',
+      message: 'T-shirt order summary has been downloaded as a CSV file.',
+      onCancel: () => {},
+      onConfirm: () => {},
+      cancelText: '',
+      confirmText: 'OK',
+      icon: 'checkmark-circle',
+      iconColor: '#4CAF50'
+    });
+  };
+
   useEffect(() => {
     filterStudents();
+    calculateTshirtSummary();
   }, [tshirtSizeFilter, students]);
 
   const handleAdjustHours = (student: Student) => {
@@ -284,6 +337,67 @@ export default function AdminStudentManagementScreen() {
                 </span>
               )}
             </p>
+          </motion.div>
+
+          {/* T-Shirt Size Summary */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="bg-slate-800 bg-opacity-60 backdrop-blur-sm rounded-xl p-6 mb-8 border border-slate-600"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-blue-400">T-Shirt Order Summary</h3>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => exportTshirtOrder()}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Export Order
+                </button>
+                <div className="bg-blue-600 bg-opacity-20 px-3 py-1 rounded-lg border border-blue-500">
+                  <span className="text-blue-300 text-sm font-medium">Total Students</span>
+                  <div className="text-white font-bold text-lg">{students.length}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+              {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map(size => (
+                <motion.div
+                  key={size}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.6 + (['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].indexOf(size) * 0.1) }}
+                  className="bg-slate-700 bg-opacity-50 rounded-lg p-4 text-center border border-slate-500 hover:border-blue-400 transition-colors"
+                >
+                  <div className="text-gray-300 text-sm font-medium mb-1">{size}</div>
+                  <div className="text-2xl font-bold text-white">{tshirtSizeSummary[size] || 0}</div>
+                  <div className="text-xs text-gray-400">shirts</div>
+                </motion.div>
+              ))}
+            </div>
+            
+            {tshirtSizeSummary['No Size'] > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="mt-4 p-3 bg-yellow-600 bg-opacity-20 rounded-lg border border-yellow-500"
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-yellow-300 font-medium">
+                    {tshirtSizeSummary['No Size']} students need to set their t-shirt size
+                  </span>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
 
           {/* Students List */}
