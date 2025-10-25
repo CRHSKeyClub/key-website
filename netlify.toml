@@ -5,8 +5,8 @@
 [build.environment]
   NODE_VERSION = "18"
   # Environment variables will be set in Netlify dashboard
-  # VITE_SUPABASE_URL = "your_supabase_url_here"
-  # VITE_SUPABASE_ANON_KEY = "your_supabase_anon_key_here"
+  # EXPO_PUBLIC_SUPABASE_URL = "https://zvoavkzruhnzzeqyihrc.supabase.co"
+  # EXPO_PUBLIC_SUPABASE_ANON_KEY = "your_supabase_anon_key_here"
 
 # Handle client-side routing for SPA
 [[redirects]]
