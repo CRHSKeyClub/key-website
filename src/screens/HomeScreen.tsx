@@ -200,6 +200,20 @@ export default function HomeScreen() {
                 </div>
                 <div className="font-semibold text-white">Hour Requests</div>
               </motion.button>
+
+              <motion.button
+                onClick={() => navigate('/admin-tshirt-management')}
+                className="bg-white bg-opacity-10 backdrop-blur-sm rounded-xl p-6 hover:bg-opacity-20 transition-all text-center border border-white border-opacity-20"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <div className="mb-2">
+                  <svg className="w-12 h-12 mx-auto text-pink-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div className="font-semibold text-white">T-Shirt Management</div>
+              </motion.button>
             </>
           ) : (
             /* Student Quick Actions */
