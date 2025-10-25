@@ -96,6 +96,14 @@ class SupabaseService {
   static async createStudent(studentData: any) {
     try {
       console.log('👤 Creating student:', studentData.sNumber);
+      console.log('📊 Student data being inserted:', {
+        s_number: studentData.sNumber.toLowerCase(),
+        name: studentData.name,
+        email: studentData.email || null,
+        total_hours: studentData.totalHours || 0,
+        tshirt_size: studentData.tshirtSize || null,
+        account_status: 'pending'
+      });
       
       const { data, error } = await supabase
         .from('students')
@@ -112,10 +120,16 @@ class SupabaseService {
 
       if (error) {
         console.error('❌ Error creating student:', error);
+        console.error('❌ Student creation error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
         throw error;
       }
 
-      console.log('✅ Student created:', data);
+      console.log('✅ Student created successfully:', data);
       return data;
     } catch (error) {
       console.error('❌ Failed to create student:', error);
@@ -152,8 +166,24 @@ class SupabaseService {
   static async registerStudent(sNumber: string, password: string, name: string, tshirtSize?: string) {
     try {
       console.log('🚀 Starting registration for:', sNumber);
+      console.log('📊 Registration data:', { sNumber, name, tshirtSize });
+
+      // Test Supabase connection first
+      console.log('🧪 Testing Supabase connection...');
+      const { data: testData, error: testError } = await supabase
+        .from('students')
+        .select('count')
+        .limit(1);
+      
+      if (testError) {
+        console.error('❌ Supabase connection test failed:', testError);
+        throw new Error(`Database connection failed: ${testError.message}`);
+      }
+      console.log('✅ Supabase connection test passed');
 
       let student = await this.getStudent(sNumber);
+      console.log('👤 Student lookup result:', student ? 'Found existing student' : 'Student not found');
+      
       if (!student) {
         console.log('👤 Student not found, creating new record...');
         student = await this.createStudent({
@@ -162,15 +192,20 @@ class SupabaseService {
           totalHours: 0,
           tshirtSize: tshirtSize
         });
+        console.log('✅ Student record created:', student);
       }
 
+      console.log('🔍 Checking for existing auth user...');
       const existingAuth = await this.getAuthUser(sNumber);
       if (existingAuth) {
+        console.log('❌ Auth user already exists');
         throw new Error('Account already exists. Please use the login page.');
       }
+      console.log('✅ No existing auth user found');
 
       console.log('🔐 Hashing password...');
       const passwordHash = await this.hashPassword(password);
+      console.log('✅ Password hashed successfully');
 
       console.log('🔑 Creating auth record...');
       const { data: authUser, error: authError } = await supabase
@@ -184,8 +219,15 @@ class SupabaseService {
 
       if (authError) {
         console.error('❌ Error creating auth record:', authError);
+        console.error('❌ Auth error details:', {
+          message: authError.message,
+          details: authError.details,
+          hint: authError.hint,
+          code: authError.code
+        });
         throw authError;
       }
+      console.log('✅ Auth record created successfully:', authUser);
 
       await this.updateStudent(sNumber, {
         name: name || student.name,
@@ -1014,6 +1056,37 @@ class SupabaseService {
       return true;
     } catch (error) {
       console.error('❌ Error deleting meeting:', error);
+      throw error;
+    }
+  }
+
+  static async getStudentAttendance(studentSNumber: string) {
+    try {
+      console.log('📋 Getting attendance for student:', studentSNumber);
+      
+      const { data: attendance, error } = await supabase
+        .from('meeting_attendance')
+        .select(`
+          *,
+          meetings (
+            id,
+            meeting_date,
+            meeting_type,
+            is_open
+          )
+        `)
+        .eq('student_s_number', studentSNumber.toLowerCase())
+        .order('submitted_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error getting student attendance:', error);
+        throw error;
+      }
+
+      console.log('✅ Student attendance retrieved:', attendance?.length || 0, 'records');
+      return attendance || [];
+    } catch (error) {
+      console.error('❌ Failed to get student attendance:', error);
       throw error;
     }
   }

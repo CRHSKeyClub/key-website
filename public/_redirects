@@ -1,0 +1,4 @@
+# Handle client-side routing for Single Page Application
+# This ensures that refreshing the page or accessing direct URLs works properly
+
+/*    /index.html   200

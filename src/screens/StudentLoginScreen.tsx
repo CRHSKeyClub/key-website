@@ -29,9 +29,15 @@ export default function StudentLoginScreen() {
 
     setLoading(true);
     try {
-      await loginAsStudent(sNumber.toLowerCase(), password);
-    } catch (error) {
-      console.error('Student login error:', error);
+      console.log('🚀 Starting login process for:', sNumber);
+      const success = await loginAsStudent(sNumber.toLowerCase(), password);
+      if (!success) {
+        console.error('❌ Login failed');
+        alert('Login failed. Please check your credentials or create an account.');
+      }
+    } catch (error: any) {
+      console.error('❌ Student login error:', error);
+      alert(`Login failed: ${error.message || 'Unknown error occurred'}`);
     } finally {
       setLoading(false);
     }
@@ -62,17 +68,24 @@ export default function StudentLoginScreen() {
 
     setLoading(true);
     try {
+      console.log('🚀 Starting registration process for:', sNumber);
       const success = await registerStudent(sNumber.toLowerCase(), password, name);
       if (success) {
+        console.log('✅ Registration successful, switching to login mode');
+        alert('Account created successfully! You can now log in.');
         // Switch to login mode after successful registration
         setIsSignUp(false);
         setSNumber('');
         setName('');
         setPassword('');
         setConfirmPassword('');
+      } else {
+        console.error('❌ Registration failed');
+        alert('Registration failed. Please try again.');
       }
-    } catch (error) {
-      console.error('Registration error:', error);
+    } catch (error: any) {
+      console.error('❌ Registration error:', error);
+      alert(`Registration failed: ${error.message || 'Unknown error occurred'}`);
     } finally {
       setLoading(false);
     }
@@ -180,13 +193,23 @@ export default function StudentLoginScreen() {
                   Create Account
                 </motion.h2>
                 <motion.p 
-                  className="text-center text-gray-300 mb-6"
+                  className="text-center text-gray-300 mb-4"
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3, duration: 0.6 }}
                 >
                   Join Key Club today
                 </motion.p>
+                <motion.div 
+                  className="bg-blue-600 bg-opacity-20 border border-blue-500 rounded-lg p-3 mb-6"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                >
+                  <p className="text-blue-200 text-sm text-center">
+                    <strong>New to Key Club?</strong> Create your account here to get started!
+                  </p>
+                </motion.div>
                 
                 <motion.form 
                   onSubmit={handleSignUp} 
@@ -285,7 +308,12 @@ export default function StudentLoginScreen() {
               // Sign In Form
               <>
                 <h2 className="text-3xl font-bold text-blue-400 text-center mb-2">Sign In</h2>
-                <p className="text-center text-gray-300 mb-6">Use your S-Number to access your account</p>
+                <p className="text-center text-gray-300 mb-4">Use your S-Number to access your account</p>
+                <div className="bg-green-600 bg-opacity-20 border border-green-500 rounded-lg p-3 mb-6">
+                  <p className="text-green-200 text-sm text-center">
+                    <strong>Already have an account?</strong> Sign in with your S-Number and password.
+                  </p>
+                </div>
                 
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="relative">
