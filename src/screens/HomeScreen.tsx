@@ -77,29 +77,61 @@ export default function HomeScreen() {
         </motion.div>
 
         {!isAdmin && (
-          /* Service Hours Progress */
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-slate-700 bg-opacity-50 rounded-xl p-6 mb-8 backdrop-blur-sm border border-slate-600"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-blue-400">Service Hours Progress</h2>
-              <span className="text-3xl font-bold text-white">{totalHours} hrs</span>
-            </div>
-            <div className="w-full bg-slate-600 rounded-full h-4 mb-2">
-              <motion.div
-                className="bg-gradient-to-r from-blue-500 to-blue-400 h-4 rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${progressPercentage}%` }}
-                transition={{ duration: 1, delay: 0.5 }}
-              ></motion.div>
-            </div>
-            <p className="text-gray-300 text-center">
-              {goalHours - totalHours} hours remaining to reach your goal
-            </p>
-          </motion.div>
+          <>
+            {/* Student Profile Info */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="bg-slate-700 bg-opacity-50 rounded-xl p-6 mb-8 backdrop-blur-sm border border-slate-600"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-blue-400">Your Profile</h2>
+                <div className="flex items-center gap-4">
+                  {user?.tshirtSize && (
+                    <div className="bg-blue-600 bg-opacity-20 px-3 py-2 rounded-lg border border-blue-500">
+                      <span className="text-blue-300 text-sm font-medium">T-Shirt Size</span>
+                      <div className="text-white font-bold text-lg">{user.tshirtSize}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-gray-300 text-sm">Student ID</p>
+                  <p className="text-white font-semibold">{user?.sNumber}</p>
+                </div>
+                <div>
+                  <p className="text-gray-300 text-sm">Name</p>
+                  <p className="text-white font-semibold">{user?.name || 'Not set'}</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Service Hours Progress */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="bg-slate-700 bg-opacity-50 rounded-xl p-6 mb-8 backdrop-blur-sm border border-slate-600"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-blue-400">Service Hours Progress</h2>
+                <span className="text-3xl font-bold text-white">{totalHours} hrs</span>
+              </div>
+              <div className="w-full bg-slate-600 rounded-full h-4 mb-2">
+                <motion.div
+                  className="bg-gradient-to-r from-blue-500 to-blue-400 h-4 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercentage}%` }}
+                  transition={{ duration: 1, delay: 0.5 }}
+                ></motion.div>
+              </div>
+              <p className="text-gray-300 text-center">
+                {goalHours - totalHours} hours remaining to reach your goal
+              </p>
+            </motion.div>
+          </>
         )}
 
         {/* Quick Actions */}

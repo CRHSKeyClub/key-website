@@ -104,6 +104,7 @@ class SupabaseService {
           name: studentData.name,
           email: studentData.email || null,
           total_hours: studentData.totalHours || 0,
+          tshirt_size: studentData.tshirtSize || null,
           account_status: 'pending'
         }])
         .select()
@@ -148,7 +149,7 @@ class SupabaseService {
 
   // ========== AUTHENTICATION ==========
 
-  static async registerStudent(sNumber: string, password: string, name: string) {
+  static async registerStudent(sNumber: string, password: string, name: string, tshirtSize?: string) {
     try {
       console.log('🚀 Starting registration for:', sNumber);
 
@@ -158,7 +159,8 @@ class SupabaseService {
         student = await this.createStudent({
           sNumber: sNumber,
           name: name || sNumber,
-          totalHours: 0
+          totalHours: 0,
+          tshirtSize: tshirtSize
         });
       }
 
@@ -243,7 +245,8 @@ class SupabaseService {
           sNumber: sNumber.toLowerCase(),
           name: student.name,
           role: student.role || 'student',
-          totalHours: student.total_hours
+          totalHours: student.total_hours,
+          tshirtSize: student.tshirt_size
         }
       };
     } catch (error) {
@@ -755,6 +758,60 @@ class SupabaseService {
       } else {
         throw new Error(`Failed to submit hour request: ${error.message}`);
       }
+    }
+  }
+
+  // ========== BULK T-SHIRT SIZE UPDATES ==========
+
+  static async bulkUpdateTshirtSizes(updates: Array<{sNumber: string, tshirtSize: string}>) {
+    try {
+      console.log('👕 Starting bulk t-shirt size update for', updates.length, 'students');
+      
+      const results = [];
+      const errors = [];
+      
+      for (const update of updates) {
+        try {
+          const { data, error } = await supabase
+            .from('students')
+            .update({ tshirt_size: update.tshirtSize })
+            .eq('s_number', update.sNumber.toLowerCase())
+            .select('s_number, name, tshirt_size')
+            .single();
+
+          if (error) {
+            errors.push({
+              sNumber: update.sNumber,
+              error: error.message,
+              tshirtSize: update.tshirtSize
+            });
+          } else {
+            results.push(data);
+          }
+        } catch (error) {
+          errors.push({
+            sNumber: update.sNumber,
+            error: error.message,
+            tshirtSize: update.tshirtSize
+          });
+        }
+      }
+
+      console.log('✅ Bulk update completed:', results.length, 'successful,', errors.length, 'errors');
+      
+      return {
+        success: true,
+        updated: results,
+        errors: errors,
+        summary: {
+          total: updates.length,
+          successful: results.length,
+          failed: errors.length
+        }
+      };
+    } catch (error) {
+      console.error('❌ Bulk t-shirt size update failed:', error);
+      throw error;
     }
   }
 

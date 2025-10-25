@@ -6,6 +6,7 @@ interface User {
   name: string;
   role: string;
   totalHours?: string | number;
+  tshirtSize?: string;
   id?: string;
   authId?: string;
   loginTime: string;
@@ -17,7 +18,7 @@ interface AuthContextType {
   user: User | null;
   loginAsAdmin: (email: string, password: string) => Promise<boolean>;
   loginAsStudent: (sNumber: string, password: string) => Promise<boolean>;
-  registerStudent: (sNumber: string, password: string, name: string) => Promise<boolean>;
+  registerStudent: (sNumber: string, password: string, name: string, tshirtSize?: string) => Promise<boolean>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
   resetPassword: (sNumber: string, newPassword: string) => Promise<boolean>;
   logout: () => Promise<boolean>;
@@ -189,7 +190,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  const registerStudent = async (sNumber: string, password: string, name: string) => {
+  const registerStudent = async (sNumber: string, password: string, name: string, tshirtSize?: string) => {
     try {
       console.log("Attempting student registration:", sNumber);
       
@@ -198,7 +199,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return false;
       }
       
-      const result = await SupabaseService.registerStudent(sNumber, password, name);
+      const result = await SupabaseService.registerStudent(sNumber, password, name, tshirtSize);
       
       if (result.success) {
         console.log("Student registration successful");

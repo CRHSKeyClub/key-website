@@ -12,6 +12,7 @@ interface Student {
   s_number?: string;
   student_s_number?: string;
   total_hours?: number;
+  tshirt_size?: string;
   created_at?: string;
 }
 
@@ -28,6 +29,7 @@ export default function AdminStudentManagementScreen() {
   const { isAdmin } = useAuth();
   const { showModal } = useModal();
   const [students, setStudents] = useState<Student[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -39,6 +41,7 @@ export default function AdminStudentManagementScreen() {
     reason: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [tshirtSizeFilter, setTshirtSizeFilter] = useState<string>('all');
 
   useEffect(() => {
     if (!isAdmin) {
@@ -54,10 +57,13 @@ export default function AdminStudentManagementScreen() {
       const result = await SupabaseService.getAllStudents();
       // Handle the response structure - getAllStudents returns { data, error }
       const studentsData = result.data || result || [];
-      setStudents(Array.isArray(studentsData) ? studentsData : []);
+      const studentsArray = Array.isArray(studentsData) ? studentsData : [];
+      setStudents(studentsArray);
+      setFilteredStudents(studentsArray);
     } catch (error) {
       console.error('Failed to load students:', error);
       setStudents([]);
+      setFilteredStudents([]);
       showModal({
         title: 'Error',
         message: 'Failed to load students. Please try again.',
@@ -72,6 +78,20 @@ export default function AdminStudentManagementScreen() {
       setLoading(false);
     }
   };
+
+  const filterStudents = () => {
+    if (tshirtSizeFilter === 'all') {
+      setFilteredStudents(students);
+    } else if (tshirtSizeFilter === 'no-size') {
+      setFilteredStudents(students.filter(student => !student.tshirt_size));
+    } else {
+      setFilteredStudents(students.filter(student => student.tshirt_size === tshirtSizeFilter));
+    }
+  };
+
+  useEffect(() => {
+    filterStudents();
+  }, [tshirtSizeFilter, students]);
 
   const handleAdjustHours = (student: Student) => {
     setSelectedStudent(student);
@@ -201,6 +221,23 @@ export default function AdminStudentManagementScreen() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* T-Shirt Size Filter */}
+            <select
+              value={tshirtSizeFilter}
+              onChange={(e) => setTshirtSizeFilter(e.target.value)}
+              className="bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+            >
+              <option value="all">All Students</option>
+              <option value="XS">XS</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+              <option value="XXL">XXL</option>
+              <option value="XXXL">XXXL</option>
+              <option value="no-size">No Size Set</option>
+            </select>
+            
             <button
               onClick={loadStudents}
               className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
@@ -224,17 +261,34 @@ export default function AdminStudentManagementScreen() {
         >
           {/* Page Title */}
           <motion.h2 
-            className="text-3xl font-bold text-white mb-8 text-center"
+            className="text-3xl font-bold text-white mb-4 text-center"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
           >
             Student Management
           </motion.h2>
+          
+          {/* Filter Summary */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-center mb-8"
+          >
+            <p className="text-gray-300">
+              Showing {filteredStudents.length} of {students.length} students
+              {tshirtSizeFilter !== 'all' && (
+                <span className="text-blue-400">
+                  {' '}(filtered by {tshirtSizeFilter === 'no-size' ? 'no t-shirt size' : `t-shirt size: ${tshirtSizeFilter}`})
+                </span>
+              )}
+            </p>
+          </motion.div>
 
           {/* Students List */}
           <div className="space-y-4">
-            {students.map((student, index) => (
+            {filteredStudents.map((student, index) => (
               <motion.div
                 key={student.id}
                 initial={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -260,6 +314,11 @@ export default function AdminStudentManagementScreen() {
                         {student.name || student.student_name || 'Unknown Student'}
                       </h3>
                       <p className="text-blue-300 text-sm">{student.s_number || student.student_s_number}</p>
+                      {student.tshirt_size && (
+                        <p className="text-blue-200 text-xs mt-1">
+                          T-Shirt: {student.tshirt_size}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -294,7 +353,7 @@ export default function AdminStudentManagementScreen() {
           </div>
 
           {/* Empty State */}
-          {students.length === 0 && (
+          {filteredStudents.length === 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

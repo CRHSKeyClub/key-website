@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Key Club T-Shirt Size Import - Simple Version</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1e40af;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .step {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+        .file-input {
+            margin: 10px 0;
+            padding: 20px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .file-input:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .preview-table th,
+        .preview-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .preview-table th {
+            background: #f3f4f6;
+            font-weight: 600;
+            color: #374151;
+        }
+        .preview-table tr:hover {
+            background: #f9fafb;
+        }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-success {
+            background: #10b981;
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        .instructions {
+            background: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .instructions h3 {
+            color: #1e40af;
+            margin-top: 0;
+        }
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+        .stats {
+            background: #f0f9ff;
+            border: 1px solid #0ea5e9;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .stats h4 {
+            color: #0369a1;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 Key Club T-Shirt Size Import Tool</h1>
+        
+        <div class="instructions">
+            <h3>📋 Super Simple Instructions</h3>
+            <ol>
+                <li><strong>Upload your CSV file</strong> (the one you just shared)</li>
+                <li><strong>Click "Generate SQL"</strong> - the tool will automatically detect your columns</li>
+                <li><strong>Download the SQL file</strong> and run it in your Supabase SQL Editor</li>
+                <li><strong>Done!</strong> All t-shirt sizes will be imported</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>Step 1: Upload Your CSV File</h3>
+            <div class="file-input" onclick="document.getElementById('csvFile').click()">
+                <input type="file" id="csvFile" accept=".csv" style="display: none;" onchange="handleFileUpload(event)">
+                <p>📁 Click to select your CSV file</p>
+                <p style="color: #6b7280; font-size: 14px;">Upload the "Key Club Parent Permission Form 2025-2026 (Responses) - Form Responses 1.csv" file</p>
+            </div>
+            <div id="fileStatus"></div>
+        </div>
+
+        <div class="step" id="previewStep" style="display: none;">
+            <h3>Step 2: Filter by Existing Students (Optional)</h3>
+            <p>To only update students who already exist in your Supabase database, paste their S-Numbers below (one per line):</p>
+            <textarea 
+                id="existingStudents" 
+                placeholder="s123456&#10;s789012&#10;s345678&#10;... (or leave empty to include all students)"
+                style="width: 100%; height: 100px; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-family: monospace;"
+            ></textarea>
+            <button class="btn" onclick="filterExistingStudents()" style="margin-top: 10px;">🔍 Filter by Existing Students</button>
+            <button class="btn" onclick="getExistingStudentsFromSupabase()" style="margin-top: 10px; background: #10b981;">📥 Get Existing Students from Supabase</button>
+            
+            <h3>Step 3: Preview & Generate SQL</h3>
+            <div id="previewContainer"></div>
+            <div id="statsContainer"></div>
+            <div style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="generateSQL()">🚀 Generate SQL File</button>
+                <button class="btn" onclick="resetTool()">🔄 Start Over</button>
+            </div>
+        </div>
+
+        <div id="statusContainer"></div>
+    </div>
+
+    <script>
+        let csvData = [];
+        let processedData = [];
+        let allProcessedData = []; // Store original data before filtering
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const fileStatus = document.getElementById('fileStatus');
+            fileStatus.innerHTML = '<div class="status info">📁 Processing file: ' + file.name + '</div>';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    csvData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (csvData.length === 0) {
+                        throw new Error('No data found in the file');
+                    }
+
+                    // Process the data
+                    processData();
+                    showPreview();
+                    fileStatus.innerHTML = '<div class="status success">✅ File loaded successfully! Found ' + csvData.length + ' rows of data.</div>';
+                } catch (error) {
+                    fileStatus.innerHTML = '<div class="status error">❌ Error reading file: ' + error.message + '</div>';
+                }
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        function processData() {
+            const headers = csvData[0];
+            const dataRows = csvData.slice(1);
+            
+            // Find the correct columns
+            const sNumberColIndex = headers.findIndex(h => h && h.toLowerCase().includes('student id'));
+            const tshirtSizeColIndex = headers.findIndex(h => h && h.toLowerCase().includes('t-shirt'));
+            const nameColIndex = headers.findIndex(h => h && (h.toLowerCase().includes('first name') || h.toLowerCase().includes('name')));
+            
+            if (sNumberColIndex === -1 || tshirtSizeColIndex === -1) {
+                throw new Error('Could not find required columns');
+            }
+
+            // First pass: collect all data
+            const allData = dataRows
+                .map(row => {
+                    const sNumber = row[sNumberColIndex]?.toString().trim();
+                    const tshirtSize = row[tshirtSizeColIndex]?.toString().trim().toUpperCase();
+                    const name = nameColIndex !== -1 ? row[nameColIndex]?.toString().trim() : '';
+                    
+                    return {
+                        sNumber: sNumber ? `s${sNumber}` : null, // Add 's' prefix
+                        tshirtSize: tshirtSize,
+                        name: name,
+                        originalSNumber: row[sNumberColIndex]?.toString().trim()
+                    };
+                })
+                .filter(row => row.sNumber && row.tshirtSize && ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].includes(row.tshirtSize));
+
+            // Remove duplicates - keep the last entry for each S-Number
+            const uniqueData = {};
+            allData.forEach(row => {
+                uniqueData[row.sNumber] = row; // This will keep the last occurrence
+            });
+
+            // Convert back to array
+            allProcessedData = Object.values(uniqueData);
+            processedData = [...allProcessedData]; // Start with all data
+        }
+
+        function filterExistingStudents() {
+            const existingStudentsText = document.getElementById('existingStudents').value.trim();
+            
+            if (!existingStudentsText) {
+                // No filtering - use all data
+                processedData = [...allProcessedData];
+                showPreview();
+                return;
+            }
+            
+            // Parse existing students list
+            const existingStudents = existingStudentsText
+                .split('\n')
+                .map(s => s.trim().toLowerCase())
+                .filter(s => s.length > 0);
+            
+            // Filter to only include students who exist in Supabase
+            processedData = allProcessedData.filter(row => 
+                existingStudents.includes(row.sNumber.toLowerCase())
+            );
+            
+            showPreview();
+        }
+
+        function getExistingStudentsFromSupabase() {
+            const textarea = document.getElementById('existingStudents');
+            textarea.value = `To get existing students from Supabase:
+
+1. Go to your Supabase Dashboard
+2. Navigate to Table Editor → students table
+3. Copy the s_number column values
+4. Paste them here (one per line)
+
+Or run this SQL query in Supabase SQL Editor:
+SELECT s_number FROM students ORDER BY s_number;
+
+Then copy the results and paste them here.`;
+            
+            textarea.style.height = '150px';
+        }
+
+        function showPreview() {
+            const previewContainer = document.getElementById('previewContainer');
+            const statsContainer = document.getElementById('statsContainer');
+            
+            // Show stats
+            const validCount = processedData.length;
+            const totalCount = csvData.length - 1;
+            const allValidCount = allProcessedData.length;
+            const duplicatesRemoved = allValidCount - validCount;
+            const invalidCount = totalCount - allValidCount;
+            
+            statsContainer.innerHTML = `
+                <div class="stats">
+                    <h4>📊 Data Summary</h4>
+                    <p><strong>Total form entries:</strong> ${totalCount}</p>
+                    <p><strong>Valid records:</strong> ${allValidCount}</p>
+                    <p><strong>Duplicates removed:</strong> ${duplicatesRemoved}</p>
+                    <p><strong>Students to update:</strong> ${validCount}</p>
+                    <p><strong>Invalid records:</strong> ${invalidCount}</p>
+                    <p><strong>Success rate:</strong> ${Math.round((validCount / totalCount) * 100)}%</p>
+                </div>
+            `;
+
+            // Show preview table (first 10 records)
+            let tableHTML = `
+                <h4>📋 Preview (showing first 10 records)</h4>
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>S-Number</th>
+                            <th>Name</th>
+                            <th>T-Shirt Size</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            processedData.slice(0, 10).forEach(row => {
+                const isValidSize = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].includes(row.tshirtSize);
+                const status = isValidSize ? '✅ Valid' : '⚠️ Invalid size';
+                const statusClass = isValidSize ? 'color: #10b981' : 'color: #f59e0b';
+                
+                tableHTML += `
+                    <tr>
+                        <td>${row.sNumber}</td>
+                        <td>${row.name || 'N/A'}</td>
+                        <td>${row.tshirtSize}</td>
+                        <td style="${statusClass}">${status}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            
+            if (processedData.length > 10) {
+                tableHTML += `<p style="color: #6b7280; font-size: 14px;">... and ${processedData.length - 10} more records</p>`;
+            }
+
+            previewContainer.innerHTML = tableHTML;
+            document.getElementById('previewStep').style.display = 'block';
+        }
+
+        function generateSQL() {
+            const statusContainer = document.getElementById('statusContainer');
+            
+            if (processedData.length === 0) {
+                statusContainer.innerHTML = '<div class="status error">❌ No valid data to import</div>';
+                return;
+            }
+
+            // Generate SQL update statements
+            let sqlStatements = [];
+            
+            // Add header comment
+            sqlStatements.push(`-- Key Club T-Shirt Size Import Script`);
+            sqlStatements.push(`-- Generated on ${new Date().toLocaleString()}`);
+            sqlStatements.push(`-- Total records: ${processedData.length}`);
+            sqlStatements.push(``);
+            
+            // Add update statements
+            processedData.forEach(row => {
+                sqlStatements.push(`UPDATE students SET tshirt_size = '${row.tshirtSize}' WHERE s_number = '${row.sNumber}';`);
+            });
+            
+            sqlStatements.push(``);
+            sqlStatements.push(`-- Verify the updates`);
+            sqlStatements.push(`SELECT s_number, name, tshirt_size FROM students WHERE tshirt_size IS NOT NULL ORDER BY s_number;`);
+
+            // Create downloadable SQL file
+            const sqlContent = sqlStatements.join('\n');
+
+            // Download SQL file
+            const blob = new Blob([sqlContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `key_club_tshirt_sizes_${new Date().toISOString().split('T')[0]}.sql`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            statusContainer.innerHTML = `
+                <div class="status success">
+                    ✅ SQL file generated successfully!<br>
+                    📁 <strong>${processedData.length} records</strong> ready for import<br>
+                    💾 SQL file downloaded to your computer<br><br>
+                    <strong>Next steps:</strong><br>
+                    1. Go to your Supabase Dashboard → SQL Editor<br>
+                    2. Copy and paste the downloaded SQL file content<br>
+                    3. Run the script to update t-shirt sizes<br><br>
+                    <strong>Note:</strong> This will update existing students with their t-shirt sizes from the form.
+                </div>
+            `;
+        }
+
+        function resetTool() {
+            csvData = [];
+            processedData = [];
+            document.getElementById('csvFile').value = '';
+            document.getElementById('fileStatus').innerHTML = '';
+            document.getElementById('previewStep').style.display = 'none';
+            document.getElementById('statusContainer').innerHTML = '';
+        }
+    </script>
+</body>
+</html>

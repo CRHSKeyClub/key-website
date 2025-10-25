@@ -8,6 +8,7 @@ export default function StudentAccountCreationScreen() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [tshirtSize, setTshirtSize] = useState('');
   const [loading, setLoading] = useState(false);
   const { registerStudent } = useAuth();
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export default function StudentAccountCreationScreen() {
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (!name.trim() || !password.trim() || !confirmPassword.trim() || !tshirtSize.trim()) {
       alert('Please fill in all fields');
       return;
     }
@@ -32,7 +33,7 @@ export default function StudentAccountCreationScreen() {
 
     setLoading(true);
     try {
-      const success = await registerStudent(sNumber, password, name);
+      const success = await registerStudent(sNumber, password, name, tshirtSize);
       if (success) {
         navigate('/student-login');
       }
@@ -92,6 +93,27 @@ export default function StudentAccountCreationScreen() {
               disabled={loading}
               className="input"
             />
+          </div>
+          
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              T-Shirt Size
+            </label>
+            <select
+              value={tshirtSize}
+              onChange={(e) => setTshirtSize(e.target.value)}
+              disabled={loading}
+              className="input"
+            >
+              <option value="">Select your t-shirt size</option>
+              <option value="XS">XS</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+              <option value="XXL">XXL</option>
+              <option value="XXXL">XXXL</option>
+            </select>
           </div>
           
           <button

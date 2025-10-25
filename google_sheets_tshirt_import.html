@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Key Club T-Shirt Size Import Tool</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1e40af;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .step {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+        .step h3 {
+            color: #374151;
+            margin-top: 0;
+        }
+        .file-input {
+            margin: 10px 0;
+            padding: 10px;
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .file-input:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .preview-table th,
+        .preview-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .preview-table th {
+            background: #f3f4f6;
+            font-weight: 600;
+            color: #374151;
+        }
+        .preview-table tr:hover {
+            background: #f9fafb;
+        }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .btn-success {
+            background: #10b981;
+        }
+        .btn-success:hover {
+            background: #059669;
+        }
+        .btn-danger {
+            background: #ef4444;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        .mapping-section {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .mapping-section h4 {
+            color: #92400e;
+            margin-top: 0;
+        }
+        .column-select {
+            margin: 10px 0;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+        }
+        .instructions {
+            background: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .instructions h3 {
+            color: #1e40af;
+            margin-top: 0;
+        }
+        .instructions ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔑 Key Club T-Shirt Size Import Tool</h1>
+        
+        <div class="instructions">
+            <h3>📋 Instructions</h3>
+            <ol>
+                <li><strong>Export your Google Sheet:</strong> Go to your Google Sheet → File → Download → Comma-separated values (.csv)</li>
+                <li><strong>Upload the CSV file:</strong> Use the file input below to select your downloaded CSV</li>
+                <li><strong>Map the columns:</strong> Tell the tool which columns contain S-Numbers and T-Shirt sizes</li>
+                <li><strong>Preview and import:</strong> Review the data and import t-shirt sizes to your database</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>Step 1: Upload CSV File</h3>
+            <div class="file-input" onclick="document.getElementById('csvFile').click()">
+                <input type="file" id="csvFile" accept=".csv" style="display: none;" onchange="handleFileUpload(event)">
+                <p>📁 Click to select your CSV file from Google Sheets</p>
+                <p style="color: #6b7280; font-size: 14px;">Supported formats: CSV, Excel (.xlsx)</p>
+            </div>
+            <div id="fileStatus"></div>
+        </div>
+
+        <div class="step" id="mappingStep" style="display: none;">
+            <h3>Step 2: Map Columns</h3>
+            <div class="mapping-section">
+                <h4>🔗 Column Mapping</h4>
+                <p>Select which columns contain the S-Numbers and T-Shirt sizes:</p>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+                    <div>
+                        <label><strong>S-Number Column:</strong></label>
+                        <select id="sNumberColumn" class="column-select">
+                            <option value="">Select S-Number column...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label><strong>T-Shirt Size Column:</strong></label>
+                        <select id="tshirtSizeColumn" class="column-select">
+                            <option value="">Select T-Shirt size column...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button class="btn" onclick="previewData()">👀 Preview Data</button>
+            </div>
+        </div>
+
+        <div class="step" id="previewStep" style="display: none;">
+            <h3>Step 3: Preview & Import</h3>
+            <div id="previewContainer"></div>
+            <div id="importControls" style="margin-top: 20px;">
+                <button class="btn btn-success" onclick="importTshirtSizes()">🚀 Import T-Shirt Sizes</button>
+                <button class="btn btn-danger" onclick="resetTool()">🔄 Start Over</button>
+            </div>
+        </div>
+
+        <div id="statusContainer"></div>
+    </div>
+
+    <script>
+        let csvData = [];
+        let columnMapping = {};
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const fileStatus = document.getElementById('fileStatus');
+            fileStatus.innerHTML = '<div class="status info">📁 Processing file: ' + file.name + '</div>';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    csvData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (csvData.length === 0) {
+                        throw new Error('No data found in the file');
+                    }
+
+                    // Get column headers
+                    const headers = csvData[0];
+                    csvData = csvData.slice(1); // Remove header row
+                    
+                    populateColumnSelectors(headers);
+                    document.getElementById('mappingStep').style.display = 'block';
+                    fileStatus.innerHTML = '<div class="status success">✅ File loaded successfully! Found ' + csvData.length + ' rows of data.</div>';
+                } catch (error) {
+                    fileStatus.innerHTML = '<div class="status error">❌ Error reading file: ' + error.message + '</div>';
+                }
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        function populateColumnSelectors(headers) {
+            const sNumberSelect = document.getElementById('sNumberColumn');
+            const tshirtSizeSelect = document.getElementById('tshirtSizeColumn');
+            
+            sNumberSelect.innerHTML = '<option value="">Select S-Number column...</option>';
+            tshirtSizeSelect.innerHTML = '<option value="">Select T-Shirt size column...</option>';
+            
+            headers.forEach((header, index) => {
+                const option1 = document.createElement('option');
+                option1.value = index;
+                option1.textContent = header + ' (Column ' + (index + 1) + ')';
+                sNumberSelect.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = index;
+                option2.textContent = header + ' (Column ' + (index + 1) + ')';
+                tshirtSizeSelect.appendChild(option2);
+            });
+        }
+
+        function previewData() {
+            const sNumberCol = document.getElementById('sNumberColumn').value;
+            const tshirtSizeCol = document.getElementById('tshirtSizeColumn').value;
+            
+            if (!sNumberCol || !tshirtSizeCol) {
+                alert('Please select both S-Number and T-Shirt size columns');
+                return;
+            }
+
+            columnMapping = {
+                sNumber: parseInt(sNumberCol),
+                tshirtSize: parseInt(tshirtSizeCol)
+            };
+
+            // Filter and prepare data
+            const filteredData = csvData
+                .map(row => ({
+                    sNumber: row[columnMapping.sNumber]?.toString().trim(),
+                    tshirtSize: row[columnMapping.tshirtSize]?.toString().trim()
+                }))
+                .filter(row => row.sNumber && row.tshirtSize)
+                .slice(0, 20); // Show first 20 rows
+
+            if (filteredData.length === 0) {
+                alert('No valid data found with both S-Number and T-Shirt size');
+                return;
+            }
+
+            // Create preview table
+            let tableHTML = `
+                <h4>📊 Data Preview (showing first 20 rows)</h4>
+                <table class="preview-table">
+                    <thead>
+                        <tr>
+                            <th>S-Number</th>
+                            <th>T-Shirt Size</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            filteredData.forEach(row => {
+                const isValidSize = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].includes(row.tshirtSize.toUpperCase());
+                const status = isValidSize ? '✅ Valid' : '⚠️ Invalid size';
+                const statusClass = isValidSize ? 'color: #10b981' : 'color: #f59e0b';
+                
+                tableHTML += `
+                    <tr>
+                        <td>${row.sNumber}</td>
+                        <td>${row.tshirtSize}</td>
+                        <td style="${statusClass}">${status}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            tableHTML += `<p><strong>Total valid records:</strong> ${filteredData.filter(row => ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].includes(row.tshirtSize.toUpperCase())).length}</p>`;
+
+            document.getElementById('previewContainer').innerHTML = tableHTML;
+            document.getElementById('previewStep').style.display = 'block';
+        }
+
+        function importTshirtSizes() {
+            const statusContainer = document.getElementById('statusContainer');
+            statusContainer.innerHTML = '<div class="status info">🔄 Preparing to import t-shirt sizes...</div>';
+
+            // Filter valid data
+            const validData = csvData
+                .map(row => ({
+                    sNumber: row[columnMapping.sNumber]?.toString().trim(),
+                    tshirtSize: row[columnMapping.tshirtSize]?.toString().trim().toUpperCase()
+                }))
+                .filter(row => {
+                    return row.sNumber && 
+                           row.tshirtSize && 
+                           ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].includes(row.tshirtSize);
+                });
+
+            if (validData.length === 0) {
+                statusContainer.innerHTML = '<div class="status error">❌ No valid data to import</div>';
+                return;
+            }
+
+            // Generate SQL update statements
+            let sqlStatements = [];
+            validData.forEach(row => {
+                sqlStatements.push(`
+UPDATE students 
+SET tshirt_size = '${row.tshirtSize}' 
+WHERE s_number = '${row.sNumber.toLowerCase()}';`);
+            });
+
+            // Create downloadable SQL file
+            const sqlContent = `-- T-Shirt Size Import Script
+-- Generated on ${new Date().toLocaleString()}
+-- Total records: ${validData.length}
+
+${sqlStatements.join('\n')}
+
+-- Verify the updates
+SELECT s_number, name, tshirt_size 
+FROM students 
+WHERE tshirt_size IS NOT NULL 
+ORDER BY s_number;`;
+
+            // Download SQL file
+            const blob = new Blob([sqlContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tshirt_sizes_import_${new Date().toISOString().split('T')[0]}.sql`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            statusContainer.innerHTML = `
+                <div class="status success">
+                    ✅ Import file generated successfully!<br>
+                    📁 <strong>${validData.length} records</strong> ready for import<br>
+                    💾 SQL file downloaded to your computer<br><br>
+                    <strong>Next steps:</strong><br>
+                    1. Go to your Supabase Dashboard → SQL Editor<br>
+                    2. Copy and paste the downloaded SQL file content<br>
+                    3. Run the script to update t-shirt sizes
+                </div>
+            `;
+        }
+
+        function resetTool() {
+            csvData = [];
+            columnMapping = {};
+            document.getElementById('csvFile').value = '';
+            document.getElementById('fileStatus').innerHTML = '';
+            document.getElementById('mappingStep').style.display = 'none';
+            document.getElementById('previewStep').style.display = 'none';
+            document.getElementById('statusContainer').innerHTML = '';
+        }
+    </script>
+</body>
+</html>
