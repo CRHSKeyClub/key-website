@@ -150,7 +150,10 @@ export default function EventDeletionScreen() {
                       <p className="text-slate-300 mb-2">{event.description}</p>
                       <div className="flex items-center gap-4 text-sm text-slate-400">
                         <span>📍 {event.location}</span>
-                        <span>📅 {new Date(event.date).toLocaleDateString()}</span>
+                        <span>📅 {(() => {
+                          const [year, month, day] = event.date.split('T')[0].split('-');
+                          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString();
+                        })()}</span>
                         <span>👥 {event.attendees?.length || 0} attendees</span>
                       </div>
                     </div>

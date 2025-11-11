@@ -53,7 +53,9 @@ export default function EventCreationScreen() {
         setLocation(existingEvent.location);
         setCapacity(existingEvent.capacity.toString());
         
-        const eventDate = new Date(existingEvent.date);
+        // Parse date in local time to avoid timezone issues
+        const [year, month, day] = existingEvent.date.split('T')[0].split('-');
+        const eventDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
         setDate(eventDate);
         
         if (existingEvent.startTime) {

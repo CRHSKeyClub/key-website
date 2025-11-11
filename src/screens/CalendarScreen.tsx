@@ -189,7 +189,13 @@ export default function CalendarScreen() {
             <h3 className="text-2xl font-bold text-white mb-4">Upcoming Events</h3>
             <div className="space-y-3">
               {events
-                .filter(event => new Date(event.date) >= new Date())
+                .filter(event => {
+                  const [year, month, day] = event.date.split('T')[0].split('-');
+                  const eventDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  return eventDate >= today;
+                })
                 .slice(0, 5)
                 .map((event) => (
                   <div
@@ -201,11 +207,14 @@ export default function CalendarScreen() {
                       <div className="flex-1">
                         <h4 className="font-bold text-white mb-1">{event.title}</h4>
                         <p className="text-sm text-gray-400">
-                          {new Date(event.date).toLocaleDateString('en-US', { 
-                            weekday: 'short', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })} • {event.location}
+                          {(() => {
+                            const [year, month, day] = event.date.split('T')[0].split('-');
+                            return new Date(parseInt(year), parseInt(month) - 1, parseInt(day)).toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            });
+                          })()} • {event.location}
                         </p>
                       </div>
                       <div className="text-blue-400 text-sm font-semibold">
