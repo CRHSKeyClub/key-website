@@ -10,10 +10,12 @@ interface HourRequest {
   student_name: string;
   student_s_number: string;
   event_name: string;
+  event_date: string | null;
   hours_requested: number;
   description: string;
   status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
+  submitted_at: string | null;
+  reviewed_at?: string | null;
   image_name?: string;
 }
 
@@ -312,9 +314,15 @@ export default function AdminHourManagementScreen() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString?: string | null) => {
+    if (!dateString) {
+      return 'Date unavailable';
+    }
     const date = new Date(dateString);
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (Number.isNaN(date.getTime())) {
+      return 'Date unavailable';
+    }
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   };
 
   const isRequestProcessed = (request: HourRequest) => {
@@ -565,7 +573,7 @@ export default function AdminHourManagementScreen() {
 
                   {/* Date */}
                   <p className="text-slate-400 text-sm mb-4">
-                    Submitted: {formatDate(request.created_at)}
+                    Submitted: {formatDate(request.submitted_at)}
                   </p>
 
                   {/* Action Buttons */}
