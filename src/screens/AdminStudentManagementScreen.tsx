@@ -43,6 +43,7 @@ export default function AdminStudentManagementScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [tshirtSizeFilter, setTshirtSizeFilter] = useState<string>('all');
   const [tshirtSizeSummary, setTshirtSizeSummary] = useState<{[key: string]: number}>({});
+  const MAX_MANUAL_ADJUSTMENT = Number.POSITIVE_INFINITY;
 
   useEffect(() => {
     if (!isAdmin) {
@@ -78,6 +79,26 @@ export default function AdminStudentManagementScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAdjustmentStep = (delta: number) => {
+    setAdjustmentData(prev => {
+      const nextRaw = Number((prev.adjustment + delta).toFixed(1));
+      if (!Number.isFinite(nextRaw)) {
+        return prev;
+      }
+
+      const minAllowed = -prev.current_hours;
+      const clampedValue = Math.min(
+        Math.max(nextRaw, minAllowed),
+        MAX_MANUAL_ADJUSTMENT
+      );
+
+      return {
+        ...prev,
+        adjustment: clampedValue
+      };
+    });
   };
 
   const filterStudents = () => {
@@ -524,7 +545,7 @@ export default function AdminStudentManagementScreen() {
               <div className="flex items-center justify-center gap-4 bg-gray-50 rounded-lg p-4">
                 {/* Decrease Button */}
                 <motion.button
-                  onClick={() => setAdjustmentData(prev => ({ ...prev, adjustment: Math.max(-10, prev.adjustment - 0.5) }))}
+                  onClick={() => handleAdjustmentStep(-0.5)}
                   className="w-12 h-12 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xl font-bold transition-colors"
                   whileHover={{ 
                     scale: 1.15,
@@ -610,7 +631,7 @@ export default function AdminStudentManagementScreen() {
 
                 {/* Increase Button */}
                 <motion.button
-                  onClick={() => setAdjustmentData(prev => ({ ...prev, adjustment: Math.min(10, prev.adjustment + 0.5) }))}
+                  onClick={() => handleAdjustmentStep(0.5)}
                   className="w-12 h-12 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-xl font-bold transition-colors"
                   whileHover={{ 
                     scale: 1.15,
