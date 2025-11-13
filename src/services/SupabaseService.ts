@@ -1,5 +1,12 @@
 import { supabase } from './supabaseClient';
 
+type ProofPhotoStorageInfo = {
+  bucket: string;
+  path: string;
+  fileName: string;
+  mimeType: string;
+};
+
 class SupabaseService {
   
   /**
@@ -768,12 +775,45 @@ class SupabaseService {
         submitted_at: new Date().toISOString()
       };
       
-      // Store image data in the description field for admin viewing
-      if (requestData.imageData) {
-        insertData.description = `${requestData.description}\n\n[PHOTO_DATA:${requestData.imageData}]`;
+      const descriptionParts: string[] = [];
+
+      if (requestData.description) {
+        descriptionParts.push(requestData.description.trim());
       }
+
+      if (requestData.imageData) {
+        descriptionParts.push(`[PHOTO_DATA:${requestData.imageData}]`);
+
+        try {
+          const { mimeType, base64Data } = this.parsePhotoToken(requestData.imageData);
+          const studentIdentifier = this.sanitizeForFilename(requestData.studentSNumber || requestData.studentName || 'student');
+          const eventIdentifier = this.sanitizeForFilename(requestData.eventName || 'event');
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const extension = this.getExtensionFromMimeType(mimeType);
+          const baseFileName = [studentIdentifier, eventIdentifier, timestamp].filter(Boolean).join('_') || `proof_${timestamp}`;
+          const storageFileName = `${baseFileName}.${extension}`;
+
+          const storageInfo = await this.uploadProofPhotoToStorage({
+            base64Data,
+            mimeType,
+            studentIdentifier,
+            eventIdentifier,
+            fileName: storageFileName
+          });
+
+          descriptionParts.push(this.createStorageToken(storageInfo));
+          insertData.image_name = storageInfo.fileName;
+        } catch (storageError) {
+          console.error('❌ Failed to upload proof photo to Supabase storage:', storageError);
+          if (requestData.imageName && !insertData.image_name) {
+            insertData.image_name = requestData.imageName;
+          }
+        }
+      }
+
+      insertData.description = descriptionParts.filter(Boolean).join('\n\n');
       
-      if (requestData.imageName) {
+      if (!insertData.image_name && requestData.imageName) {
         insertData.image_name = requestData.imageName;
       }
       
@@ -964,12 +1004,158 @@ class SupabaseService {
           });
           
           console.log('✅ Student hours updated successfully');
+
+          await this.uploadProofPhotoToDrive({
+            ...request,
+            student_s_number: studentSNumber
+          });
         }
       }
 
       return request;
     } catch (error) {
       console.error('❌ Error updating hour request status:', error);
+      throw error;
+    }
+  }
+
+  static async getProofPhotoLibrary(options: {
+    status?: string;
+    searchTerm?: string;
+    startDate?: string;
+    endDate?: string;
+  } = {}): Promise<Array<{
+    id: string;
+    studentName?: string | null;
+    studentNumber?: string | null;
+    eventName?: string | null;
+    eventDate?: string | null;
+    status?: string | null;
+    submittedAt?: string | null;
+    reviewedAt?: string | null;
+    hoursRequested?: number | null;
+    fileName: string;
+    mimeType: string;
+    base64Data: string;
+    dataUrl: string;
+  }>> {
+    try {
+      const { status, searchTerm, startDate, endDate } = options;
+      const { data, error } = await supabase
+        .from('hour_requests')
+        .select(
+          `
+            id,
+            student_name,
+            student_s_number,
+            event_name,
+            event_date,
+            description,
+            image_name,
+            status,
+            hours_requested,
+            submitted_at,
+            reviewed_at
+          `
+        )
+        .order('submitted_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error fetching proof photo library:', error);
+        throw error;
+      }
+
+      const results = (data || [])
+        .filter((request) => {
+          if (!request?.description) {
+            return false;
+          }
+
+          const hasPhoto = /\[PHOTO_DATA:(.*?)\]/.test(request.description) || /data:image\/[^;]+;base64,/.test(request.description);
+          if (!hasPhoto) {
+            return false;
+          }
+
+          if (status && request.status !== status) {
+            return false;
+          }
+
+          if (startDate && request.submitted_at && new Date(request.submitted_at) < new Date(startDate)) {
+            return false;
+          }
+
+          if (endDate && request.submitted_at && new Date(request.submitted_at) > new Date(endDate)) {
+            return false;
+          }
+
+          if (searchTerm) {
+            const normalizedSearch = searchTerm.trim().toLowerCase();
+            const fieldsToSearch = [
+              request.student_name,
+              request.student_s_number,
+              request.event_name,
+              request.event_date,
+              request.status
+            ]
+              .filter(Boolean)
+              .map((value) => value.toString().toLowerCase());
+
+            const matchesSearch = fieldsToSearch.some((value) => value.includes(normalizedSearch));
+
+            if (!matchesSearch) {
+              return false;
+            }
+          }
+
+          return true;
+        })
+        .map((request) => {
+          const photoToken = this.extractPhotoToken(request.description);
+          if (!photoToken) {
+            return null;
+          }
+
+          const { mimeType, base64Data } = this.parsePhotoToken(photoToken);
+          if (!base64Data) {
+            return null;
+          }
+
+          const extension = mimeType.split('/')[1] || 'jpg';
+          const fallbackFileNameParts = [
+            this.sanitizeForFilename(request.student_name || request.student_s_number || 'student'),
+            this.sanitizeForFilename(request.event_name || 'event'),
+            request.id
+          ].filter(Boolean);
+
+          const fallbackBaseName = fallbackFileNameParts.join('_') || 'proof';
+          const fallbackFileName = `${fallbackBaseName}.${extension}`;
+          const fileName = request.image_name || fallbackFileName;
+
+          const dataUrl = base64Data.startsWith('data:')
+            ? base64Data
+            : `data:${mimeType};base64,${base64Data}`;
+
+          return {
+            id: request.id,
+            studentName: request.student_name,
+            studentNumber: request.student_s_number,
+            eventName: request.event_name,
+            eventDate: request.event_date,
+            status: request.status,
+            submittedAt: request.submitted_at,
+            reviewedAt: request.reviewed_at,
+            hoursRequested: request.hours_requested,
+            fileName,
+            mimeType,
+            base64Data,
+            dataUrl
+          };
+        })
+        .filter(Boolean);
+
+      return results;
+    } catch (error) {
+      console.error('❌ Error building proof photo library:', error);
       throw error;
     }
   }
@@ -1235,6 +1421,203 @@ class SupabaseService {
     } catch (error: any) {
       console.error('❌ Error updating student hours:', error);
       throw new Error(`Failed to update student hours: ${error.message}`);
+    }
+  }
+
+  private static extractPhotoToken(description?: string | null) {
+    if (!description) return null;
+
+    const dataUrlMatch = description.match(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/);
+    if (dataUrlMatch && dataUrlMatch[0]) {
+      return dataUrlMatch[0];
+    }
+
+    const embeddedMatch = description.match(/\[PHOTO_DATA:(.*?)\]/);
+    if (embeddedMatch && embeddedMatch[1]) {
+      return embeddedMatch[1];
+    }
+
+    return null;
+  }
+
+  private static parsePhotoToken(rawToken: string) {
+    const dataUrlRegex = /^data:([^;]+);base64,(.+)$/;
+    const match = rawToken.match(dataUrlRegex);
+
+    if (match && match[1] && match[2]) {
+      return {
+        mimeType: match[1],
+        base64Data: match[2]
+      };
+    }
+
+    return {
+      mimeType: 'image/jpeg',
+      base64Data: rawToken
+    };
+  }
+
+  private static getProofPhotoBucket() {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_PROOF_PHOTO_BUCKET) {
+      return import.meta.env.VITE_PROOF_PHOTO_BUCKET as string;
+    }
+    return 'proof-photos';
+  }
+
+  private static createStorageToken(info: ProofPhotoStorageInfo) {
+    const parts = [
+      info.bucket ?? '',
+      info.path ?? '',
+      info.mimeType ?? '',
+      info.fileName ?? ''
+    ].map((part) => encodeURIComponent(part));
+
+    return `[PHOTO_STORAGE:${parts.join('|')}]`;
+  }
+
+  private static base64ToUint8Array(base64: string) {
+    const normalized = (base64 || '').replace(/\s+/g, '');
+
+    if (typeof globalThis.atob === 'function') {
+      const binaryString = globalThis.atob(normalized);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      return bytes;
+    }
+
+    if (typeof (globalThis as any).Buffer !== 'undefined') {
+      return Uint8Array.from((globalThis as any).Buffer.from(normalized, 'base64'));
+    }
+
+    throw new Error('Base64 decoding is not supported in this environment.');
+  }
+
+  private static getExtensionFromMimeType(mimeType: string) {
+    if (!mimeType) {
+      return 'jpg';
+    }
+    const subtype = mimeType.split('/')[1] || 'jpeg';
+    return subtype.split('+')[0];
+  }
+
+  private static async uploadProofPhotoToStorage(params: {
+    base64Data: string;
+    mimeType: string;
+    studentIdentifier: string;
+    eventIdentifier: string;
+    fileName: string;
+  }): Promise<ProofPhotoStorageInfo> {
+    const bucket = this.getProofPhotoBucket();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const randomSuffix = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? (crypto.randomUUID as () => string)()
+      : Math.random().toString(36).slice(2);
+
+    const safeSegments = [
+      params.studentIdentifier || 'student',
+      params.eventIdentifier || 'event',
+      timestamp,
+      randomSuffix
+    ].map((segment) => segment.replace(/[^a-zA-Z0-9-_]+/g, '_'));
+
+    const pathSegments = safeSegments.filter(Boolean);
+    const finalFileName = params.fileName || `${safeSegments[0] || 'proof'}_${timestamp}.${this.getExtensionFromMimeType(params.mimeType)}`;
+    const storagePath = `${pathSegments.join('/')}/${finalFileName}`.replace(/\/+/g, '/');
+
+    const bytes = this.base64ToUint8Array(params.base64Data);
+    const blob = new Blob([bytes], { type: params.mimeType || 'image/jpeg' });
+
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(storagePath, blob, {
+        contentType: params.mimeType || 'image/jpeg',
+        upsert: true
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return {
+      bucket,
+      path: storagePath,
+      fileName: finalFileName,
+      mimeType: params.mimeType || 'image/jpeg'
+    };
+  }
+
+  private static sanitizeForFilename(value: string) {
+    return value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 80);
+  }
+
+  private static getProofUploadEndpoint() {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_UPLOAD_PROOF_ENDPOINT) {
+      return import.meta.env.VITE_UPLOAD_PROOF_ENDPOINT as string;
+    }
+    return '/.netlify/functions/upload-proof';
+  }
+
+  private static async uploadProofPhotoToDrive(request: any) {
+    try {
+      const photoToken = this.extractPhotoToken(request?.description);
+      if (!photoToken) {
+        console.log('ℹ️ No proof photo found for request', request?.id);
+        return;
+      }
+
+      const { mimeType, base64Data } = this.parsePhotoToken(photoToken);
+      if (!base64Data) {
+        console.warn('⚠️ Proof photo data missing after parsing for request', request?.id);
+        return;
+      }
+
+      const studentIdentifier = this.sanitizeForFilename(request?.student_s_number || request?.student_name || 'student');
+      const eventIdentifier = this.sanitizeForFilename(request?.event_name || 'event');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+      const fileNameParts = [studentIdentifier, eventIdentifier, timestamp].filter(Boolean);
+      const fileNameBase = fileNameParts.join('_') || `proof_${timestamp}`;
+      const extension = mimeType.split('/')[1] || 'jpg';
+      const fileName = `${fileNameBase}.${extension}`;
+
+      const endpoint = this.getProofUploadEndpoint();
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          base64Data,
+          mimeType,
+          fileName,
+          metadata: {
+            requestId: request?.id,
+            studentName: request?.student_name,
+            studentNumber: request?.student_s_number,
+            eventName: request?.event_name,
+            eventDate: request?.event_date,
+            uploadedAt: new Date().toISOString()
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Failed to upload proof photo to Drive:', errorText);
+      } else {
+        const result = await response.json();
+        console.log('✅ Proof photo uploaded to Drive:', result);
+      }
+    } catch (error) {
+      console.error('❌ Error uploading proof photo to Drive:', error);
     }
   }
 }

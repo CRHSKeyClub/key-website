@@ -276,6 +276,7 @@ export default function AdminHourManagementScreen() {
     return description
       .replace(/Photo: [^|]+/, '')
       .replace(/\[PHOTO_DATA:.*?\]/, '')
+      .replace(/\[PHOTO_STORAGE:.*?\]/, '')
       .replace(/data:image\/[^;]+;base64,[^|]+/, '')
       .trim();
   };

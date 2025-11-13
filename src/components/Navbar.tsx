@@ -214,6 +214,18 @@ export default function Navbar({ children }: NavbarProps) {
       color: 'text-orange-400'
     },
     {
+      name: 'Photo Library',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h2l2-2h6l2 2h2a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l5-5c.928-.893 2.072-.893 3 0l6 6" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 14l1-1c.928-.893 2.072-.893 3 0l2 2" />
+        </svg>
+      ),
+      path: '/admin-photo-library',
+      color: 'text-emerald-400'
+    },
+    {
       name: 'Meeting Management',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

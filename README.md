@@ -50,6 +50,8 @@ A modern web application for managing Key Club events, hours, announcements, and
    ```env
    EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   # Optional: override the proof upload endpoint if you are not using Netlify dev server
+   # VITE_UPLOAD_PROOF_ENDPOINT=http://localhost:8888/.netlify/functions/upload-proof
    ```
 
    Get these values from your [Supabase Dashboard](https://app.supabase.com) → Project Settings → API
@@ -158,6 +160,31 @@ Custom classes are defined in `src/styles/index.css`.
 - Password: `password`
 
 **⚠️ Important**: Change admin credentials in production!
+
+## 📂 Google Drive Proof Uploads
+
+Hour request proof photos are automatically pushed to the Key Club Google Drive when an admin approves a request. This flow is powered by a Netlify Function and a Google service account with Drive access.
+
+### Required Netlify environment variables
+
+Set the following in your Netlify site settings (Site configuration → Environment variables):
+
+| Variable | Description |
+| --- | --- |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | Service account email with Drive access |
+| `GOOGLE_SERVICE_ACCOUNT_KEY` | Private key for the service account (JSON `private_key` value) |
+| `GOOGLE_DRIVE_FOLDER_ID` | Folder ID where proof photos should be stored |
+
+> ⚠️ When pasting the private key, keep it in one line and Netlify will handle the `\n` characters.
+
+### Local development
+
+If you run the app with `netlify dev`, the serverless function is available at `/.netlify/functions/upload-proof`. If you prefer running `npm run dev`, set `VITE_UPLOAD_PROOF_ENDPOINT` to a fully-qualified URL pointing at the Netlify dev server so the browser can reach the function.
+
+### Error handling
+
+- If the Google Drive upload fails, the admin approval still succeeds and a warning is logged in the browser console.
+- The Netlify Function returns the Drive file ID and share link in case you need to extend the workflow later.
 
 ## 📊 Database Schema
 
