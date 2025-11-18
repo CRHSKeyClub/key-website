@@ -51,25 +51,69 @@ export default function AdminHourManagementScreen() {
     request: null as HourRequest | null
   });
 
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     loadData();
   }, []);
+
+  // Debounced search effect - only trigger when searchQuery changes (not on initial mount)
+  useEffect(() => {
+    // Skip on initial mount (when searchQuery is empty and we just loaded)
+    if (searchQuery === '' && allRequests.length === 0) {
+      return;
+    }
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      loadData();
+    }, 500); // 500ms debounce
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
+
+  // Reload when filter changes (but not on initial mount)
+  useEffect(() => {
+    if (allRequests.length > 0) {
+      loadData();
+    }
+  }, [filter]);
 
   const loadData = async () => {
     try {
       setLoading(true);
       console.log('🔄 Loading hour requests from database...');
       
-      const requests = await SupabaseService.getAllHourRequests();
+      let requests: HourRequest[];
+      
+      // If there's a search query, use the search function
+      if (searchQuery.trim()) {
+        console.log('🔍 Searching hour requests with query:', searchQuery);
+        requests = await SupabaseService.searchHourRequests(searchQuery.trim(), filter === 'all' ? 'pending' : filter, 100);
+      } else {
+        // Otherwise, get all pending requests (or filtered by status)
+        if (filter === 'all') {
+          requests = await SupabaseService.getAllHourRequests();
+        } else {
+          requests = await SupabaseService.searchHourRequests('', filter, 100);
+        }
+      }
       
       console.log('🔍 DEBUG: Loaded requests from database:', requests.length);
       
       setAllRequests(requests);
-      applyFilters(requests, filter, searchQuery);
+      setFilteredRequests(requests); // Search results are already filtered
       setLastLoadTime(new Date());
       
       console.log('✅ Data loading completed successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error loading requests:', error);
       showModal({
         title: 'Error',
@@ -92,33 +136,9 @@ export default function AdminHourManagementScreen() {
     setRefreshing(false);
   };
 
-  const applyFilters = (requests: HourRequest[], filterType: string, search: string) => {
-    let filtered = [...requests];
-
-    if (filterType !== 'all') {
-      filtered = filtered.filter(request => {
-        if (filterType === 'pending') return request.status === 'pending';
-        if (filterType === 'approved') return request.status === 'approved';
-        if (filterType === 'rejected') return request.status === 'rejected';
-        return true;
-      });
-    }
-
-    if (search.trim()) {
-      const searchLower = search.toLowerCase();
-      filtered = filtered.filter(request => 
-        request.student_name?.toLowerCase().includes(searchLower) ||
-        request.event_name?.toLowerCase().includes(searchLower) ||
-        request.description?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    setFilteredRequests(filtered);
-  };
-
   const handleFilterChange = (newFilter: string) => {
     setFilter(newFilter);
-    applyFilters(allRequests, newFilter, searchQuery);
+    // useEffect will trigger loadData when filter changes
   };
 
   const handleReviewRequest = (request: HourRequest, action: 'approve' | 'reject') => {
@@ -139,6 +159,13 @@ export default function AdminHourManagementScreen() {
     if (processingRequests.has(requestId)) return;
     setProcessingRequests(prev => new Set([...prev, requestId]));
 
+    // Close modal immediately for better UX
+    setReviewModal({ visible: false, request: null, action: null, notes: '' });
+
+    // Optimistically remove the request from the list immediately
+    setAllRequests(prev => prev.filter(r => r.id !== requestId));
+    setFilteredRequests(prev => prev.filter(r => r.id !== requestId));
+
     try {
       const result = await SupabaseService.updateHourRequestStatus(
         requestId,
@@ -149,6 +176,9 @@ export default function AdminHourManagementScreen() {
       );
 
       if (result) {
+        // Reload data to get a new pending request to replace the approved one
+        await loadData();
+        
         showModal({
           title: 'Success',
           message: `Request ${action === 'approve' ? 'approved' : 'rejected'} successfully!`,
@@ -159,9 +189,9 @@ export default function AdminHourManagementScreen() {
           icon: 'checkmark-circle',
           iconColor: '#4CAF50'
         });
-
-        await loadData();
       } else {
+        // If update failed, reload to restore the request
+        await loadData();
         showModal({
           title: 'Error',
           message: 'Failed to update request status',
@@ -174,6 +204,8 @@ export default function AdminHourManagementScreen() {
         });
       }
     } catch (error) {
+      // If error occurred, reload to restore the request
+      await loadData();
       showModal({
         title: 'Error',
         message: 'An error occurred while processing the request',
@@ -190,7 +222,6 @@ export default function AdminHourManagementScreen() {
         newSet.delete(requestId);
         return newSet;
       });
-      setReviewModal({ visible: false, request: null, action: null, notes: '' });
     }
   };
 
@@ -421,7 +452,7 @@ export default function AdminHourManagementScreen() {
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              applyFilters(allRequests, filter, e.target.value);
+              // Search is debounced and will trigger loadData via useEffect
             }}
             className="flex-1 bg-transparent text-white placeholder-slate-400 outline-none"
           />

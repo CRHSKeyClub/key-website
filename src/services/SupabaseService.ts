@@ -930,6 +930,40 @@ class SupabaseService {
     }
   }
 
+  static async searchHourRequests(searchTerm: string, status: string = 'pending', limit: number = 100) {
+    try {
+      let query = supabase
+        .from('hour_requests')
+        .select('*');
+
+      // Filter by status if specified
+      if (status !== 'all') {
+        query = query.eq('status', status);
+      }
+
+      // Apply search - Supabase text search using ilike (case-insensitive)
+      if (searchTerm.trim()) {
+        const searchPattern = `%${searchTerm.trim()}%`;
+        // Use .or() with proper Supabase PostgREST syntax
+        // Format: column.operator.value,column2.operator.value
+        query = query.or(`student_name.ilike.${searchPattern},student_s_number.ilike.${searchPattern},event_name.ilike.${searchPattern},description.ilike.${searchPattern}`);
+      }
+
+      // Order and limit
+      query = query
+        .order('submitted_at', { ascending: true })
+        .limit(limit);
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+      return data || [];
+    } catch (error) {
+      console.error('Error searching hour requests:', error);
+      throw error;
+    }
+  }
+
   static async deleteHourRequest(requestId: string) {
     try {
       console.log('🗑️ Deleting hour request:', requestId);
