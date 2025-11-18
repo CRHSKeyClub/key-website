@@ -918,7 +918,9 @@ class SupabaseService {
       const { data, error } = await supabase
         .from('hour_requests')
         .select('*')
-        .order('submitted_at', { ascending: false });
+        .eq('status', 'pending')
+        .order('submitted_at', { ascending: true })
+        .limit(100);
 
       if (error) throw error;
       return data || [];
