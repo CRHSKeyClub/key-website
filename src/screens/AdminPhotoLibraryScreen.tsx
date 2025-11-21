@@ -53,29 +53,66 @@ const AdminPhotoLibraryScreen = () => {
     });
   };
 
+  const getEventGroupKey = (rawName?: string | null) => {
+    const fallback = 'Unknown Event';
+    if (!rawName) return fallback;
+
+    // Remove anything in parentheses and trim
+    let name = rawName.replace(/\s*\(.*?\)\s*/g, ' ').trim();
+    if (!name) return fallback;
+
+    const lower = name.toLowerCase();
+
+    // Custom rule: group all Chick-fil-A social variants together
+    if (
+      lower.includes('chick') &&
+      (lower.includes('fil') || lower.includes('fila') || lower.includes('fil-a') || lower.includes('fil a'))
+    ) {
+      return 'Chick Fil A Social';
+    }
+
+    const parts = name
+      .split(/\s+/)
+      // Drop pure numbers or very short tokens
+      .filter((p) => !/^\d+$/.test(p) && p.length > 2);
+
+    if (parts.length === 0) {
+      return fallback;
+    }
+
+    // Use first 2 "meaningful" words as the group key if available
+    if (parts.length >= 2) {
+      return `${parts[0]} ${parts[1]}`;
+    }
+
+    return parts[0];
+  };
+
   const buildSections = (list: PhotoLibraryItem[]) => {
     const sections: {
-      eventName: string;
+      groupName: string;
       groups: {
         dateLabel: string;
         items: PhotoLibraryItem[];
       }[];
     }[] = [];
 
-    const byEvent = new Map<string, PhotoLibraryItem[]>();
+    const byGroup = new Map<string, PhotoLibraryItem[]>();
 
     list.forEach((photo) => {
-      const key = (photo.eventName || 'Unknown Event').trim() || 'Unknown Event';
-      if (!byEvent.has(key)) {
-        byEvent.set(key, []);
+      const key = getEventGroupKey(photo.eventName);
+      if (!byGroup.has(key)) {
+        byGroup.set(key, []);
       }
-      byEvent.get(key)!.push(photo);
+      byGroup.get(key)!.push(photo);
     });
 
-    const sortedEventNames = Array.from(byEvent.keys()).sort((a, b) => a.localeCompare(b));
+    const sortedGroupNames = Array.from(byGroup.keys()).sort((a, b) =>
+      a.localeCompare(b)
+    );
 
-    for (const eventName of sortedEventNames) {
-      const items = byEvent.get(eventName) || [];
+    for (const groupName of sortedGroupNames) {
+      const items = byGroup.get(groupName) || [];
       const groupsByDate = new Map<string, PhotoLibraryItem[]>();
 
       items.forEach((photo) => {
@@ -105,7 +142,7 @@ const AdminPhotoLibraryScreen = () => {
       }));
 
       sections.push({
-        eventName,
+        groupName,
         groups: groupsArray
       });
     }
@@ -194,12 +231,12 @@ const AdminPhotoLibraryScreen = () => {
           </div>
           {buildSections((sortEnabled ? sortPhotos(photos) : photos).slice(0, 200)).map(
             (section) => (
-              <div key={section.eventName} className="mb-6">
+              <div key={section.groupName} className="mb-6">
                 <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-200 bg-black">
-                  {section.eventName}
+                  {section.groupName}
                 </div>
                 {section.groups.map((group) => (
-                  <div key={`${section.eventName}-${group.dateLabel}`} className="mb-4">
+                  <div key={`${section.groupName}-${group.dateLabel}`} className="mb-4">
                     <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-gray-400 bg-black/90 border-t border-b border-gray-800">
                       {group.dateLabel}
                     </div>
