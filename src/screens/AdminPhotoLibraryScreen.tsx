@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Card } from 'react-bits';
 import SupabaseService from '../services/SupabaseService';
 
 type PhotoLibraryItem = {
@@ -13,6 +12,37 @@ type PhotoLibraryItem = {
   mimeType: string;
   base64Data: string;
   dataUrl: string;
+};
+
+const PhotoCard = ({ photo }: { photo: PhotoLibraryItem }) => {
+  return (
+    <div className="group relative overflow-hidden cursor-pointer rounded-xl border border-white/5 bg-slate-900/40 shadow-sm hover:shadow-md hover:border-white/20 transition-all duration-150">
+      <img
+        src={photo.dataUrl}
+        alt={photo.fileName}
+        className="w-full h-32 sm:h-36 md:h-40 object-cover block"
+        loading="lazy"
+      />
+      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex items-end">
+        <div className="w-full p-2 sm:p-3 text-[10px] sm:text-xs text-white space-y-1">
+          <div className="font-semibold truncate">
+            {photo.studentName || 'Unknown Student'}
+            {photo.studentNumber ? ` • ${photo.studentNumber}` : ''}
+          </div>
+          {photo.eventName && (
+            <div className="uppercase tracking-wide text-[9px] text-gray-300 truncate">
+              {photo.eventName}
+            </div>
+          )}
+          {photo.description && (
+            <div className="text-[9px] sm:text-[10px] text-gray-200 line-clamp-3">
+              {photo.description}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const AdminPhotoLibraryScreen = () => {
@@ -118,35 +148,7 @@ const AdminPhotoLibraryScreen = () => {
               </div>
               <div className="grid gap-px bg-black grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
                 {section.items.map((photo) => (
-                  <Card
-                    key={photo.id}
-                    className="bg-black group relative overflow-hidden cursor-pointer rounded-none"
-                  >
-                    <img
-                      src={photo.dataUrl}
-                      alt={photo.fileName}
-                      className="w-full h-32 sm:h-36 md:h-40 object-cover block"
-                      loading="lazy"
-                    />
-                    <div className="pointer-events-none absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-end">
-                      <div className="w-full p-2 sm:p-3 text-[10px] sm:text-xs text-white space-y-1 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
-                        <div className="font-semibold truncate">
-                          {photo.studentName || 'Unknown Student'}
-                          {photo.studentNumber ? ` • ${photo.studentNumber}` : ''}
-                        </div>
-                        {photo.eventName && (
-                          <div className="uppercase tracking-wide text-[9px] text-gray-300 truncate">
-                            {photo.eventName}
-                          </div>
-                        )}
-                        {photo.description && (
-                          <div className="text-[9px] sm:text-[10px] text-gray-200 line-clamp-3">
-                            {photo.description}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Card>
+                  <PhotoCard key={photo.id} photo={photo} />
                 ))}
               </div>
             </div>
