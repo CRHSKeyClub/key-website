@@ -14,9 +14,18 @@ type PhotoLibraryItem = {
   dataUrl: string;
 };
 
-const PhotoCard = ({ photo }: { photo: PhotoLibraryItem }) => {
+const PhotoCard = ({
+  photo,
+  onClick
+}: {
+  photo: PhotoLibraryItem;
+  onClick?: () => void;
+}) => {
   return (
-    <div className="group relative overflow-hidden cursor-pointer rounded-xl border border-white/5 bg-slate-900/40 shadow-sm hover:shadow-md hover:border-white/20 transition-all duration-150">
+    <div
+      className="group relative overflow-hidden cursor-pointer rounded-xl border border-white/5 bg-slate-900/40 shadow-sm hover:shadow-md hover:border-white/20 transition-all duration-150"
+      onClick={onClick}
+    >
       <img
         src={photo.dataUrl}
         alt={photo.fileName}
@@ -49,6 +58,7 @@ const AdminPhotoLibraryScreen = () => {
   const [photos, setPhotos] = useState<PhotoLibraryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activePhoto, setActivePhoto] = useState<PhotoLibraryItem | null>(null);
 
   useEffect(() => {
     loadPhotos();
@@ -66,13 +76,81 @@ const AdminPhotoLibraryScreen = () => {
         const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
         return bTime - aTime;
       });
-      setPhotos(sorted);
+
+      const filtered = await filterPhotosWithFaces(sorted);
+      setPhotos(filtered);
     } catch (err: any) {
       console.error('Failed to load proof photo library:', err);
       setError(err?.message || 'Failed to load proof photo library. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Stricter face filter: require at least one reasonably large face
+  const filterPhotosWithFaces = async (allPhotos: PhotoLibraryItem[]) => {
+    const FaceDetectorCtor = (window as any).FaceDetector;
+
+    if (!FaceDetectorCtor) {
+      console.warn('FaceDetector API not available; showing all photos.');
+      return allPhotos;
+    }
+
+    try {
+      const detector = new FaceDetectorCtor({
+        fastMode: true,
+        maxDetectedFaces: 3
+      });
+
+      const result: PhotoLibraryItem[] = [];
+      for (const photo of allPhotos) {
+        const hasStrongFace = await detectFaceInImage(detector, photo.dataUrl);
+        if (hasStrongFace) {
+          result.push(photo);
+        }
+      }
+      return result;
+    } catch (err) {
+      console.error('Face detection failed; falling back to all photos.', err);
+      return allPhotos;
+    }
+  };
+
+  const detectFaceInImage = (detector: any, src: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const faces = await detector.detect(img);
+          if (!Array.isArray(faces) || faces.length === 0) {
+            resolve(false);
+            return;
+          }
+
+          const imgArea = img.naturalWidth * img.naturalHeight || 1;
+          const minAreaRatio = 0.025; // at least 2.5% of the image area
+          const minSize = 40; // minimum width/height in pixels
+
+          const passes = faces.some((face: any) => {
+            const box = face.boundingBox || face.boundingClientRect || face.box;
+            if (!box) return false;
+
+            const w = box.width ?? 0;
+            const h = box.height ?? 0;
+            if (w < minSize || h < minSize) return false;
+
+            const areaRatio = (w * h) / imgArea;
+            return areaRatio >= minAreaRatio;
+          });
+
+          resolve(passes);
+        } catch {
+          resolve(false);
+        }
+      };
+      img.onerror = () => resolve(false);
+      img.src = src;
+    });
   };
 
   const buildDateSections = (list: PhotoLibraryItem[]) => {
@@ -148,11 +226,62 @@ const AdminPhotoLibraryScreen = () => {
               </div>
               <div className="grid gap-px bg-black grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
                 {section.items.map((photo) => (
-                  <PhotoCard key={photo.id} photo={photo} />
+                  <PhotoCard
+                    key={photo.id}
+                    photo={photo}
+                    onClick={() => setActivePhoto(photo)}
+                  />
                 ))}
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {activePhoto && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" onClick={() => setActivePhoto(null)}>
+          <div className="flex items-start justify-end p-4">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setActivePhoto(null);
+              }}
+              className="text-white/80 hover:text-white rounded-full p-2 bg-white/10 hover:bg-white/20 transition-colors"
+              aria-label="Close"
+            >
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeWidth={2} d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center px-4 pb-4" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={activePhoto.dataUrl}
+              alt={activePhoto.fileName}
+              className="max-h-[70vh] max-w-full object-contain rounded-xl shadow-2xl"
+            />
+          </div>
+
+          <div
+            className="border-t border-white/10 bg-black/95 px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-white space-y-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="font-semibold">
+              {activePhoto.studentName || 'Unknown Student'}
+              {activePhoto.studentNumber ? ` • ${activePhoto.studentNumber}` : ''}
+            </div>
+            {activePhoto.eventName && (
+              <div className="uppercase tracking-wide text-[11px] text-gray-300">
+                {activePhoto.eventName}
+              </div>
+            )}
+            {activePhoto.description && (
+              <div className="text-gray-200 whitespace-pre-wrap">
+                {activePhoto.description}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
