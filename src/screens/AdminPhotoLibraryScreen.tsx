@@ -53,40 +53,52 @@ const AdminPhotoLibraryScreen = () => {
     });
   };
 
-  const getEventGroupKey = (rawName?: string | null) => {
+  const normalizeEventName = (rawName?: string | null) => {
     const fallback = 'Unknown Event';
-    if (!rawName) return fallback;
-
-    // Remove anything in parentheses and trim
-    let name = rawName.replace(/\s*\(.*?\)\s*/g, ' ').trim();
-    if (!name) return fallback;
-
-    const lower = name.toLowerCase();
-
-    // Custom rule: group all Chick-fil-A social variants together
-    if (
-      lower.includes('chick') &&
-      (lower.includes('fil') || lower.includes('fila') || lower.includes('fil-a') || lower.includes('fil a'))
-    ) {
-      return 'Chick Fil A Social';
+    if (!rawName) {
+      return { displayName: fallback, tokens: [] as string[] };
     }
 
-    const parts = name
+    // Remove anything in parentheses, normalize separators, and trim
+    const cleaned = rawName
+      .replace(/\s*\(.*?\)\s*/g, ' ')
+      .replace(/[-_]+/g, ' ')
+      .trim();
+
+    if (!cleaned) {
+      return { displayName: fallback, tokens: [] as string[] };
+    }
+
+    const tokens = cleaned
+      .toLowerCase()
       .split(/\s+/)
-      // Drop pure numbers or very short tokens
-      .filter((p) => !/^\d+$/.test(p) && p.length > 2);
+      .map((t) => t.replace(/[^a-z0-9]/gi, ''))
+      .filter((t) => t.length > 2 && !/^\d+$/.test(t));
 
-    if (parts.length === 0) {
-      return fallback;
-    }
-
-    // Use first 2 "meaningful" words as the group key if available
-    if (parts.length >= 2) {
-      return `${parts[0]} ${parts[1]}`;
-    }
-
-    return parts[0];
+    return {
+      displayName: cleaned,
+      tokens
+    };
   };
+
+  const jaccardSimilarity = (a: string[], b: string[]) => {
+    if (!a.length || !b.length) return 0;
+    const setA = new Set(a);
+    const setB = new Set(b);
+    let intersection = 0;
+    setA.forEach((token) => {
+      if (setB.has(token)) intersection++;
+    });
+    const union = setA.size + setB.size - intersection;
+    return union === 0 ? 0 : intersection / union;
+  };
+
+  const toTitleCase = (value: string) =>
+    value
+      .toLowerCase()
+      .split(' ')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
 
   const buildSections = (list: PhotoLibraryItem[]) => {
     const sections: {
@@ -97,19 +109,73 @@ const AdminPhotoLibraryScreen = () => {
       }[];
     }[] = [];
 
+    // Step 1: collect unique event names and normalize them
+    const eventNameMap = new Map<string, { displayName: string; tokens: string[] }>();
+    list.forEach((photo) => {
+      const raw = (photo.eventName || 'Unknown Event').trim() || 'Unknown Event';
+      if (!eventNameMap.has(raw)) {
+        eventNameMap.set(raw, normalizeEventName(raw));
+      }
+    });
+
+    const uniqueEvents = Array.from(eventNameMap.entries());
+
+    // Step 2: cluster similar events based on shared tokens / Jaccard similarity
+    const clusterMap = new Map<string, string>(); // rawEventName -> clusterId
+    const clusters: Record<
+      string,
+      {
+        label: string;
+        members: string[];
+      }
+    > = {};
+
+    const similarityThreshold = 0.5;
+
+    for (let i = 0; i < uniqueEvents.length; i++) {
+      const [rawA, normA] = uniqueEvents[i];
+      if (clusterMap.has(rawA)) continue;
+
+      const clusterId = rawA;
+      clusterMap.set(rawA, clusterId);
+      clusters[clusterId] = {
+        label: normA.displayName,
+        members: [rawA]
+      };
+
+      for (let j = i + 1; j < uniqueEvents.length; j++) {
+        const [rawB, normB] = uniqueEvents[j];
+        if (clusterMap.has(rawB)) continue;
+
+        const sharedTokens = normA.tokens.filter((t) => normB.tokens.includes(t));
+        const hasStrongOverlap =
+          sharedTokens.length >= 2 ||
+          jaccardSimilarity(normA.tokens, normB.tokens) >= similarityThreshold;
+
+        if (hasStrongOverlap) {
+          clusterMap.set(rawB, clusterId);
+          clusters[clusterId].members.push(rawB);
+        }
+      }
+    }
+
+    // Step 3: bucket photos by cluster label
     const byGroup = new Map<string, PhotoLibraryItem[]>();
 
     list.forEach((photo) => {
-      const key = getEventGroupKey(photo.eventName);
+      const raw = (photo.eventName || 'Unknown Event').trim() || 'Unknown Event';
+      const clusterId = clusterMap.get(raw) || raw;
+      const cluster = clusters[clusterId];
+      const labelSource = cluster ? cluster.label : raw;
+      const key = toTitleCase(labelSource);
+
       if (!byGroup.has(key)) {
         byGroup.set(key, []);
       }
       byGroup.get(key)!.push(photo);
     });
 
-    const sortedGroupNames = Array.from(byGroup.keys()).sort((a, b) =>
-      a.localeCompare(b)
-    );
+    const sortedGroupNames = Array.from(byGroup.keys()).sort((a, b) => a.localeCompare(b));
 
     for (const groupName of sortedGroupNames) {
       const items = byGroup.get(groupName) || [];
