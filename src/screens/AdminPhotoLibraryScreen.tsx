@@ -103,10 +103,7 @@ const AdminPhotoLibraryScreen = () => {
   const buildSections = (list: PhotoLibraryItem[]) => {
     const sections: {
       groupName: string;
-      groups: {
-        dateLabel: string;
-        items: PhotoLibraryItem[];
-      }[];
+      items: PhotoLibraryItem[];
     }[] = [];
 
     // Step 1: collect unique event names and normalize them
@@ -179,37 +176,9 @@ const AdminPhotoLibraryScreen = () => {
 
     for (const groupName of sortedGroupNames) {
       const items = byGroup.get(groupName) || [];
-      const groupsByDate = new Map<string, PhotoLibraryItem[]>();
-
-      items.forEach((photo) => {
-        let label = 'Unknown Date/Time';
-        if (photo.submittedAt) {
-          const d = new Date(photo.submittedAt);
-          if (!Number.isNaN(d.getTime())) {
-            label = d.toLocaleString(undefined, {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-              hour: 'numeric',
-              minute: '2-digit'
-            });
-          }
-        }
-
-        if (!groupsByDate.has(label)) {
-          groupsByDate.set(label, []);
-        }
-        groupsByDate.get(label)!.push(photo);
-      });
-
-      const groupsArray = Array.from(groupsByDate.entries()).map(([dateLabel, itemsForDate]) => ({
-        dateLabel,
-        items: itemsForDate
-      }));
-
       sections.push({
         groupName,
-        groups: groupsArray
+        items
       });
     }
 
@@ -301,28 +270,21 @@ const AdminPhotoLibraryScreen = () => {
                 <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-200 bg-black">
                   {section.groupName}
                 </div>
-                {section.groups.map((group) => (
-                  <div key={`${section.groupName}-${group.dateLabel}`} className="mb-4">
-                    <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-gray-400 bg-black/90 border-t border-b border-gray-800">
-                      {group.dateLabel}
+                <div className="grid gap-px bg-black grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+                  {section.items.map((photo) => (
+                    <div key={photo.id} className="bg-black">
+                      <img
+                        src={photo.dataUrl}
+                        alt={photo.fileName}
+                        className="w-full h-40 md:h-44 lg:h-48 object-cover block"
+                        loading="lazy"
+                      />
                     </div>
-                    <div className="grid gap-px bg-black grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-                      {group.items.map((photo) => (
-                        <div key={photo.id} className="bg-black">
-                    <img
-                      src={photo.dataUrl}
-                      alt={photo.fileName}
-                            className="w-full h-40 md:h-44 lg:h-48 object-cover block"
-                      loading="lazy"
-                    />
-                      </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+                  ))}
                 </div>
+              </div>
             )
-        )}
+          )}
       </div>
       )}
     </div>
