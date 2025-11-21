@@ -1070,6 +1070,7 @@ class SupabaseService {
     submittedAt?: string | null;
     reviewedAt?: string | null;
     hoursRequested?: number | null;
+    description?: string | null;
     fileName: string;
     mimeType: string;
     base64Data: string;
@@ -1181,6 +1182,7 @@ class SupabaseService {
             submittedAt: request.submitted_at,
             reviewedAt: request.reviewed_at,
             hoursRequested: request.hours_requested,
+            description: request.description,
             fileName,
             mimeType,
             base64Data,
