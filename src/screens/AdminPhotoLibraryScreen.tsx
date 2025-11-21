@@ -53,6 +53,66 @@ const AdminPhotoLibraryScreen = () => {
     });
   };
 
+  const buildSections = (list: PhotoLibraryItem[]) => {
+    const sections: {
+      eventName: string;
+      groups: {
+        dateLabel: string;
+        items: PhotoLibraryItem[];
+      }[];
+    }[] = [];
+
+    const byEvent = new Map<string, PhotoLibraryItem[]>();
+
+    list.forEach((photo) => {
+      const key = (photo.eventName || 'Unknown Event').trim() || 'Unknown Event';
+      if (!byEvent.has(key)) {
+        byEvent.set(key, []);
+      }
+      byEvent.get(key)!.push(photo);
+    });
+
+    const sortedEventNames = Array.from(byEvent.keys()).sort((a, b) => a.localeCompare(b));
+
+    for (const eventName of sortedEventNames) {
+      const items = byEvent.get(eventName) || [];
+      const groupsByDate = new Map<string, PhotoLibraryItem[]>();
+
+      items.forEach((photo) => {
+        let label = 'Unknown Date/Time';
+        if (photo.submittedAt) {
+          const d = new Date(photo.submittedAt);
+          if (!Number.isNaN(d.getTime())) {
+            label = d.toLocaleString(undefined, {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit'
+            });
+          }
+        }
+
+        if (!groupsByDate.has(label)) {
+          groupsByDate.set(label, []);
+        }
+        groupsByDate.get(label)!.push(photo);
+      });
+
+      const groupsArray = Array.from(groupsByDate.entries()).map(([dateLabel, itemsForDate]) => ({
+        dateLabel,
+        items: itemsForDate
+      }));
+
+      sections.push({
+        eventName,
+        groups: groupsArray
+      });
+    }
+
+    return sections;
+  };
+
   const filterPhotosWithFaces = async (allPhotos: PhotoLibraryItem[]) => {
     // Use the browser Shape Detection API if available; otherwise, fall back to all photos.
     const FaceDetectorCtor = (window as any).FaceDetector;
@@ -102,26 +162,29 @@ const AdminPhotoLibraryScreen = () => {
 
   return (
     <div className="min-h-screen bg-black">
-      {error && (
+        {error && (
         <div className="px-4 py-3 text-sm text-red-200 bg-red-900">
-          {error}
-        </div>
-      )}
+            {error}
+          </div>
+        )}
 
-      {isLoading ? (
+        {isLoading ? (
         <div className="flex items-center justify-center py-24">
           <div
             className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"
             aria-label="Loading"
           ></div>
-        </div>
+          </div>
       ) : photos.length === 0 ? (
         <div className="flex items-center justify-center py-24 text-white">
           No proof photos yet.
-        </div>
-      ) : (
+          </div>
+        ) : (
         <div className="p-px bg-black">
-          <div className="flex items-center justify-end px-3 py-2">
+          <div className="flex items-center justify-between px-3 py-2 text-xs text-gray-300">
+            <span className="opacity-70">
+              Showing up to 200 most recent photos with detected faces (if supported).
+            </span>
             <button
               onClick={() => setSortEnabled((prev) => !prev)}
               className="text-xs px-3 py-1 rounded-full border border-gray-600 text-gray-200 bg-black/60 hover:bg-gray-800 transition-colors"
@@ -129,19 +192,35 @@ const AdminPhotoLibraryScreen = () => {
               {sortEnabled ? 'Sorting: Event + Time' : 'Sorting: Original Order'}
             </button>
           </div>
-          <div className="grid gap-px bg-black grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
-            {(sortEnabled ? sortPhotos(photos) : photos).slice(0, 200).map((photo) => (
-              <div key={photo.id} className="bg-black">
-                <img
-                  src={photo.dataUrl}
-                  alt={photo.fileName}
-                  className="w-full h-40 md:h-44 lg:h-48 object-cover block"
-                  loading="lazy"
-                />
-              </div>
-            ))}
-          </div>
-        </div>
+          {buildSections((sortEnabled ? sortPhotos(photos) : photos).slice(0, 200)).map(
+            (section) => (
+              <div key={section.eventName} className="mb-6">
+                <div className="px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-gray-200 bg-black">
+                  {section.eventName}
+                </div>
+                {section.groups.map((group) => (
+                  <div key={`${section.eventName}-${group.dateLabel}`} className="mb-4">
+                    <div className="px-3 py-1 text-[10px] uppercase tracking-wide text-gray-400 bg-black/90 border-t border-b border-gray-800">
+                      {group.dateLabel}
+                    </div>
+                    <div className="grid gap-px bg-black grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+                      {group.items.map((photo) => (
+                        <div key={photo.id} className="bg-black">
+                    <img
+                      src={photo.dataUrl}
+                      alt={photo.fileName}
+                            className="w-full h-40 md:h-44 lg:h-48 object-cover block"
+                      loading="lazy"
+                    />
+                      </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                </div>
+            )
+        )}
+      </div>
       )}
     </div>
   );
