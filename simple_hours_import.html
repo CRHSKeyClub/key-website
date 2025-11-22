@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Key Club Member Hours Import - Simple Version</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      color: #1e40af;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .step {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      background: #f9fafb;
+    }
+    .file-input {
+      margin: 10px 0;
+      padding: 20px;
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .file-input:hover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+    .preview-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .preview-table th,
+    .preview-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .preview-table th {
+      background: #f3f4f6;
+      font-weight: 600;
+      color: #374151;
+    }
+    .preview-table tr:hover {
+      background: #f9fafb;
+    }
+    .btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: all 0.2s;
+      margin: 5px;
+    }
+    .btn:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+    .btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-success {
+      background: #10b981;
+    }
+    .btn-success:hover {
+      background: #059669;
+    }
+    .status {
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      font-weight: 500;
+    }
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .status.info {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #93c5fd;
+    }
+    .instructions {
+      background: #eff6ff;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    .instructions h3 {
+      color: #1e40af;
+      margin-top: 0;
+    }
+    .instructions ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .instructions li {
+      margin: 8px 0;
+    }
+    .stats {
+      background: #f0f9ff;
+      border: 1px solid #0ea5e9;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+    }
+    .stats h4 {
+      color: #0369a1;
+      margin-top: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>⏰ Key Club Member Hours Import Tool</h1>
+
+    <div class="instructions">
+      <h3>📋 Super Simple Instructions</h3>
+      <ol>
+        <li>In Google Sheets, go to <strong>File → Download → Comma-separated values (.csv)</strong>.</li>
+        <li>Open this file (`simple_hours_import.html`) in your browser and <strong>upload the CSV</strong>.</li>
+        <li>Click <strong>"Generate SQL"</strong> to get an SQL script that updates `students.total_hours`.</li>
+        <li>Copy the SQL into the <strong>Supabase SQL Editor</strong> and run it.</li>
+      </ol>
+    </div>
+
+    <div class="step">
+      <h3>Step 1: Upload Your CSV File</h3>
+      <div class="file-input" onclick="document.getElementById('csvFile').click()">
+        <input
+          type="file"
+          id="csvFile"
+          accept=".csv,.xlsx,.xls"
+          style="display: none"
+          onchange="handleFileUpload(event)"
+        />
+        <p>📁 Click to select your CSV (or Excel) file exported from Google Sheets</p>
+        <p style="color: #6b7280; font-size: 14px">
+          The sheet should have columns like <strong>Student ID / S Number</strong> and <strong>Total Hours</strong>.
+        </p>
+      </div>
+      <div id="fileStatus"></div>
+    </div>
+
+    <div class="step" id="previewStep" style="display: none">
+      <h3>Step 2: (Optional) Limit to Existing Students</h3>
+      <p>Paste S-Numbers of students that already exist in Supabase (one per line), or leave empty to include everyone:</p>
+      <textarea
+        id="existingStudents"
+        placeholder="s123456&#10;s789012&#10;s345678&#10;... (or leave empty to include all rows)"
+        style="width: 100%; height: 100px; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-family: monospace"
+      ></textarea>
+      <button class="btn" onclick="filterExistingStudents()" style="margin-top: 10px">
+        🔍 Filter by Existing Students
+      </button>
+      <button class="btn" onclick="getExistingStudentsInstructions()" style="margin-top: 10px; background: #10b981">
+        📥 How to Get Existing Students from Supabase
+      </button>
+
+      <h3>Step 3: Preview & Generate SQL</h3>
+      <div id="previewContainer"></div>
+      <div id="statsContainer"></div>
+      <div style="margin-top: 20px">
+        <button class="btn btn-success" onclick="generateSQL()">🚀 Generate SQL File</button>
+        <button class="btn" onclick="resetTool()">🔄 Start Over</button>
+      </div>
+    </div>
+
+    <div id="statusContainer"></div>
+  </div>
+
+  <script>
+    let rawData = [];
+    let processedData = [];
+    let allProcessedData = [];
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const fileStatus = document.getElementById('fileStatus');
+      fileStatus.innerHTML =
+        '<div class="status info">📁 Processing file: ' + file.name + '</div>';
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const data = e.target.result;
+          let worksheet;
+
+          if (file.name.toLowerCase().endsWith('.csv')) {
+            const workbook = XLSX.read(data, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            worksheet = workbook.Sheets[sheetName];
+          } else {
+            const workbook = XLSX.read(data, { type: 'binary' });
+            const sheetName = workbook.SheetNames[0];
+            worksheet = workbook.Sheets[sheetName];
+          }
+
+          rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+          if (rawData.length === 0) {
+            throw new Error('No data found in the file');
+          }
+
+          processData();
+          showPreview();
+          fileStatus.innerHTML =
+            '<div class="status success">✅ File loaded! Found ' +
+            (rawData.length - 1) +
+            ' data rows.</div>';
+        } catch (error) {
+          fileStatus.innerHTML =
+            '<div class="status error">❌ Error reading file: ' +
+            error.message +
+            '</div>';
+        }
+      };
+      reader.readAsBinaryString(file);
+    }
+
+    function findColumnIndex(headers, candidates) {
+      const normalizedHeaders = headers.map((h) =>
+        (h || '').toString().trim().toLowerCase()
+      );
+      for (const cand of candidates) {
+        const idx = normalizedHeaders.findIndex((h) => h.includes(cand));
+        if (idx !== -1) return idx;
+      }
+      return -1;
+    }
+
+    function processData() {
+      const headers = rawData[0];
+      const rows = rawData.slice(1);
+
+      const sNumberIdx = findColumnIndex(headers, [
+        'student id',
+        'studentid',
+        's-number',
+        's number',
+        's_number',
+        's#',
+        'id',
+      ]);
+      const hoursIdx = findColumnIndex(headers, [
+        'hours',
+        'total hours',
+        'service hours',
+        'volunteer hours',
+      ]);
+      const nameIdx = findColumnIndex(headers, ['name', 'student name', 'full name']);
+
+      if (sNumberIdx === -1 || hoursIdx === -1) {
+        throw new Error(
+          'Could not find S-Number / Student ID and Total Hours columns. Check your header row.'
+        );
+      }
+
+      const allRows = rows
+        .map((row) => {
+          const rawS = row[sNumberIdx];
+          const rawHours = row[hoursIdx];
+          const rawName = nameIdx !== -1 ? row[nameIdx] : '';
+
+          let sNumber = (rawS || '').toString().trim().toLowerCase();
+          if (!sNumber) return null;
+          if (!sNumber.startsWith('s')) {
+            sNumber = 's' + sNumber.replace(/[^0-9]/g, '');
+          }
+
+          const hoursVal = parseFloat(
+            (rawHours || '')
+              .toString()
+              .replace(',', '.')
+              .replace(/[^0-9.]/g, '')
+          );
+          if (Number.isNaN(hoursVal)) return null;
+
+          return {
+            sNumber,
+            hours: hoursVal,
+            name: (rawName || '').toString().trim(),
+            originalSNumber: (rawS || '').toString().trim(),
+            rawHours: rawHours,
+          };
+        })
+        .filter(Boolean);
+
+      const bySNumber = {};
+      allRows.forEach((row) => {
+        // keep the last entry per S-number
+        bySNumber[row.sNumber] = row;
+      });
+
+      allProcessedData = Object.values(bySNumber);
+      processedData = [...allProcessedData];
+    }
+
+    function filterExistingStudents() {
+      const txt = document.getElementById('existingStudents').value.trim();
+      if (!txt) {
+        processedData = [...allProcessedData];
+        showPreview();
+        return;
+      }
+
+      const existing = txt
+        .split('\n')
+        .map((s) => s.trim().toLowerCase())
+        .filter((s) => s.length > 0);
+
+      processedData = allProcessedData.filter((row) =>
+        existing.includes(row.sNumber.toLowerCase())
+      );
+      showPreview();
+    }
+
+    function getExistingStudentsInstructions() {
+      const textarea = document.getElementById('existingStudents');
+      textarea.value = `To get existing students from Supabase:
+
+1. Go to your Supabase Dashboard
+2. Navigate to Table Editor → students table
+3. Copy the s_number column values
+4. Paste them here (one per line)
+
+Or run this SQL in Supabase SQL Editor:
+SELECT s_number, total_hours FROM students ORDER BY s_number;
+
+Then copy the s_number column and paste it here.`;
+      textarea.style.height = '170px';
+    }
+
+    function showPreview() {
+      const previewContainer = document.getElementById('previewContainer');
+      const statsContainer = document.getElementById('statsContainer');
+
+      const totalRows = rawData.length - 1;
+      const validAll = allProcessedData.length;
+      const validCurrent = processedData.length;
+      const invalid = totalRows - validAll;
+      const filteredOut = validAll - validCurrent;
+
+      statsContainer.innerHTML = `
+        <div class="stats">
+          <h4>📊 Data Summary</h4>
+          <p><strong>Total data rows:</strong> ${totalRows}</p>
+          <p><strong>Valid rows with S-Number & hours:</strong> ${validAll}</p>
+          <p><strong>Rows currently selected for update:</strong> ${validCurrent}</p>
+          <p><strong>Rows skipped due to missing/invalid data:</strong> ${invalid}</p>
+          <p><strong>Rows filtered out by S-Number list:</strong> ${filteredOut}</p>
+        </div>
+      `;
+
+      let tableHTML = `
+        <h4>📋 Preview (first 10 rows)</h4>
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th>S-Number (normalized)</th>
+              <th>Name</th>
+              <th>Total Hours</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      processedData.slice(0, 10).forEach((row) => {
+        const ok = !Number.isNaN(row.hours) && row.hours >= 0;
+        const status = ok ? '✅ Valid' : '⚠️ Check hours';
+        const statusColor = ok ? '#10b981' : '#f59e0b';
+
+        tableHTML += `
+          <tr>
+            <td>${row.sNumber}</td>
+            <td>${row.name || 'N/A'}</td>
+            <td>${row.hours}</td>
+            <td style="color: ${statusColor}">${status}</td>
+          </tr>
+        `;
+      });
+
+      tableHTML += '</tbody></table>';
+
+      if (processedData.length > 10) {
+        tableHTML += `<p style="color: #6b7280; font-size: 14px;">... and ${
+          processedData.length - 10
+        } more rows</p>`;
+      }
+
+      previewContainer.innerHTML = tableHTML;
+      document.getElementById('previewStep').style.display = 'block';
+    }
+
+    function generateSQL() {
+      const statusContainer = document.getElementById('statusContainer');
+
+      if (processedData.length === 0) {
+        statusContainer.innerHTML =
+          '<div class="status error">❌ No valid data to generate SQL from.</div>';
+        return;
+      }
+
+      const lines = [];
+      lines.push('-- Key Club Member Hours Import Script');
+      lines.push('-- This updates students.total_hours based on your Google Sheet');
+      lines.push('-- Generated on ' + new Date().toLocaleString());
+      lines.push('-- Total rows in this script: ' + processedData.length);
+      lines.push('');
+      lines.push('BEGIN;');
+      lines.push('');
+
+      processedData.forEach((row) => {
+        const safeHours = Number.isFinite(row.hours) ? row.hours : 0;
+        const sNum = row.sNumber.replace(/'/g, "''");
+        lines.push(
+          `UPDATE students SET total_hours = ${safeHours} WHERE s_number = '${sNum}';`
+        );
+      });
+
+      lines.push('');
+      lines.push('-- Optional: inspect updates');
+      lines.push(
+        'SELECT s_number, name, total_hours FROM students ORDER BY s_number;'
+      );
+      lines.push('');
+      lines.push('COMMIT;');
+
+      const sqlContent = lines.join('\n');
+      const blob = new Blob([sqlContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download =
+        'key_club_member_hours_' +
+        new Date().toISOString().split('T')[0] +
+        '.sql';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      statusContainer.innerHTML = `
+        <div class="status success">
+          ✅ SQL file generated and downloaded!<br>
+          📁 <strong>${processedData.length} students</strong> included in the script.<br><br>
+          <strong>Next steps:</strong><br>
+          1. Open your <strong>Supabase Dashboard → SQL Editor</strong>.<br>
+          2. Open the downloaded <code>.sql</code> file and copy its contents.<br>
+          3. Paste into SQL Editor and run.<br><br>
+          <strong>Note:</strong> This will <em>set</em> each student's <code>total_hours</code> to the value in your sheet.
+        </div>
+      `;
+    }
+
+    function resetTool() {
+      rawData = [];
+      processedData = [];
+      allProcessedData = [];
+      document.getElementById('csvFile').value = '';
+      document.getElementById('fileStatus').innerHTML = '';
+      document.getElementById('previewStep').style.display = 'none';
+      document.getElementById('statusContainer').innerHTML = '';
+      document.getElementById('previewContainer').innerHTML = '';
+      document.getElementById('statsContainer').innerHTML = '';
+      document.getElementById('existingStudents').value = '';
+    }
+  </script>
+</body>
+</html>
+
+
