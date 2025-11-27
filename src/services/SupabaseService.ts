@@ -107,7 +107,9 @@ class SupabaseService {
         s_number: studentData.sNumber.toLowerCase(),
         name: studentData.name,
         email: studentData.email || null,
-        total_hours: studentData.totalHours || 0,
+        volunteering_hours: 0,
+        social_hours: 0,
+        total_hours: 0,
         tshirt_size: studentData.tshirtSize || null,
         account_status: 'pending'
       });
@@ -118,7 +120,9 @@ class SupabaseService {
           s_number: studentData.sNumber.toLowerCase(),
           name: studentData.name,
           email: studentData.email || null,
-          total_hours: studentData.totalHours || 0,
+          volunteering_hours: 0,
+          social_hours: 0,
+          total_hours: 0,
           tshirt_size: studentData.tshirtSize || null,
           account_status: 'pending'
         }])
@@ -1024,7 +1028,7 @@ class SupabaseService {
         
         const student = await this.getStudent(studentSNumber);
         if (student) {
-          const currentHours = parseFloat(student.total_hours || 0);
+          const currentVolunteeringHours = parseFloat(student.volunteering_hours || 0);
           let requestedHours = hoursRequested !== null ? parseFloat(hoursRequested as any) : parseFloat(request.hours_requested);
           
           if (isNaN(requestedHours) || requestedHours <= 0) {
@@ -1032,10 +1036,12 @@ class SupabaseService {
             return request;
           }
           
-          const newTotalHours = currentHours + requestedHours;
+          // Add approved hours to volunteering_hours (hour requests are service/volunteering hours)
+          // The trigger will automatically update total_hours
+          const newVolunteeringHours = currentVolunteeringHours + requestedHours;
           
           await this.updateStudent(studentSNumber, {
-            total_hours: newTotalHours,
+            volunteering_hours: newVolunteeringHours,
             last_hour_update: new Date().toISOString()
           });
           
@@ -1438,13 +1444,52 @@ class SupabaseService {
     }
   }
 
-  static async updateStudentHours(studentId: string, newHours: number) {
+  static async updateStudentHours(studentId: string, newHours: number, hoursType: 'volunteering' | 'social' | 'total' = 'total') {
     try {
-      console.log('📊 Updating student hours:', studentId, 'to', newHours);
+      console.log('📊 Updating student hours:', studentId, 'to', newHours, 'type:', hoursType);
+      
+      let updateData: any = {};
+      
+      if (hoursType === 'volunteering') {
+        // Update volunteering_hours, trigger will update total_hours
+        updateData = { volunteering_hours: newHours };
+      } else if (hoursType === 'social') {
+        // Update social_hours, trigger will update total_hours
+        updateData = { social_hours: newHours };
+      } else {
+        // For 'total', we need to adjust the total while preserving the ratio
+        // Get current values first
+        const { data: student } = await supabase
+          .from('students')
+          .select('volunteering_hours, social_hours, total_hours')
+          .eq('id', studentId)
+          .single();
+        
+        if (student) {
+          const currentTotal = parseFloat(student.total_hours || 0);
+          const currentVolunteering = parseFloat(student.volunteering_hours || 0);
+          const currentSocial = parseFloat(student.social_hours || 0);
+          
+          if (currentTotal > 0) {
+            // Preserve the ratio
+            const volunteeringRatio = currentVolunteering / currentTotal;
+            const socialRatio = currentSocial / currentTotal;
+            updateData = {
+              volunteering_hours: newHours * volunteeringRatio,
+              social_hours: newHours * socialRatio
+            };
+          } else {
+            // If no hours yet, add all to volunteering
+            updateData = { volunteering_hours: newHours };
+          }
+        } else {
+          throw new Error('Student not found');
+        }
+      }
       
       const { data, error } = await supabase
         .from('students')
-        .update({ total_hours: newHours })
+        .update(updateData)
         .eq('id', studentId)
         .select()
         .single();

@@ -12,6 +12,8 @@ interface Student {
   s_number?: string;
   student_s_number?: string;
   total_hours?: number;
+  volunteering_hours?: number;
+  social_hours?: number;
   tshirt_size?: string;
   created_at?: string;
 }
@@ -464,9 +466,14 @@ export default function AdminStudentManagementScreen() {
                       <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span className="text-white font-semibold text-lg">
-                        {student.total_hours || 0} {student.total_hours === 1 ? 'hr' : 'hrs'}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-white font-semibold text-lg">
+                          {student.total_hours || 0} {student.total_hours === 1 ? 'hr' : 'hrs'} total
+                        </span>
+                        <span className="text-gray-400 text-xs">
+                          {(student.volunteering_hours || 0)} vol • {(student.social_hours || 0)} social
+                        </span>
+                      </div>
                     </div>
 
                     {/* Adjust Hours Button */}

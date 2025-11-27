@@ -102,6 +102,7 @@ export function HourProvider({ children }: HourProviderProps) {
     try {
       console.log('🔍 Getting hours for student:', sNumber);
       const student = await SupabaseService.getStudent(sNumber);
+      // Return total_hours (trigger keeps it in sync with volunteering + social)
       const hours = student ? parseFloat(student.total_hours || 0) : 0;
       console.log('📊 Student hours result:', { sNumber, student, hours });
       return hours;
@@ -114,6 +115,7 @@ export function HourProvider({ children }: HourProviderProps) {
   const refreshStudentHours = useCallback(async (sNumber: string) => {
     try {
       const student = await SupabaseService.getStudent(sNumber);
+      // Return total_hours (trigger keeps it in sync with volunteering + social)
       return student ? parseFloat(student.total_hours || 0) : 0;
     } catch (error) {
       console.error('Failed to refresh student hours:', error);
