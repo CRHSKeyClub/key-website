@@ -80,16 +80,24 @@ export default function AdminStudentDetailScreen() {
       setLoading(true);
       
       // Decode the S-number from URL
-      const sNumber = decodeURIComponent(studentId).toLowerCase();
+      const searchSNumber = decodeURIComponent(studentId).toLowerCase().trim();
       
       // Load student info
       const result = await SupabaseService.getAllStudents();
       const studentsData = result.data || [];
       
+      console.log('Searching for student with S-number:', searchSNumber);
+      console.log('Total students loaded:', studentsData.length);
+      
+      // Normalize S-number for comparison (remove any 's' prefix and compare)
+      const normalizeSNumber = (sNum: string) => {
+        return sNum.toLowerCase().trim().replace(/^s/, '');
+      };
+      
       // Find student by S-number (primary) or ID (fallback)
       let foundStudent = studentsData.find((s: Student) => {
-        const studentSNumber = (s.s_number || s.student_s_number || '').toLowerCase();
-        return studentSNumber === sNumber;
+        const studentSNumber = (s.s_number || s.student_s_number || '').toLowerCase().trim();
+        return normalizeSNumber(studentSNumber) === normalizeSNumber(searchSNumber) || studentSNumber === searchSNumber;
       });
       
       // Fallback: try by ID if not found by S-number
@@ -98,11 +106,12 @@ export default function AdminStudentDetailScreen() {
       }
       
       if (!foundStudent) {
-        console.error('Student not found. Looking for S-number:', sNumber);
-        console.error('Available students:', studentsData.map((s: Student) => ({
+        console.error('Student not found. Looking for S-number:', searchSNumber);
+        console.error('Sample students (first 5):', studentsData.slice(0, 5).map((s: Student) => ({
           id: s.id,
           s_number: s.s_number || s.student_s_number,
-          name: s.name || s.student_name
+          name: s.name || s.student_name,
+          student_name: s.student_name
         })));
         showModal({
           title: 'Error',
@@ -117,6 +126,13 @@ export default function AdminStudentDetailScreen() {
         return;
       }
 
+      console.log('Found student:', {
+        id: foundStudent.id,
+        s_number: foundStudent.s_number || foundStudent.student_s_number,
+        name: foundStudent.name,
+        student_name: foundStudent.student_name,
+        fullObject: foundStudent
+      });
       setStudent(foundStudent);
       
       // Get S-number for fetching related data
