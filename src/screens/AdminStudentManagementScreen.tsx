@@ -44,7 +44,7 @@ export default function AdminStudentManagementScreen() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [tshirtSizeFilter, setTshirtSizeFilter] = useState<string>('all');
-  const [tshirtSizeSummary, setTshirtSizeSummary] = useState<{[key: string]: number}>({});
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const MAX_MANUAL_ADJUSTMENT = Number.POSITIVE_INFINITY;
 
   useEffect(() => {
@@ -104,70 +104,31 @@ export default function AdminStudentManagementScreen() {
   };
 
   const filterStudents = () => {
-    if (tshirtSizeFilter === 'all') {
-      setFilteredStudents(students);
-    } else if (tshirtSizeFilter === 'no-size') {
-      setFilteredStudents(students.filter(student => !student.tshirt_size));
-    } else {
-      setFilteredStudents(students.filter(student => student.tshirt_size === tshirtSizeFilter));
+    let filtered = students;
+
+    // Filter by t-shirt size
+    if (tshirtSizeFilter === 'no-size') {
+      filtered = filtered.filter(student => !student.tshirt_size);
+    } else if (tshirtSizeFilter !== 'all') {
+      filtered = filtered.filter(student => student.tshirt_size === tshirtSizeFilter);
     }
-  };
 
-  const calculateTshirtSummary = () => {
-    const summary: {[key: string]: number} = {};
-    students.forEach(student => {
-      const size = student.tshirt_size || 'No Size';
-      summary[size] = (summary[size] || 0) + 1;
-    });
-    setTshirtSizeSummary(summary);
-  };
+    // Filter by search query (name or S-number)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(student => {
+        const name = (student.name || student.student_name || '').toLowerCase();
+        const sNumber = (student.s_number || student.student_s_number || '').toLowerCase();
+        return name.includes(query) || sNumber.includes(query);
+      });
+    }
 
-  const exportTshirtOrder = () => {
-    const orderData = {
-      'XS': tshirtSizeSummary['XS'] || 0,
-      'S': tshirtSizeSummary['S'] || 0,
-      'M': tshirtSizeSummary['M'] || 0,
-      'L': tshirtSizeSummary['L'] || 0,
-      'XL': tshirtSizeSummary['XL'] || 0,
-      'XXL': tshirtSizeSummary['XXL'] || 0,
-      'XXXL': tshirtSizeSummary['XXXL'] || 0,
-      'No Size Set': tshirtSizeSummary['No Size'] || 0,
-      'Total Students': students.length
-    };
-
-    // Create CSV content
-    const csvContent = [
-      'Size,Quantity',
-      ...Object.entries(orderData).map(([size, quantity]) => `${size},${quantity}`)
-    ].join('\n');
-
-    // Create and download file
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `key_club_tshirt_order_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    showModal({
-      title: 'Export Complete',
-      message: 'T-shirt order summary has been downloaded as a CSV file.',
-      onCancel: () => {},
-      onConfirm: () => {},
-      cancelText: '',
-      confirmText: 'OK',
-      icon: 'checkmark-circle',
-      iconColor: '#4CAF50'
-    });
+    setFilteredStudents(filtered);
   };
 
   useEffect(() => {
     filterStudents();
-    calculateTshirtSummary();
-  }, [tshirtSizeFilter, students]);
+  }, [tshirtSizeFilter, students, searchQuery]);
 
   const handleAdjustHours = (student: Student) => {
     setSelectedStudent(student);
@@ -297,6 +258,25 @@ export default function AdminStudentManagementScreen() {
           </div>
           
           <div className="flex items-center gap-3">
+            {/* Search Input */}
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name or S-number..."
+                className="bg-slate-700 text-white px-4 py-2 pl-10 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+              />
+              <svg 
+                className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
             {/* T-Shirt Size Filter */}
             <select
               value={tshirtSizeFilter}
@@ -354,73 +334,20 @@ export default function AdminStudentManagementScreen() {
           >
             <p className="text-gray-300">
               Showing {filteredStudents.length} of {students.length} students
-              {tshirtSizeFilter !== 'all' && (
+              {(tshirtSizeFilter !== 'all' || searchQuery.trim()) && (
                 <span className="text-blue-400">
-                  {' '}(filtered by {tshirtSizeFilter === 'no-size' ? 'no t-shirt size' : `t-shirt size: ${tshirtSizeFilter}`})
+                  {' '}(
+                  {tshirtSizeFilter !== 'all' && (
+                    <>filtered by {tshirtSizeFilter === 'no-size' ? 'no t-shirt size' : `t-shirt size: ${tshirtSizeFilter}`}</>
+                  )}
+                  {tshirtSizeFilter !== 'all' && searchQuery.trim() && ' • '}
+                  {searchQuery.trim() && (
+                    <>searching: "{searchQuery}"</>
+                  )}
+                  )
                 </span>
               )}
             </p>
-          </motion.div>
-
-          {/* T-Shirt Size Summary */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="bg-slate-800 bg-opacity-60 backdrop-blur-sm rounded-xl p-6 mb-8 border border-slate-600"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-blue-400">T-Shirt Order Summary</h3>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => exportTshirtOrder()}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Export Order
-                </button>
-                <div className="bg-blue-600 bg-opacity-20 px-3 py-1 rounded-lg border border-blue-500">
-                  <span className="text-blue-300 text-sm font-medium">Total Students</span>
-                  <div className="text-white font-bold text-lg">{students.length}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-              {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].map(size => (
-                <motion.div
-                  key={size}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.6 + (['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'].indexOf(size) * 0.1) }}
-                  className="bg-slate-700 bg-opacity-50 rounded-lg p-4 text-center border border-slate-500 hover:border-blue-400 transition-colors"
-                >
-                  <div className="text-gray-300 text-sm font-medium mb-1">{size}</div>
-                  <div className="text-2xl font-bold text-white">{tshirtSizeSummary[size] || 0}</div>
-                  <div className="text-xs text-gray-400">shirts</div>
-                </motion.div>
-              ))}
-            </div>
-            
-            {tshirtSizeSummary['No Size'] > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                className="mt-4 p-3 bg-yellow-600 bg-opacity-20 rounded-lg border border-yellow-500"
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  <span className="text-yellow-300 font-medium">
-                    {tshirtSizeSummary['No Size']} students need to set their t-shirt size
-                  </span>
-                </div>
-              </motion.div>
-            )}
           </motion.div>
 
           {/* Students List */}
@@ -435,18 +362,19 @@ export default function AdminStudentManagementScreen() {
                   type: "spring", 
                   stiffness: 100 
                 }}
-                className="bg-slate-800 bg-opacity-60 backdrop-blur-sm rounded-xl p-6 border border-slate-600 hover:border-blue-500 transition-all duration-300"
+                onClick={() => navigate(`/admin-students/${student.id}`)}
+                className="bg-slate-800 bg-opacity-60 backdrop-blur-sm rounded-xl p-6 border border-slate-600 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 cursor-pointer"
               >
                 <div className="flex items-center justify-between">
                   {/* Student Info */}
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-1">
                     <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
                       <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                       </svg>
                     </div>
                     
-                    <div>
+                    <div className="flex-1">
                       <h3 className="text-xl font-bold text-white">
                         {student.name || student.student_name || 'Unknown Student'}
                       </h3>
@@ -462,7 +390,7 @@ export default function AdminStudentManagementScreen() {
                   {/* Hours and Actions */}
                   <div className="flex items-center gap-6">
                     {/* Current Hours */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                       <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
@@ -478,7 +406,10 @@ export default function AdminStudentManagementScreen() {
 
                     {/* Adjust Hours Button */}
                     <motion.button
-                      onClick={() => handleAdjustHours(student)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAdjustHours(student);
+                      }}
                       className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}

@@ -27,6 +27,7 @@ import AdminHourManagementScreen from '../screens/AdminHourManagementScreen';
 import AnnouncementsScreen from '../screens/AnnouncementsScreen';
 import CreateAnnouncementScreen from '../screens/CreateAnnouncementScreen';
 import AdminStudentManagementScreen from '../screens/AdminStudentManagementScreen';
+import AdminStudentDetailScreen from '../screens/AdminStudentDetailScreen';
 import AdminMeetingManagementScreen from '../screens/AdminMeetingManagementScreen';
 import AdminTshirtManagementScreen from '../screens/AdminTshirtManagementScreen';
 import StudentMeetingAttendanceScreen from '../screens/StudentMeetingAttendanceScreen';
@@ -94,6 +95,7 @@ function AppRouter() {
           <Route path="/announcements" element={<AnnouncementsScreen />} />
           <Route path="/create-announcement" element={<CreateAnnouncementScreen />} />
           <Route path="/admin-students" element={<AdminStudentManagementScreen />} />
+          <Route path="/admin-students/:studentId" element={<AdminStudentDetailScreen />} />
           <Route path="/admin-meetings" element={<AdminMeetingManagementScreen />} />
           <Route path="/admin-tshirt-management" element={<AdminTshirtManagementScreen />} />
           <Route path="/admin-photo-library" element={<AdminPhotoLibraryScreen />} />
