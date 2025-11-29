@@ -10,7 +10,7 @@ export default function StudentLoginScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const showPassword = false;
   const { loginAsStudent, registerStudent } = useAuth();
   const navigate = useNavigate();
   

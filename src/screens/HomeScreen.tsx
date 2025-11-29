@@ -13,6 +13,7 @@ interface HourRequest {
   event_date: string;
   hours_requested: number;
   description: string;
+  type?: 'volunteering' | 'social';
   status: 'pending' | 'approved' | 'rejected';
   submitted_at: string;
 }

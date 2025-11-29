@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, createContext, useCallback, ReactNode } from 'react';
+import { useContext, useState, useEffect, createContext, useCallback, ReactNode } from 'react';
 import SupabaseService from '../services/SupabaseService';
 
 interface Event {

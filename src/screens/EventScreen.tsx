@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function EventScreen() {
   const navigate = useNavigate();
   const { eventId } = useParams<{ eventId: string }>();
-  const { getEventById, signUpForEvent, loading } = useEvents();
+  const { getEventById, signupForEvent, loading } = useEvents();
   const { user, isAdmin } = useAuth();
   const [event, setEvent] = useState<any>(null);
   const [isSigningUp, setIsSigningUp] = useState(false);
@@ -24,7 +24,12 @@ export default function EventScreen() {
     
     setIsSigningUp(true);
     try {
-      await signUpForEvent(event.id, user.id);
+      await signupForEvent(event.id, { 
+        id: user.id, 
+        email: (user as any).email || '', 
+        name: user.name || user.sNumber,
+        sNumber: user.sNumber
+      });
       alert('Successfully signed up for the event!');
       // Refresh event data
       const updatedEvent = getEventById(eventId!);

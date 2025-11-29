@@ -28,6 +28,7 @@ interface HourRequest {
   event_date: string;
   hours_requested: number;
   description: string;
+  type?: 'volunteering' | 'social';
   status: 'pending' | 'approved' | 'rejected';
   submitted_at: string;
   reviewed_at?: string;
@@ -207,6 +208,86 @@ export default function AdminStudentDetailScreen() {
       case 'pending': return 'text-yellow-400 bg-yellow-400 bg-opacity-20 border-yellow-400';
       default: return 'text-gray-400 bg-gray-400 bg-opacity-20 border-gray-400';
     }
+  };
+
+  const handleDeleteHourRequest = async (requestId: string, eventName: string) => {
+    showModal({
+      title: 'Delete Hour Request',
+      message: `Are you sure you want to permanently delete the hour request for "${eventName}"? This action cannot be undone.`,
+      onCancel: () => {},
+      onConfirm: async () => {
+        try {
+          await SupabaseService.deleteHourRequest(requestId);
+          await loadStudentData();
+          showModal({
+            title: 'Success',
+            message: 'Hour request deleted successfully.',
+            onCancel: () => {},
+            onConfirm: () => {},
+            cancelText: '',
+            confirmText: 'OK',
+            icon: 'checkmark-circle',
+            iconColor: '#4CAF50'
+          });
+        } catch (error) {
+          console.error('Failed to delete hour request:', error);
+          showModal({
+            title: 'Error',
+            message: 'Failed to delete hour request. Please try again.',
+            onCancel: () => {},
+            onConfirm: () => {},
+            cancelText: '',
+            confirmText: 'OK',
+            icon: 'alert-circle',
+            iconColor: '#ff4d4d'
+          });
+        }
+      },
+      cancelText: 'Cancel',
+      confirmText: 'Delete',
+      icon: 'alert-circle',
+      iconColor: '#ff4d4d'
+    });
+  };
+
+  const handleDeleteAttendance = async (attendanceId: string, meetingDate: string) => {
+    showModal({
+      title: 'Revoke Attendance',
+      message: `Are you sure you want to permanently revoke attendance for the meeting on ${formatDate(meetingDate)}? This action cannot be undone.`,
+      onCancel: () => {},
+      onConfirm: async () => {
+        try {
+          await SupabaseService.deleteAttendance(attendanceId);
+          await loadStudentData();
+          showModal({
+            title: 'Success',
+            message: 'Attendance revoked successfully.',
+            onCancel: () => {},
+            onConfirm: () => {},
+            cancelText: '',
+            confirmText: 'OK',
+            icon: 'checkmark-circle',
+            iconColor: '#4CAF50'
+          });
+        } catch (error) {
+          console.error('Failed to delete attendance:', error);
+          showModal({
+            title: 'Error',
+            message: 'Failed to revoke attendance. Please try again.',
+            onCancel: () => {},
+            onConfirm: () => {},
+            cancelText: '',
+            confirmText: 'OK',
+            icon: 'alert-circle',
+            iconColor: '#ff4d4d'
+          });
+        }
+      },
+      cancelText: 'Cancel',
+      confirmText: 'Revoke',
+      icon: 'alert-circle',
+      iconColor: '#ff4d4d'
+    });
   };
 
   if (loading) {
@@ -480,8 +561,28 @@ export default function AdminStudentDetailScreen() {
                           </span>
                         </div>
                         <p className="text-gray-400 text-sm mb-1">Event Date: {formatDate(request.event_date)}</p>
-                        <p className="text-blue-400 font-semibold">Hours Requested: {request.hours_requested}</p>
+                        <div className="flex items-center gap-3">
+                          <p className="text-blue-400 font-semibold">Hours Requested: {request.hours_requested}</p>
+                          {request.type && (
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              request.type === 'social' 
+                                ? 'bg-purple-600 bg-opacity-30 text-purple-300 border border-purple-500'
+                                : 'bg-blue-600 bg-opacity-30 text-blue-300 border border-blue-500'
+                            }`}>
+                              {request.type === 'social' ? 'Social' : 'Volunteering'}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      <button
+                        onClick={() => handleDeleteHourRequest(request.id, request.event_name)}
+                        className="ml-4 p-2 text-red-400 hover:text-red-300 hover:bg-red-400 hover:bg-opacity-20 rounded-lg transition-colors"
+                        title="Delete hour request"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
                     </div>
 
                     {request.description && (
@@ -540,7 +641,7 @@ export default function AdminStudentDetailScreen() {
                     className="bg-slate-800 bg-opacity-60 backdrop-blur-sm rounded-xl p-6 border border-slate-600"
                   >
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <h4 className="text-lg font-bold text-white mb-1">
                           {record.meetings?.meeting_date ? formatDate(record.meetings.meeting_date) : 'Unknown Date'}
                         </h4>
@@ -556,11 +657,22 @@ export default function AdminStudentDetailScreen() {
                           )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-green-400 font-semibold">✓ Attended</div>
-                        <div className="text-gray-400 text-xs mt-1">
-                          Code: {record.attendance_code}
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="text-green-400 font-semibold">✓ Attended</div>
+                          <div className="text-gray-400 text-xs mt-1">
+                            Code: {record.attendance_code}
+                          </div>
                         </div>
+                        <button
+                          onClick={() => handleDeleteAttendance(record.id, record.meetings?.meeting_date || '')}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400 hover:bg-opacity-20 rounded-lg transition-colors"
+                          title="Revoke attendance"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   </motion.div>

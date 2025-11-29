@@ -181,7 +181,7 @@ class SupabaseService {
 
       // Test Supabase connection first
       console.log('🧪 Testing Supabase connection...');
-      const { data: testData, error: testError } = await supabase
+      const { error: testError } = await supabase
         .from('students')
         .select('count')
         .limit(1);
@@ -647,8 +647,6 @@ class SupabaseService {
           studentUuid = auth.id;
         }
       }
-      const sNumberLower = attendeeData.sNumber ? attendeeData.sNumber.toLowerCase() : null;
-      
       let existingAttendee = null;
       if (studentUuid) {
         const { data: existingByStudentId, error: checkError1 } = await supabase
@@ -775,6 +773,7 @@ class SupabaseService {
         event_date: requestData.eventDate,
         hours_requested: parseFloat(requestData.hoursRequested),
         description: requestData.description,
+        type: requestData.type || 'volunteering', // Default to 'volunteering' if not specified
         status: 'pending',
         submitted_at: new Date().toISOString()
       };
@@ -874,10 +873,10 @@ class SupabaseService {
           } else {
             results.push(data);
           }
-        } catch (error) {
+        } catch (error: any) {
           errors.push({
             sNumber: update.sNumber,
-            error: error.message,
+            error: error?.message || String(error),
             tshirtSize: update.tshirtSize
           });
         }
@@ -972,6 +971,62 @@ class SupabaseService {
     try {
       console.log('🗑️ Deleting hour request:', requestId);
       
+      // First, get the request to check if it was approved
+      const { data: request, error: fetchError } = await supabase
+        .from('hour_requests')
+        .select('*')
+        .eq('id', requestId)
+        .single();
+
+      if (fetchError) {
+        console.error('❌ Error fetching hour request:', fetchError);
+        throw fetchError;
+      }
+
+      if (!request) {
+        throw new Error('Hour request not found');
+      }
+
+      // If the request was approved, subtract the hours from the student's total
+      if (request.status === 'approved' && request.student_s_number) {
+        const studentSNumber = request.student_s_number;
+        const student = await this.getStudent(studentSNumber);
+        
+        if (student) {
+          const requestedHours = parseFloat(request.hours_requested || 0);
+          const hoursType = (request.type || 'volunteering').toLowerCase();
+          
+          if (!isNaN(requestedHours) && requestedHours > 0) {
+            if (hoursType === 'social') {
+              // Subtract from social_hours
+              const currentSocialHours = parseFloat(student.social_hours || 0);
+              const newSocialHours = Math.max(0, currentSocialHours - requestedHours);
+              
+              await this.updateStudent(studentSNumber, {
+                social_hours: newSocialHours,
+                last_hour_update: new Date().toISOString()
+              });
+              
+              console.log(`✅ Subtracted ${requestedHours} social hours from student ${studentSNumber}`);
+              console.log(`   Previous: ${currentSocialHours}, New: ${newSocialHours}`);
+            } else {
+              // Subtract from volunteering_hours (default)
+              const currentVolunteeringHours = parseFloat(student.volunteering_hours || 0);
+              const newVolunteeringHours = Math.max(0, currentVolunteeringHours - requestedHours);
+              
+              await this.updateStudent(studentSNumber, {
+                volunteering_hours: newVolunteeringHours,
+                last_hour_update: new Date().toISOString()
+              });
+              
+              console.log(`✅ Subtracted ${requestedHours} volunteering hours from student ${studentSNumber}`);
+              console.log(`   Previous: ${currentVolunteeringHours}, New: ${newVolunteeringHours}`);
+            }
+          }
+        }
+      }
+      
+      // Now delete the request
       const { error } = await supabase
         .from('hour_requests')
         .delete()
@@ -1028,7 +1083,6 @@ class SupabaseService {
         
         const student = await this.getStudent(studentSNumber);
         if (student) {
-          const currentVolunteeringHours = parseFloat(student.volunteering_hours || 0);
           let requestedHours = hoursRequested !== null ? parseFloat(hoursRequested as any) : parseFloat(request.hours_requested);
           
           if (isNaN(requestedHours) || requestedHours <= 0) {
@@ -1036,15 +1090,34 @@ class SupabaseService {
             return request;
           }
           
-          // Add approved hours to volunteering_hours (hour requests are service/volunteering hours)
+          // Get the type from the request (default to 'volunteering' for backwards compatibility)
+          const hoursType = (request.type || 'volunteering').toLowerCase();
+          
+          if (hoursType === 'social') {
+            // Add approved hours to social_hours
+            const currentSocialHours = parseFloat(student.social_hours || 0);
+            const newSocialHours = currentSocialHours + requestedHours;
+            
+            await this.updateStudent(studentSNumber, {
+              social_hours: newSocialHours,
+              last_hour_update: new Date().toISOString()
+            });
+            
+            console.log(`✅ Added ${requestedHours} social hours to student ${studentSNumber}`);
+          } else {
+            // Default: Add approved hours to volunteering_hours
+            const currentVolunteeringHours = parseFloat(student.volunteering_hours || 0);
+            const newVolunteeringHours = currentVolunteeringHours + requestedHours;
+            
+            await this.updateStudent(studentSNumber, {
+              volunteering_hours: newVolunteeringHours,
+              last_hour_update: new Date().toISOString()
+            });
+            
+            console.log(`✅ Added ${requestedHours} volunteering hours to student ${studentSNumber}`);
+          }
+          
           // The trigger will automatically update total_hours
-          const newVolunteeringHours = currentVolunteeringHours + requestedHours;
-          
-          await this.updateStudent(studentSNumber, {
-            volunteering_hours: newVolunteeringHours,
-            last_hour_update: new Date().toISOString()
-          });
-          
           console.log('✅ Student hours updated successfully');
 
           await this.uploadProofPhotoToDrive({
@@ -1195,7 +1268,7 @@ class SupabaseService {
             dataUrl
           };
         })
-        .filter(Boolean);
+        .filter((item): item is NonNullable<typeof item> => item !== null);
 
       return results;
     } catch (error) {
@@ -1329,6 +1402,28 @@ class SupabaseService {
   }) {
     const { student_s_number, meeting_id, attendance_code, session_type = 'both' } = attendanceData;
     return this.submitAttendance(meeting_id, student_s_number, attendance_code, session_type);
+  }
+
+  static async deleteAttendance(attendanceId: string) {
+    try {
+      console.log('🗑️ Deleting attendance record:', attendanceId);
+      
+      const { error } = await supabase
+        .from('meeting_attendance')
+        .delete()
+        .eq('id', attendanceId);
+
+      if (error) {
+        console.error('❌ Error deleting attendance record:', error);
+        throw error;
+      }
+      
+      console.log('✅ Attendance record deleted successfully');
+      return true;
+    } catch (error: any) {
+      console.error('❌ Error deleting attendance record:', error);
+      throw new Error(`Failed to delete attendance record: ${error.message}`);
+    }
   }
 
   static async submitAttendance(meetingId: string, studentSNumber: string, attendanceCode: string, sessionType: string = 'both') {

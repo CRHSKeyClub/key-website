@@ -13,6 +13,7 @@ interface HourRequest {
   event_date: string | null;
   hours_requested: number;
   description: string;
+  type?: 'volunteering' | 'social';
   status: 'pending' | 'approved' | 'rejected';
   submitted_at: string | null;
   reviewed_at?: string | null;
@@ -21,7 +22,7 @@ interface HourRequest {
 
 export default function AdminHourManagementScreen() {
   const navigate = useNavigate();
-  const { getAllRequests, updateHourRequestStatus, deleteHourRequest } = useHours();
+  const { deleteHourRequest } = useHours();
   const { showModal } = useModal();
   
   const [allRequests, setAllRequests] = useState<HourRequest[]>([]);
@@ -105,8 +106,6 @@ export default function AdminHourManagementScreen() {
           requests = await SupabaseService.searchHourRequests('', filter, 100);
         }
       }
-      
-      console.log('🔍 DEBUG: Loaded requests from database:', requests.length);
       
       setAllRequests(requests);
       setFilteredRequests(requests); // Search results are already filtered
@@ -357,9 +356,6 @@ export default function AdminHourManagementScreen() {
     return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
   };
 
-  const isRequestProcessed = (request: HourRequest) => {
-    return request.status === 'approved' || request.status === 'rejected';
-  };
 
   const isRequestPending = (request: HourRequest) => {
     return request.status === 'pending';
@@ -840,7 +836,7 @@ export default function AdminHourManagementScreen() {
               
               <button
                 onClick={confirmDelete}
-                disabled={deleteModal.request && processingRequests.has(deleteModal.request.id)}
+                disabled={!!(deleteModal.request && processingRequests.has(deleteModal.request.id))}
                 className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-red-500 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center gap-2"
               >
                 {deleteModal.request && processingRequests.has(deleteModal.request.id) ? (

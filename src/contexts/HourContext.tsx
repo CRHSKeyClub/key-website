@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, createContext, useCallback, ReactNode } from 'react';
+import { useContext, useState, useEffect, createContext, useCallback, ReactNode } from 'react';
 import SupabaseService from '../services/SupabaseService';
 
 interface HourRequest {
@@ -9,6 +9,7 @@ interface HourRequest {
   event_date: string;
   hours_requested: number;
   description: string;
+  type?: 'volunteering' | 'social';
   status: string;
   submitted_at: string;
   reviewed_at?: string;

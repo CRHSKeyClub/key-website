@@ -53,7 +53,7 @@ export default function AdminMeetingManagementScreen() {
 
   const handleToggleMeeting = async (meeting: Meeting) => {
     try {
-      const updatedMeeting = await SupabaseService.updateMeeting(meeting.id, {
+      await SupabaseService.updateMeeting(meeting.id, {
         ...meeting,
         is_open: !meeting.is_open
       });
@@ -92,7 +92,7 @@ export default function AdminMeetingManagementScreen() {
   const handleNewCode = async (meeting: Meeting) => {
     try {
       const newCode = generateAttendanceCode();
-      const updatedMeeting = await SupabaseService.updateMeeting(meeting.id, {
+      await SupabaseService.updateMeeting(meeting.id, {
         ...meeting,
         attendance_code: newCode
       });

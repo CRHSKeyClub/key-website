@@ -2,13 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useEvents } from '../contexts/EventsContext';
-import { useAuth } from '../contexts/AuthContext';
 import { useModal } from '../contexts/ModalContext';
 
 export default function EventCreationScreen() {
   const navigate = useNavigate();
   const { addEvent, getEventById, updateEvent } = useEvents();
-  const { isAdmin } = useAuth();
   const { showModal } = useModal();
   
   // Check if we're editing an existing event (from route params)
@@ -24,11 +22,6 @@ export default function EventCreationScreen() {
   const [endTime, setEndTime] = useState(new Date(Date.now() + 60 * 60 * 1000));
   const [color, setColor] = useState('#4287f5');
   const [attendees, setAttendees] = useState<string[]>([]);
-  
-  // For date and time pickers
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   
   const [loading, setLoading] = useState(false);
 
@@ -73,24 +66,15 @@ export default function EventCreationScreen() {
         }
         
         setColor(existingEvent.color || '#4287f5');
-        setAttendees(existingEvent.attendees || []);
+        // Extract attendee IDs from Attendee objects if they exist
+        const attendeeIds = existingEvent.attendees 
+          ? existingEvent.attendees.map((a: any) => (typeof a === 'string' ? a : a.id || a.studentId))
+          : [];
+        setAttendees(attendeeIds);
       }
     } catch (error) {
       console.error('Error loading event:', error);
     }
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatTime = (time: Date) => {
-    return time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const handleCreateEvent = async () => {

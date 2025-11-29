@@ -1,10 +1,8 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 export default function NewsletterScreen() {
   const navigate = useNavigate();
-  const [selectedNewsletter, setSelectedNewsletter] = useState<string | null>(null);
 
   const newsletters = [
     {
@@ -18,7 +16,6 @@ export default function NewsletterScreen() {
   ];
 
   const handleNewsletterClick = (newsletter: typeof newsletters[0]) => {
-    setSelectedNewsletter(newsletter.id);
     // Open PDF in new tab
     window.open(newsletter.pdfFile, '_blank');
   };

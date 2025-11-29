@@ -13,6 +13,7 @@ interface HourRequest {
   event_date: string;
   hours_requested: number;
   description: string;
+  type?: 'volunteering' | 'social';
   status: 'pending' | 'approved' | 'rejected';
   submitted_at: string;
   reviewed_at?: string;
@@ -23,13 +24,12 @@ interface HourRequest {
 
 export default function StudentHourRequestsScreen() {
   const navigate = useNavigate();
-  const { getStudentHours, refreshHourRequests } = useHours();
+  const { getStudentHours } = useHours();
   const { user } = useAuth();
   
   const [requests, setRequests] = useState<HourRequest[]>([]);
   const [currentHours, setCurrentHours] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [photoModal, setPhotoModal] = useState({
     visible: false,
     imageData: null as string | null,
@@ -58,17 +58,6 @@ export default function StudentHourRequestsScreen() {
     }
   };
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      console.log('🔄 Manual refresh triggered...');
-      await loadData();
-    } catch (error) {
-      console.error('❌ Failed to refresh:', error);
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   useEffect(() => {
     loadData();

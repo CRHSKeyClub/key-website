@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useHours } from '../contexts/HourContext';
@@ -13,6 +13,7 @@ interface HourRequestData {
   eventDate: string;
   hoursRequested: string;
   description: string;
+  type?: 'volunteering' | 'social';
 }
 
 export default function HourRequestScreen() {
@@ -25,6 +26,7 @@ export default function HourRequestScreen() {
   const [eventDate, setEventDate] = useState(new Date());
   const [hoursRequested, setHoursRequested] = useState('');
   const [description, setDescription] = useState('');
+  const [hoursType, setHoursType] = useState<'volunteering' | 'social'>('volunteering');
   const [loading, setLoading] = useState(false);
   const [currentHours, setCurrentHours] = useState(0);
   
@@ -50,15 +52,6 @@ export default function HourRequestScreen() {
         console.error('Failed to load current hours:', error);
       }
     }
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
   };
 
   // File input handler
@@ -153,7 +146,8 @@ export default function HourRequestScreen() {
         eventName: eventName.trim(),
         eventDate: eventDate.toISOString().split('T')[0],
         hoursRequested: hours.toString(),
-        description: description.trim()
+        description: description.trim(),
+        type: hoursType
       };
 
       // Add delay to show processing stage
@@ -202,22 +196,25 @@ export default function HourRequestScreen() {
       setEventName('');
       setHoursRequested('');
       setDescription('');
+      setHoursType('volunteering');
       setImage(null);
       setImagePreview(null);
       
       // Refresh current hours
-      try {
-        const updatedHours = await getStudentHours(user.sNumber);
-        setCurrentHours(updatedHours);
-      } catch (error) {
-        console.error('Failed to refresh hours:', error);
+      if (user?.sNumber) {
+        try {
+          const updatedHours = await getStudentHours(user.sNumber);
+          setCurrentHours(updatedHours);
+        } catch (error) {
+          console.error('Failed to refresh hours:', error);
+        }
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('💥 handleSubmitRequest caught error:', error);
       showModal({
         title: 'Error',
-        message: `Unexpected error: ${error.message}`,
+        message: `Unexpected error: ${error?.message || 'Unknown error occurred'}`,
         onCancel: () => {},
         onConfirm: () => {},
         cancelText: '',
@@ -324,6 +321,44 @@ export default function HourRequestScreen() {
                   placeholder="Pick event date"
                   className="w-full"
                 />
+              </div>
+
+              {/* Hours Type */}
+              <div>
+                <label className="block text-blue-400 font-bold mb-2">Hours Type *</label>
+                <div className="flex gap-4">
+                  <motion.button
+                    type="button"
+                    onClick={() => setHoursType('volunteering')}
+                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${
+                      hoursType === 'volunteering'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Volunteering
+                  </motion.button>
+                  <motion.button
+                    type="button"
+                    onClick={() => setHoursType('social')}
+                    className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${
+                      hoursType === 'social'
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    }`}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Social
+                  </motion.button>
+                </div>
+                <p className="text-slate-400 text-sm mt-2">
+                  {hoursType === 'volunteering' 
+                    ? 'Service hours for volunteering activities'
+                    : 'Hours for social events and activities'}
+                </p>
               </div>
               
               {/* Hours Requested */}

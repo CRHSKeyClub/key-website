@@ -63,24 +63,6 @@ export default function AdminStudentManagementScreen() {
       const studentsData = result.data || result || [];
       const studentsArray = Array.isArray(studentsData) ? studentsData : [];
       
-      // Debug: Log first student to see what fields are available
-      if (studentsArray.length > 0) {
-        console.log('=== STUDENT DEBUG INFO ===');
-        console.log('Sample student object:', studentsArray[0]);
-        console.log('Sample student keys:', Object.keys(studentsArray[0]));
-        console.log('Sample student name values:', {
-          'student.name': studentsArray[0].name,
-          'student.student_name': studentsArray[0].student_name,
-          'student.s_number': studentsArray[0].s_number,
-          'typeof name': typeof studentsArray[0].name,
-          'name === null': studentsArray[0].name === null,
-          'name === undefined': studentsArray[0].name === undefined,
-          'name === ""': studentsArray[0].name === '',
-          'full object': studentsArray[0]
-        });
-        console.log('=== END DEBUG ===');
-      }
-      
       // Sort students alphabetically by name
       const sortedStudents = [...studentsArray].sort((a, b) => {
         const nameA = (a.name || a.student_name || '').toLowerCase();
@@ -210,6 +192,7 @@ export default function AdminStudentManagementScreen() {
         eventDate: new Date().toISOString().split('T')[0],
         hoursRequested: Math.abs(adjustmentData.adjustment).toString(),
         description: `Manual hour adjustment by admin. Reason: ${adjustmentData.reason}. Original hours: ${adjustmentData.current_hours}, New total: ${newTotalHours}, Adjustment: ${adjustmentData.adjustment > 0 ? '+' : ''}${adjustmentData.adjustment}`,
+        type: 'volunteering' as const, // Manual adjustments default to volunteering
         imageData: null,
         imageName: null
       };

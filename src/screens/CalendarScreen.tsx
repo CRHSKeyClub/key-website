@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEvents } from '../contexts/EventsContext';
 
 export default function CalendarScreen() {
   const navigate = useNavigate();
-  const { events, loading } = useEvents();
+  const { events } = useEvents();
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const monthNames = [
@@ -45,17 +45,6 @@ export default function CalendarScreen() {
       currentDate.getMonth() === today.getMonth() &&
       currentDate.getFullYear() === today.getFullYear()
     );
-  };
-
-  const hasEvent = (day: number | null) => {
-    if (!day) return false;
-    const dateStr = new Date(
-      currentDate.getFullYear(),
-      currentDate.getMonth(),
-      day
-    ).toISOString().split('T')[0];
-    
-    return events.some(event => event.date.split('T')[0] === dateStr);
   };
 
   const getEventsForDay = (day: number | null) => {

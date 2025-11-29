@@ -43,18 +43,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 // Test connection immediately
 console.log('🧪 Testing Supabase connection...');
-supabase
+void supabase
   .from('students')
   .select('count')
   .limit(1)
-  .then(({ data, error }) => {
+  .then(({ error }) => {
     if (error) {
       console.error('❌ Supabase connection test failed:', error);
     } else {
       console.log('✅ Supabase connection test successful');
     }
   })
-  .catch(err => {
+  .catch((err: any) => {
     console.error('❌ Supabase connection exception:', err);
   });
 
