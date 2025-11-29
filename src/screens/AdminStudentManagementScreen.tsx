@@ -63,6 +63,17 @@ export default function AdminStudentManagementScreen() {
       const studentsData = result.data || result || [];
       const studentsArray = Array.isArray(studentsData) ? studentsData : [];
       
+      // Debug: Log first student to see what fields are available
+      if (studentsArray.length > 0) {
+        console.log('Sample student object:', studentsArray[0]);
+        console.log('Sample student keys:', Object.keys(studentsArray[0]));
+        console.log('Sample student name field:', {
+          name: studentsArray[0].name,
+          student_name: studentsArray[0].student_name,
+          allFields: studentsArray[0]
+        });
+      }
+      
       // Sort students alphabetically by name
       const sortedStudents = [...studentsArray].sort((a, b) => {
         const nameA = (a.name || a.student_name || '').toLowerCase();
