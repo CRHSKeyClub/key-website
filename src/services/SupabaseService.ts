@@ -1321,6 +1321,16 @@ class SupabaseService {
     }
   }
 
+  static async markAttendance(attendanceData: {
+    student_s_number: string;
+    meeting_id: string;
+    attendance_code: string;
+    session_type?: string;
+  }) {
+    const { student_s_number, meeting_id, attendance_code, session_type = 'both' } = attendanceData;
+    return this.submitAttendance(meeting_id, student_s_number, attendance_code, session_type);
+  }
+
   static async submitAttendance(meetingId: string, studentSNumber: string, attendanceCode: string, sessionType: string = 'both') {
     try {
       const { data: meeting, error: meetingError } = await supabase

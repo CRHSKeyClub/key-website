@@ -49,7 +49,7 @@ export default function StudentMeetingAttendanceScreen() {
         user?.sNumber ? SupabaseService.getStudentAttendance(user.sNumber) : []
       ]);
       
-      setMeetings(meetingsData.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      setMeetings(meetingsData.sort((a, b) => new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime()));
       setAttendanceRecords(attendanceData);
     } catch (error) {
       console.error('Failed to load data:', error);
