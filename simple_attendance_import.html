@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Key Club Attendance Import Tool</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .instructions {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+        }
+
+        .step {
+            margin: 30px 0;
+            padding: 25px;
+            background: #f9fafb;
+            border-radius: 12px;
+            border: 2px dashed #e5e7eb;
+        }
+
+        .step h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .file-input {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .file-input:hover {
+            border-color: #764ba2;
+            background: #f9f4ff;
+        }
+
+        .file-input p {
+            color: #667eea;
+            font-size: 1.1em;
+            margin: 5px 0;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+
+        .status.warning {
+            background: #fef3c7;
+            color: #92400e;
+            border-left: 4px solid #f59e0b;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f9fafb;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 10px 5px;
+        }
+
+        button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .month-selector {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .month-selector label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 10px 15px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .month-selector label:hover {
+            border-color: #667eea;
+        }
+
+        .month-selector input[type="radio"]:checked + span {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .month-selector input[type="radio"] {
+            margin: 0;
+        }
+
+        #previewContainer {
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-card .label {
+            color: #6b7280;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 Key Club Attendance Import Tool</h1>
+
+        <div class="instructions">
+            <h3>📋 Instructions</h3>
+            <ol>
+                <li>Your CSV should have columns for <strong>Student ID/S-Number</strong> and <strong>Meeting Date</strong></li>
+                <li>Select the month (September, October, or November) for this import</li>
+                <li>Upload your CSV file (or Excel file)</li>
+                <li>Review the preview to ensure data is parsed correctly</li>
+                <li>Click "Generate Import Script" to get JavaScript code you can run in browser console</li>
+                <li>Or use the generated SQL to import directly into Supabase</li>
+            </ol>
+            <p><strong>Note:</strong> Meetings will be automatically created if they don't exist for the specified dates.</p>
+        </div>
+
+        <div class="step">
+            <h3>Step 1: Select Month</h3>
+            <div class="month-selector">
+                <label>
+                    <input type="radio" name="month" value="september" checked>
+                    <span>September 2025</span>
+                </label>
+                <label>
+                    <input type="radio" name="month" value="october">
+                    <span>October 2025</span>
+                </label>
+                <label>
+                    <input type="radio" name="month" value="november">
+                    <span>November 2025</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Upload CSV File</h3>
+            <div class="file-input" onclick="document.getElementById('csvFile').click()">
+                <input
+                    type="file"
+                    id="csvFile"
+                    accept=".csv,.xlsx,.xls"
+                    style="display: none"
+                    onchange="handleFileUpload(event)"
+                />
+                <p>📁 Click to select your CSV (or Excel) file</p>
+                <p style="color: #6b7280; font-size: 14px">
+                    The file should have Student ID/S-Number and Meeting Date columns
+                </p>
+            </div>
+            <div id="fileStatus"></div>
+        </div>
+
+        <div class="step" id="previewStep" style="display: none">
+            <h3>Step 3: Preview Data</h3>
+            <div class="stats" id="statsContainer"></div>
+            <div id="previewContainer"></div>
+            <button onclick="generateImportScript()">Generate Import Script</button>
+        </div>
+
+        <div class="step" id="scriptStep" style="display: none">
+            <h3>Step 4: Import Script</h3>
+            <div id="scriptContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let csvData = [];
+        let processedData = [];
+        let selectedMonth = 'september';
+
+        const monthDates = {
+            september: { year: 2025, month: 9, name: 'September 2025' },
+            october: { year: 2025, month: 10, name: 'October 2025' },
+            november: { year: 2025, month: 11, name: 'November 2025' }
+        };
+
+        document.querySelectorAll('input[name="month"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                selectedMonth = e.target.value;
+            });
+        });
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const fileStatus = document.getElementById('fileStatus');
+            fileStatus.innerHTML = '<div class="status info">📁 Processing file: ' + file.name + '</div>';
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = e.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    csvData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    if (csvData.length === 0) {
+                        throw new Error('No data found in the file');
+                    }
+
+                    processData();
+                    showPreview();
+                    fileStatus.innerHTML = '<div class="status success">✅ File loaded successfully! Found ' + (csvData.length - 1) + ' rows of data.</div>';
+                } catch (error) {
+                    fileStatus.innerHTML = '<div class="status error">❌ Error reading file: ' + error.message + '</div>';
+                }
+            };
+            reader.readAsBinaryString(file);
+        }
+
+        function findColumnIndex(headers, candidates) {
+            const normalizedHeaders = headers.map(h => (h || '').toString().trim().toLowerCase());
+            for (const cand of candidates) {
+                const idx = normalizedHeaders.findIndex(h => h.includes(cand));
+                if (idx !== -1) return idx;
+            }
+            return -1;
+        }
+
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            
+            // Try various date formats
+            let date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+                return date;
+            }
+            
+            // Try MM/DD/YYYY
+            const parts = dateStr.toString().split('/');
+            if (parts.length === 3) {
+                date = new Date(parts[2], parts[0] - 1, parts[1]);
+                if (!isNaN(date.getTime())) return date;
+            }
+            
+            // Try YYYY-MM-DD
+            const parts2 = dateStr.toString().split('-');
+            if (parts2.length === 3) {
+                date = new Date(parts2[0], parts2[1] - 1, parts2[2]);
+                if (!isNaN(date.getTime())) return date;
+            }
+            
+            return null;
+        }
+
+        function processData() {
+            const headers = csvData[0];
+            const rows = csvData.slice(1);
+
+            const sNumberIdx = findColumnIndex(headers, [
+                'student id', 'studentid', 's-number', 's number', 's_number', 's#', 'id',
+                'student', 'member id', 'memberid'
+            ]);
+            
+            const dateIdx = findColumnIndex(headers, [
+                'date', 'meeting date', 'attendance date', 'meeting_date', 'attendance_date',
+                'day', 'month'
+            ]);
+
+            if (sNumberIdx === -1) {
+                throw new Error('Could not find Student ID/S-Number column. Please check your CSV headers.');
+            }
+
+            if (dateIdx === -1) {
+                throw new Error('Could not find Date column. Please check your CSV headers.');
+            }
+
+            const monthInfo = monthDates[selectedMonth];
+            const processedRows = [];
+
+            rows.forEach((row, index) => {
+                const rawS = row[sNumberIdx];
+                const rawDate = row[dateIdx];
+
+                if (!rawS) return; // Skip rows without S-number
+
+                let sNumber = rawS.toString().trim().toLowerCase();
+                if (!sNumber.startsWith('s')) {
+                    sNumber = 's' + sNumber.replace(/[^0-9]/g, '');
+                }
+
+                let meetingDate = parseDate(rawDate);
+                
+                // If date couldn't be parsed, try to infer from month
+                if (!meetingDate) {
+                    // Try to extract day from row
+                    const dayMatch = rawDate?.toString().match(/\d+/);
+                    if (dayMatch) {
+                        const day = parseInt(dayMatch[0]);
+                        if (day >= 1 && day <= 31) {
+                            meetingDate = new Date(monthInfo.year, monthInfo.month - 1, day);
+                        }
+                    }
+                }
+
+                if (!meetingDate || isNaN(meetingDate.getTime())) {
+                    console.warn(`Row ${index + 2}: Could not parse date "${rawDate}"`);
+                    return;
+                }
+
+                // Ensure date is in the correct month
+                if (meetingDate.getFullYear() !== monthInfo.year || 
+                    meetingDate.getMonth() !== monthInfo.month - 1) {
+                    console.warn(`Row ${index + 2}: Date ${meetingDate.toISOString().split('T')[0]} is not in ${monthInfo.name}`);
+                }
+
+                processedRows.push({
+                    sNumber: sNumber,
+                    meetingDate: meetingDate.toISOString().split('T')[0], // YYYY-MM-DD format
+                    rawDate: rawDate,
+                    rowNumber: index + 2
+                });
+            });
+
+            // Group by date to create meetings
+            const meetingsByDate = {};
+            processedRows.forEach(row => {
+                if (!meetingsByDate[row.meetingDate]) {
+                    meetingsByDate[row.meetingDate] = [];
+                }
+                meetingsByDate[row.meetingDate].push(row.sNumber);
+            });
+
+            processedData = {
+                rows: processedRows,
+                meetings: Object.keys(meetingsByDate).map(date => ({
+                    date: date,
+                    students: meetingsByDate[date]
+                }))
+            };
+        }
+
+        function showPreview() {
+            const previewStep = document.getElementById('previewStep');
+            const previewContainer = document.getElementById('previewContainer');
+            const statsContainer = document.getElementById('statsContainer');
+
+            previewStep.style.display = 'block';
+
+            // Show stats
+            const uniqueStudents = new Set(processedData.rows.map(r => r.sNumber));
+            const uniqueDates = new Set(processedData.rows.map(r => r.meetingDate));
+            
+            statsContainer.innerHTML = `
+                <div class="stat-card">
+                    <div class="number">${processedData.rows.length}</div>
+                    <div class="label">Total Attendance Records</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">${uniqueStudents.size}</div>
+                    <div class="label">Unique Students</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number">${uniqueDates.size}</div>
+                    <div class="label">Meeting Dates</div>
+                </div>
+            `;
+
+            // Show preview table
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Row</th>
+                        <th>S-Number</th>
+                        <th>Meeting Date</th>
+                        <th>Raw Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${processedData.rows.slice(0, 50).map(row => `
+                        <tr>
+                            <td>${row.rowNumber}</td>
+                            <td>${row.sNumber}</td>
+                            <td>${row.meetingDate}</td>
+                            <td>${row.rawDate || ''}</td>
+                        </tr>
+                    `).join('')}
+                    ${processedData.rows.length > 50 ? `<tr><td colspan="4" style="text-align: center; color: #6b7280;">... and ${processedData.rows.length - 50} more rows</td></tr>` : ''}
+                </tbody>
+            `;
+            previewContainer.innerHTML = '';
+            previewContainer.appendChild(table);
+        }
+
+        function generateImportScript() {
+            const scriptStep = document.getElementById('scriptStep');
+            const scriptContainer = document.getElementById('scriptContainer');
+
+            scriptStep.style.display = 'block';
+
+            // Generate JavaScript code that can be run in browser console
+            const jsCode = `
+// Attendance Import Script for ${monthDates[selectedMonth].name}
+// Copy and paste this into your browser console on the admin page
+
+(async function() {
+    console.log('Starting attendance import...');
+    
+    const attendanceData = ${JSON.stringify(processedData, null, 2)};
+    
+    // Step 1: Create or get meetings
+    console.log('Creating/getting meetings...');
+    const meetingMap = {};
+    
+    for (const meeting of attendanceData.meetings) {
+        const date = meeting.date;
+        
+        // Check if meeting exists
+        const { data: existingMeetings } = await supabase
+            .from('meetings')
+            .select('id')
+            .eq('meeting_date', date)
+            .limit(1);
+        
+        let meetingId;
+        
+        if (existingMeetings && existingMeetings.length > 0) {
+            meetingId = existingMeetings[0].id;
+            console.log(\`Meeting for \${date} already exists: \${meetingId}\`);
+        } else {
+            // Create new meeting
+            const { data: newMeeting, error } = await supabase
+                .from('meetings')
+                .insert([{
+                    meeting_date: date,
+                    meeting_type: 'General Meeting',
+                    attendance_code: 'ATTEND',
+                    is_open: false,
+                    created_by: 'admin',
+                    created_at: new Date().toISOString()
+                }])
+                .select()
+                .single();
+            
+            if (error) {
+                console.error(\`Error creating meeting for \${date}:\`, error);
+                continue;
+            }
+            
+            meetingId = newMeeting.id;
+            console.log(\`Created meeting for \${date}: \${meetingId}\`);
+        }
+        
+        meetingMap[date] = meetingId;
+    }
+    
+    // Step 2: Insert attendance records
+    console.log('Inserting attendance records...');
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const row of attendanceData.rows) {
+        const meetingId = meetingMap[row.meetingDate];
+        if (!meetingId) {
+            console.error(\`No meeting ID for date \${row.meetingDate}\`);
+            errorCount++;
+            continue;
+        }
+        
+        // Check if attendance already exists
+        const { data: existing } = await supabase
+            .from('meeting_attendance')
+            .select('id')
+            .eq('meeting_id', meetingId)
+            .eq('student_s_number', row.sNumber.toLowerCase())
+            .limit(1);
+        
+        if (existing && existing.length > 0) {
+            console.log(\`Attendance already exists for \${row.sNumber} on \${row.meetingDate}\`);
+            continue;
+        }
+        
+        const { error } = await supabase
+            .from('meeting_attendance')
+            .insert([{
+                meeting_id: meetingId,
+                student_s_number: row.sNumber.toLowerCase(),
+                attendance_code: 'IMPORTED',
+                session_type: 'both',
+                submitted_at: new Date().toISOString()
+            }]);
+        
+        if (error) {
+            console.error(\`Error inserting attendance for \${row.sNumber}:\`, error);
+            errorCount++;
+        } else {
+            successCount++;
+        }
+    }
+    
+    console.log(\`Import complete! Success: \${successCount}, Errors: \${errorCount}\`);
+})();
+            `.trim();
+
+            scriptContainer.innerHTML = `
+                <div class="status info">
+                    <strong>Copy this code and run it in your browser console:</strong>
+                    <p style="margin-top: 10px;">Open the admin page, press F12 to open Developer Tools, go to Console tab, paste this code, and press Enter.</p>
+                </div>
+                <textarea 
+                    readonly 
+                    style="width: 100%; height: 400px; font-family: monospace; padding: 15px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 12px;"
+                    onclick="this.select()"
+                >${jsCode}</textarea>
+                <button onclick="document.querySelector('#scriptContainer textarea').select(); document.execCommand('copy'); alert('Code copied to clipboard!')">Copy to Clipboard</button>
+            `;
+
+            scriptStep.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

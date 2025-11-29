@@ -1375,6 +1375,123 @@ class SupabaseService {
     }
   }
 
+  static async bulkImportAttendance(attendanceData: Array<{
+    student_s_number: string;
+    meeting_date: string;
+    attendance_code?: string;
+    session_type?: string;
+  }>) {
+    try {
+      console.log('📋 Starting bulk attendance import for', attendanceData.length, 'records');
+      
+      // Get unique dates to create/get meetings
+      const uniqueDates = [...new Set(attendanceData.map(a => a.meeting_date))];
+      const meetingMap: Record<string, string> = {};
+      
+      // Create or get meetings for each date
+      for (const date of uniqueDates) {
+        const { data: existingMeetings } = await supabase
+          .from('meetings')
+          .select('id')
+          .eq('meeting_date', date)
+          .limit(1);
+        
+        let meetingId: string;
+        
+        if (existingMeetings && existingMeetings.length > 0) {
+          meetingId = existingMeetings[0].id;
+          console.log(`✅ Meeting for ${date} already exists: ${meetingId}`);
+        } else {
+          // Create new meeting
+          const { data: newMeeting, error: meetingError } = await supabase
+            .from('meetings')
+            .insert([{
+              meeting_date: date,
+              meeting_type: 'General Meeting',
+              attendance_code: 'ATTEND',
+              is_open: false,
+              created_by: 'admin',
+              created_at: new Date().toISOString()
+            }])
+            .select()
+            .single();
+          
+          if (meetingError) {
+            console.error(`❌ Error creating meeting for ${date}:`, meetingError);
+            throw meetingError;
+          }
+          
+          meetingId = newMeeting.id;
+          console.log(`✅ Created meeting for ${date}: ${meetingId}`);
+        }
+        
+        meetingMap[date] = meetingId;
+      }
+      
+      // Insert attendance records
+      const results = {
+        success: 0,
+        errors: 0,
+        skipped: 0,
+        errorDetails: [] as Array<{ student: string; date: string; error: string }>
+      };
+      
+      for (const record of attendanceData) {
+        const meetingId = meetingMap[record.meeting_date];
+        if (!meetingId) {
+          results.errors++;
+          results.errorDetails.push({
+            student: record.student_s_number,
+            date: record.meeting_date,
+            error: 'No meeting ID found for date'
+          });
+          continue;
+        }
+        
+        // Check if attendance already exists
+        const { data: existing } = await supabase
+          .from('meeting_attendance')
+          .select('id')
+          .eq('meeting_id', meetingId)
+          .eq('student_s_number', record.student_s_number.toLowerCase())
+          .limit(1);
+        
+        if (existing && existing.length > 0) {
+          results.skipped++;
+          continue;
+        }
+        
+        const { error } = await supabase
+          .from('meeting_attendance')
+          .insert([{
+            meeting_id: meetingId,
+            student_s_number: record.student_s_number.toLowerCase(),
+            attendance_code: record.attendance_code || 'IMPORTED',
+            session_type: record.session_type || 'both',
+            submitted_at: new Date().toISOString()
+          }]);
+        
+        if (error) {
+          results.errors++;
+          results.errorDetails.push({
+            student: record.student_s_number,
+            date: record.meeting_date,
+            error: error.message
+          });
+          console.error(`❌ Error inserting attendance for ${record.student_s_number}:`, error);
+        } else {
+          results.success++;
+        }
+      }
+      
+      console.log(`✅ Bulk import complete! Success: ${results.success}, Skipped: ${results.skipped}, Errors: ${results.errors}`);
+      return results;
+    } catch (error) {
+      console.error('❌ Error in bulk attendance import:', error);
+      throw error;
+    }
+  }
+
   // ========== ANNOUNCEMENTS ==========
 
   static async getAllAnnouncements() {
