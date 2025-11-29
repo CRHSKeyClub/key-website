@@ -216,7 +216,11 @@ export default function AdminStudentDetailScreen() {
   }
 
   const sNumber = student.s_number || student.student_s_number || 'N/A';
-  const studentName = student.name || student.student_name || 'Unknown Student';
+  // Try all possible name fields
+  const studentName = student.name || 
+                      student.student_name || 
+                      (student as any).studentName ||
+                      (sNumber !== 'N/A' ? `Student ${sNumber}` : 'Unknown Student');
   const totalHours = student.total_hours || 0;
   const volunteeringHours = student.volunteering_hours || 0;
   const socialHours = student.social_hours || 0;
