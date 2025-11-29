@@ -79,12 +79,31 @@ export default function AdminStudentDetailScreen() {
     try {
       setLoading(true);
       
+      // Decode the S-number from URL
+      const sNumber = decodeURIComponent(studentId).toLowerCase();
+      
       // Load student info
       const result = await SupabaseService.getAllStudents();
       const studentsData = result.data || [];
-      const foundStudent = studentsData.find((s: Student) => s.id === studentId);
+      
+      // Find student by S-number (primary) or ID (fallback)
+      let foundStudent = studentsData.find((s: Student) => {
+        const studentSNumber = (s.s_number || s.student_s_number || '').toLowerCase();
+        return studentSNumber === sNumber;
+      });
+      
+      // Fallback: try by ID if not found by S-number
+      if (!foundStudent) {
+        foundStudent = studentsData.find((s: Student) => s.id === studentId);
+      }
       
       if (!foundStudent) {
+        console.error('Student not found. Looking for S-number:', sNumber);
+        console.error('Available students:', studentsData.map((s: Student) => ({
+          id: s.id,
+          s_number: s.s_number || s.student_s_number,
+          name: s.name || s.student_name
+        })));
         showModal({
           title: 'Error',
           message: 'Student not found.',

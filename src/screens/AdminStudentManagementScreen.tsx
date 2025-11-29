@@ -362,7 +362,12 @@ export default function AdminStudentManagementScreen() {
                   type: "spring", 
                   stiffness: 100 
                 }}
-                onClick={() => navigate(`/admin-students/${student.id}`)}
+                onClick={() => {
+                  const sNumber = student.s_number || student.student_s_number;
+                  if (sNumber) {
+                    navigate(`/admin-students/${encodeURIComponent(sNumber)}`);
+                  }
+                }}
                 className="bg-slate-800 bg-opacity-60 backdrop-blur-sm rounded-xl p-6 border border-slate-600 hover:border-blue-500 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 cursor-pointer"
               >
                 <div className="flex items-center justify-between">
