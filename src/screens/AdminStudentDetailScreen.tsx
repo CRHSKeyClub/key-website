@@ -135,15 +135,24 @@ export default function AdminStudentDetailScreen() {
       });
       setStudent(foundStudent);
       
-      // Get S-number for fetching related data
-      const studentSNumber = foundStudent.s_number || foundStudent.student_s_number;
+      // Get S-number for fetching related data (normalize to lowercase for consistency)
+      const studentSNumber = (foundStudent.s_number || foundStudent.student_s_number)?.toLowerCase();
       
       if (studentSNumber) {
+        console.log('Loading attendance for student S-number:', studentSNumber);
         // Load hour requests and attendance in parallel
         const [requests, attendance] = await Promise.all([
-          SupabaseService.getStudentHourRequests(studentSNumber).catch(() => []),
-          SupabaseService.getStudentAttendance(studentSNumber).catch(() => [])
+          SupabaseService.getStudentHourRequests(studentSNumber).catch((err) => {
+            console.error('Error loading hour requests:', err);
+            return [];
+          }),
+          SupabaseService.getStudentAttendance(studentSNumber).catch((err) => {
+            console.error('Error loading attendance:', err);
+            return [];
+          })
         ]);
+        
+        console.log('Loaded attendance records:', attendance.length);
         
         setHourRequests(requests);
         setAttendanceRecords(attendance);
