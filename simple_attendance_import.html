@@ -363,17 +363,27 @@
         function parseDate(dateStr) {
             if (!dateStr) return null;
             
-            // Try various date formats
+            // Handle timestamp format: "11/9/2025 15:11:16" or "11/11/2025 7:14:44"
+            // Extract just the date part
+            const datePart = dateStr.toString().split(' ')[0];
+            
+            // Try MM/DD/YYYY format (from timestamp)
+            const parts = datePart.split('/');
+            if (parts.length === 3) {
+                const month = parseInt(parts[0]);
+                const day = parseInt(parts[1]);
+                const year = parseInt(parts[2]);
+                
+                if (!isNaN(month) && !isNaN(day) && !isNaN(year)) {
+                    const date = new Date(year, month - 1, day);
+                    if (!isNaN(date.getTime())) return date;
+                }
+            }
+            
+            // Try standard Date parsing
             let date = new Date(dateStr);
             if (!isNaN(date.getTime())) {
                 return date;
-            }
-            
-            // Try MM/DD/YYYY
-            const parts = dateStr.toString().split('/');
-            if (parts.length === 3) {
-                date = new Date(parts[2], parts[0] - 1, parts[1]);
-                if (!isNaN(date.getTime())) return date;
             }
             
             // Try YYYY-MM-DD
@@ -390,22 +400,30 @@
             const headers = csvData[0];
             const rows = csvData.slice(1);
 
+            // Find columns - support both "S Number (No S)" and "S Number (no S)"
             const sNumberIdx = findColumnIndex(headers, [
-                'student id', 'studentid', 's-number', 's number', 's_number', 's#', 'id',
-                'student', 'member id', 'memberid'
+                's number (no s)', 's number (no s)', 'student id', 'studentid', 
+                's-number', 's number', 's_number', 's#', 'id', 'student', 
+                'member id', 'memberid'
             ]);
             
-            const dateIdx = findColumnIndex(headers, [
-                'date', 'meeting date', 'attendance date', 'meeting_date', 'attendance_date',
-                'day', 'month'
+            // Date is in Timestamp column for these CSVs
+            const timestampIdx = findColumnIndex(headers, [
+                'timestamp', 'date', 'meeting date', 'attendance date', 
+                'meeting_date', 'attendance_date'
+            ]);
+            
+            // Meeting Time column for session_type
+            const meetingTimeIdx = findColumnIndex(headers, [
+                'meeting time', 'time', 'session', 'session type'
             ]);
 
             if (sNumberIdx === -1) {
                 throw new Error('Could not find Student ID/S-Number column. Please check your CSV headers.');
             }
 
-            if (dateIdx === -1) {
-                throw new Error('Could not find Date column. Please check your CSV headers.');
+            if (timestampIdx === -1) {
+                throw new Error('Could not find Timestamp/Date column. Please check your CSV headers.');
             }
 
             const monthInfo = monthDates[selectedMonth];
@@ -413,44 +431,45 @@
 
             rows.forEach((row, index) => {
                 const rawS = row[sNumberIdx];
-                const rawDate = row[dateIdx];
+                const rawTimestamp = row[timestampIdx];
+                const rawMeetingTime = meetingTimeIdx !== -1 ? row[meetingTimeIdx] : null;
 
                 if (!rawS) return; // Skip rows without S-number
 
+                // Process S-number: normalize to lowercase, ensure 's' prefix
                 let sNumber = rawS.toString().trim().toLowerCase();
-                if (!sNumber.startsWith('s')) {
-                    sNumber = 's' + sNumber.replace(/[^0-9]/g, '');
-                }
+                // Remove any existing 's' prefix, then add it back
+                sNumber = sNumber.replace(/^s/, '');
+                // Extract only digits
+                const digits = sNumber.replace(/[^0-9]/g, '');
+                if (!digits) return; // Skip if no digits found
+                sNumber = 's' + digits;
 
-                let meetingDate = parseDate(rawDate);
+                // Parse date from timestamp
+                let meetingDate = parseDate(rawTimestamp);
                 
-                // If date couldn't be parsed, try to infer from month
-                if (!meetingDate) {
-                    // Try to extract day from row
-                    const dayMatch = rawDate?.toString().match(/\d+/);
-                    if (dayMatch) {
-                        const day = parseInt(dayMatch[0]);
-                        if (day >= 1 && day <= 31) {
-                            meetingDate = new Date(monthInfo.year, monthInfo.month - 1, day);
-                        }
-                    }
-                }
-
                 if (!meetingDate || isNaN(meetingDate.getTime())) {
-                    console.warn(`Row ${index + 2}: Could not parse date "${rawDate}"`);
+                    console.warn(`Row ${index + 2}: Could not parse date from timestamp "${rawTimestamp}"`);
                     return;
                 }
 
-                // Ensure date is in the correct month
-                if (meetingDate.getFullYear() !== monthInfo.year || 
-                    meetingDate.getMonth() !== monthInfo.month - 1) {
-                    console.warn(`Row ${index + 2}: Date ${meetingDate.toISOString().split('T')[0]} is not in ${monthInfo.name}`);
+                // Determine session type from Meeting Time
+                let sessionType = 'both'; // default
+                if (rawMeetingTime) {
+                    const timeStr = rawMeetingTime.toString().trim().toLowerCase();
+                    if (timeStr.includes('morning')) {
+                        sessionType = 'morning';
+                    } else if (timeStr.includes('afternoon')) {
+                        sessionType = 'afternoon';
+                    }
                 }
 
                 processedRows.push({
                     sNumber: sNumber,
                     meetingDate: meetingDate.toISOString().split('T')[0], // YYYY-MM-DD format
-                    rawDate: rawDate,
+                    sessionType: sessionType,
+                    rawTimestamp: rawTimestamp,
+                    rawMeetingTime: rawMeetingTime,
                     rowNumber: index + 2
                 });
             });
@@ -507,7 +526,8 @@
                         <th>Row</th>
                         <th>S-Number</th>
                         <th>Meeting Date</th>
-                        <th>Raw Date</th>
+                        <th>Session Type</th>
+                        <th>Timestamp</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -516,10 +536,11 @@
                             <td>${row.rowNumber}</td>
                             <td>${row.sNumber}</td>
                             <td>${row.meetingDate}</td>
-                            <td>${row.rawDate || ''}</td>
+                            <td>${row.sessionType || 'both'}</td>
+                            <td>${row.rawTimestamp || ''}</td>
                         </tr>
                     `).join('')}
-                    ${processedData.rows.length > 50 ? `<tr><td colspan="4" style="text-align: center; color: #6b7280;">... and ${processedData.rows.length - 50} more rows</td></tr>` : ''}
+                    ${processedData.rows.length > 50 ? `<tr><td colspan="5" style="text-align: center; color: #6b7280;">... and ${processedData.rows.length - 50} more rows</td></tr>` : ''}
                 </tbody>
             `;
             previewContainer.innerHTML = '';
@@ -532,37 +553,66 @@
 
             scriptStep.style.display = 'block';
 
-            // Generate JavaScript code that can be run in browser console
+            // Generate import data as JSON and provide code to use with SupabaseService
+            const importData = processedData.rows.map(row => ({
+                student_s_number: row.sNumber,
+                meeting_date: row.meetingDate,
+                attendance_code: 'IMPORTED',
+                session_type: row.sessionType || 'both'
+            }));
+
+            // Generate JavaScript code that uses SupabaseService.bulkImportAttendance
             const jsCode = `
 // Attendance Import Script for ${monthDates[selectedMonth].name}
 // Copy and paste this into your browser console on the admin page
+// Make sure SupabaseService is available (you're on an admin page)
+
+const importData = ${JSON.stringify(importData, null, 2)};
+
+// Use the bulk import method
+SupabaseService.bulkImportAttendance(importData)
+    .then(results => {
+        console.log('✅ Import Complete!');
+        console.log(\`Success: \${results.success}\`);
+        console.log(\`Skipped: \${results.skipped}\`);
+        console.log(\`Errors: \${results.errors}\`);
+        if (results.errorDetails.length > 0) {
+            console.warn('Error details:', results.errorDetails);
+        }
+        alert(\`Import complete! Success: \${results.success}, Skipped: \${results.skipped}, Errors: \${results.errors}\`);
+    })
+    .catch(error => {
+        console.error('❌ Import failed:', error);
+        alert('Import failed: ' + error.message);
+    });
+            `.trim();
+
+            // Also provide direct API code as alternative
+            const directApiCode = `
+// Alternative: Direct Supabase API code (if SupabaseService not available)
+// You'll need to have supabase client available
+
+const importData = ${JSON.stringify(importData, null, 2)};
 
 (async function() {
     console.log('Starting attendance import...');
     
-    const attendanceData = ${JSON.stringify(processedData, null, 2)};
-    
-    // Step 1: Create or get meetings
-    console.log('Creating/getting meetings...');
+    // Group by date to create/get meetings
+    const dates = [...new Set(importData.map(r => r.meeting_date))];
     const meetingMap = {};
     
-    for (const meeting of attendanceData.meetings) {
-        const date = meeting.date;
-        
-        // Check if meeting exists
-        const { data: existingMeetings } = await supabase
+    // Create or get meetings
+    for (const date of dates) {
+        let { data: existing } = await supabase
             .from('meetings')
             .select('id')
             .eq('meeting_date', date)
             .limit(1);
         
         let meetingId;
-        
-        if (existingMeetings && existingMeetings.length > 0) {
-            meetingId = existingMeetings[0].id;
-            console.log(\`Meeting for \${date} already exists: \${meetingId}\`);
+        if (existing && existing.length > 0) {
+            meetingId = existing[0].id;
         } else {
-            // Create new meeting
             const { data: newMeeting, error } = await supabase
                 .from('meetings')
                 .insert([{
@@ -575,42 +625,34 @@
                 }])
                 .select()
                 .single();
-            
             if (error) {
                 console.error(\`Error creating meeting for \${date}:\`, error);
                 continue;
             }
-            
             meetingId = newMeeting.id;
-            console.log(\`Created meeting for \${date}: \${meetingId}\`);
         }
-        
         meetingMap[date] = meetingId;
     }
     
-    // Step 2: Insert attendance records
-    console.log('Inserting attendance records...');
-    let successCount = 0;
-    let errorCount = 0;
-    
-    for (const row of attendanceData.rows) {
-        const meetingId = meetingMap[row.meetingDate];
+    // Insert attendance records
+    let success = 0, skipped = 0, errors = 0;
+    for (const record of importData) {
+        const meetingId = meetingMap[record.meeting_date];
         if (!meetingId) {
-            console.error(\`No meeting ID for date \${row.meetingDate}\`);
-            errorCount++;
+            errors++;
             continue;
         }
         
-        // Check if attendance already exists
+        // Check for existing
         const { data: existing } = await supabase
             .from('meeting_attendance')
             .select('id')
             .eq('meeting_id', meetingId)
-            .eq('student_s_number', row.sNumber.toLowerCase())
+            .eq('student_s_number', record.student_s_number.toLowerCase())
             .limit(1);
         
         if (existing && existing.length > 0) {
-            console.log(\`Attendance already exists for \${row.sNumber} on \${row.meetingDate}\`);
+            skipped++;
             continue;
         }
         
@@ -618,35 +660,49 @@
             .from('meeting_attendance')
             .insert([{
                 meeting_id: meetingId,
-                student_s_number: row.sNumber.toLowerCase(),
-                attendance_code: 'IMPORTED',
-                session_type: 'both',
+                student_s_number: record.student_s_number.toLowerCase(),
+                attendance_code: record.attendance_code,
+                session_type: record.session_type,
                 submitted_at: new Date().toISOString()
             }]);
         
         if (error) {
-            console.error(\`Error inserting attendance for \${row.sNumber}:\`, error);
-            errorCount++;
+            errors++;
+            console.error('Error:', error);
         } else {
-            successCount++;
+            success++;
         }
     }
     
-    console.log(\`Import complete! Success: \${successCount}, Errors: \${errorCount}\`);
+    console.log(\`Done! Success: \${success}, Skipped: \${skipped}, Errors: \${errors}\`);
 })();
             `.trim();
 
             scriptContainer.innerHTML = `
                 <div class="status info">
-                    <strong>Copy this code and run it in your browser console:</strong>
-                    <p style="margin-top: 10px;">Open the admin page, press F12 to open Developer Tools, go to Console tab, paste this code, and press Enter.</p>
+                    <strong>Method 1: Using SupabaseService (Recommended)</strong>
+                    <p style="margin-top: 10px;">Open any admin page, press F12, go to Console tab, paste this code, and press Enter.</p>
                 </div>
                 <textarea 
                     readonly 
-                    style="width: 100%; height: 400px; font-family: monospace; padding: 15px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 12px;"
+                    id="script1"
+                    style="width: 100%; height: 300px; font-family: monospace; padding: 15px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 12px; margin-bottom: 20px;"
                     onclick="this.select()"
                 >${jsCode}</textarea>
-                <button onclick="document.querySelector('#scriptContainer textarea').select(); document.execCommand('copy'); alert('Code copied to clipboard!')">Copy to Clipboard</button>
+                
+                <div class="status warning">
+                    <strong>Method 2: Direct Supabase API (Alternative)</strong>
+                    <p style="margin-top: 10px;">Use this if Method 1 doesn't work. Requires supabase client in console.</p>
+                </div>
+                <textarea 
+                    readonly 
+                    id="script2"
+                    style="width: 100%; height: 400px; font-family: monospace; padding: 15px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 12px; margin-bottom: 20px;"
+                    onclick="this.select()"
+                >${directApiCode}</textarea>
+                
+                <button onclick="document.getElementById('script1').select(); document.execCommand('copy'); alert('Method 1 code copied!')">Copy Method 1</button>
+                <button onclick="document.getElementById('script2').select(); document.execCommand('copy'); alert('Method 2 code copied!')">Copy Method 2</button>
             `;
 
             scriptStep.scrollIntoView({ behavior: 'smooth' });
