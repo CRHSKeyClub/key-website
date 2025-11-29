@@ -62,8 +62,16 @@ export default function AdminStudentManagementScreen() {
       // Handle the response structure - getAllStudents returns { data, error }
       const studentsData = result.data || result || [];
       const studentsArray = Array.isArray(studentsData) ? studentsData : [];
-      setStudents(studentsArray);
-      setFilteredStudents(studentsArray);
+      
+      // Sort students alphabetically by name
+      const sortedStudents = [...studentsArray].sort((a, b) => {
+        const nameA = (a.name || a.student_name || '').toLowerCase();
+        const nameB = (b.name || b.student_name || '').toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      
+      setStudents(sortedStudents);
+      setFilteredStudents(sortedStudents);
     } catch (error) {
       console.error('Failed to load students:', error);
       setStudents([]);
@@ -123,7 +131,14 @@ export default function AdminStudentManagementScreen() {
       });
     }
 
-    setFilteredStudents(filtered);
+    // Ensure filtered results are also sorted alphabetically
+    const sortedFiltered = [...filtered].sort((a, b) => {
+      const nameA = (a.name || a.student_name || '').toLowerCase();
+      const nameB = (b.name || b.student_name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+
+    setFilteredStudents(sortedFiltered);
   };
 
   useEffect(() => {

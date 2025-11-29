@@ -120,13 +120,13 @@ export default function AdminStudentDetailScreen() {
       setStudent(foundStudent);
       
       // Get S-number for fetching related data
-      const sNumber = foundStudent.s_number || foundStudent.student_s_number;
+      const studentSNumber = foundStudent.s_number || foundStudent.student_s_number;
       
-      if (sNumber) {
+      if (studentSNumber) {
         // Load hour requests and attendance in parallel
         const [requests, attendance] = await Promise.all([
-          SupabaseService.getStudentHourRequests(sNumber).catch(() => []),
-          SupabaseService.getStudentAttendance(sNumber).catch(() => [])
+          SupabaseService.getStudentHourRequests(studentSNumber).catch(() => []),
+          SupabaseService.getStudentAttendance(studentSNumber).catch(() => [])
         ]);
         
         setHourRequests(requests);
