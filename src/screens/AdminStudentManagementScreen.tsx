@@ -65,13 +65,20 @@ export default function AdminStudentManagementScreen() {
       
       // Debug: Log first student to see what fields are available
       if (studentsArray.length > 0) {
+        console.log('=== STUDENT DEBUG INFO ===');
         console.log('Sample student object:', studentsArray[0]);
         console.log('Sample student keys:', Object.keys(studentsArray[0]));
-        console.log('Sample student name field:', {
-          name: studentsArray[0].name,
-          student_name: studentsArray[0].student_name,
-          allFields: studentsArray[0]
+        console.log('Sample student name values:', {
+          'student.name': studentsArray[0].name,
+          'student.student_name': studentsArray[0].student_name,
+          'student.s_number': studentsArray[0].s_number,
+          'typeof name': typeof studentsArray[0].name,
+          'name === null': studentsArray[0].name === null,
+          'name === undefined': studentsArray[0].name === undefined,
+          'name === ""': studentsArray[0].name === '',
+          'full object': studentsArray[0]
         });
+        console.log('=== END DEBUG ===');
       }
       
       // Sort students alphabetically by name
@@ -407,7 +414,9 @@ export default function AdminStudentManagementScreen() {
                     
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white">
-                        {student.name || student.student_name || 'Unknown Student'}
+                        {(student.name && student.name.trim()) || 
+                         (student.student_name && student.student_name.trim()) || 
+                         (student.s_number || student.student_s_number || 'Unknown Student')}
                       </h3>
                       <p className="text-blue-300 text-sm">{student.s_number || student.student_s_number}</p>
                       {student.tshirt_size && (
