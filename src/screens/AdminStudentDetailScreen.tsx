@@ -435,30 +435,18 @@ export default function AdminStudentDetailScreen() {
       const newTotalHours = (student.total_hours || 0) + adjustmentData.adjustment;
       await SupabaseService.updateStudentHours(student.id, newTotalHours, 'total');
       
-      // Create audit trail
-      const adjustmentRequest = {
+      // Create audit trail as already approved (don't add hours again since we already updated them)
+      await SupabaseService.createApprovedHourRequest({
         studentSNumber: student.s_number || student.student_s_number || '',
         studentName: student.name || student.student_name || '',
         eventName: `Manual Adjustment - ${adjustmentData.adjustment > 0 ? 'Added' : 'Removed'} ${Math.abs(adjustmentData.adjustment)} hours`,
         eventDate: new Date().toISOString().split('T')[0],
-        hoursRequested: Math.abs(adjustmentData.adjustment).toString(),
+        hoursRequested: Math.abs(adjustmentData.adjustment),
         description: `Manual hour adjustment by admin. Reason: ${adjustmentData.reason}. Original hours: ${student.total_hours || 0}, New total: ${newTotalHours}, Adjustment: ${adjustmentData.adjustment > 0 ? '+' : ''}${adjustmentData.adjustment}`,
-        type: 'volunteering' as const,
-        imageData: null,
-        imageName: null
-      };
-      const auditRequest = await SupabaseService.submitHourRequest(adjustmentRequest);
-      
-      // Auto-approve with admin notes since hours were already updated
-      if (auditRequest?.id) {
-        await SupabaseService.updateHourRequestStatus(
-          auditRequest.id,
-          'approved',
-          adjustmentData.reason,
-          'Admin',
-          Math.abs(adjustmentData.adjustment)
-        );
-      }
+        type: 'volunteering',
+        adminNotes: adjustmentData.reason,
+        reviewedBy: 'Admin'
+      });
       
       await loadStudentData();
       setShowAdjustHoursModal(false);
@@ -526,31 +514,18 @@ export default function AdminStudentDetailScreen() {
       // Update both hour types atomically in a single operation
       await SupabaseService.updateStudentHoursBoth(student.id, newVolunteering, newSocial);
       
-      // Create audit trail
-      const transferRequest = {
+      // Create audit trail as already approved (don't add hours again since we already updated them)
+      await SupabaseService.createApprovedHourRequest({
         studentSNumber: student.s_number || student.student_s_number || '',
         studentName: student.name || student.student_name || '',
         eventName: `Hour Transfer - ${transferData.amount} hour${transferData.amount === 1 ? '' : 's'} from ${transferData.fromType} to ${transferData.toType}`,
         eventDate: new Date().toISOString().split('T')[0],
-        hoursRequested: transferData.amount.toString(),
+        hoursRequested: transferData.amount,
         description: `Hour transfer by admin. Reason: ${transferData.reason}. Transferred ${transferData.amount} hour${transferData.amount === 1 ? '' : 's'} from ${transferData.fromType} to ${transferData.toType}. Before: Volunteering: ${currentVolunteering}, Social: ${currentSocial}. After: Volunteering: ${newVolunteering}, Social: ${newSocial}.`,
         type: transferData.toType,
-        imageData: null,
-        imageName: null
-      };
-      // Submit the hour request for audit trail
-      const auditRequest = await SupabaseService.submitHourRequest(transferRequest);
-      
-      // Auto-approve with admin notes since hours were already updated
-      if (auditRequest?.id) {
-        await SupabaseService.updateHourRequestStatus(
-          auditRequest.id,
-          'approved',
-          transferData.reason,
-          'Admin',
-          transferData.amount
-        );
-      }
+        adminNotes: transferData.reason,
+        reviewedBy: 'Admin'
+      });
       
       await loadStudentData();
       setShowTransferHoursModal(false);

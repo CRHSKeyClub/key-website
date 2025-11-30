@@ -1784,6 +1784,54 @@ class SupabaseService {
     }
   }
 
+  static async createApprovedHourRequest(requestData: {
+    studentSNumber: string;
+    studentName: string;
+    eventName: string;
+    eventDate: string;
+    hoursRequested: number;
+    description: string;
+    type: 'volunteering' | 'social';
+    adminNotes: string;
+    reviewedBy?: string;
+  }) {
+    try {
+      console.log('📝 Creating approved hour request for audit trail...');
+      
+      const insertData: any = {
+        student_s_number: requestData.studentSNumber.toLowerCase(),
+        student_name: requestData.studentName,
+        event_name: requestData.eventName,
+        event_date: requestData.eventDate,
+        hours_requested: requestData.hoursRequested,
+        description: requestData.description,
+        type: requestData.type || 'volunteering',
+        status: 'approved',
+        submitted_at: new Date().toISOString(),
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: requestData.reviewedBy || 'Admin',
+        admin_notes: requestData.adminNotes
+      };
+      
+      const { data, error } = await supabase
+        .from('hour_requests')
+        .insert([insertData])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error creating approved hour request:', error);
+        throw error;
+      }
+      
+      console.log('✅ Approved hour request created successfully (no hours added - already updated)');
+      return data;
+    } catch (error: any) {
+      console.error('❌ Error creating approved hour request:', error);
+      throw new Error(`Failed to create approved hour request: ${error.message}`);
+    }
+  }
+
   private static extractPhotoToken(description?: string | null) {
     if (!description) return null;
 
