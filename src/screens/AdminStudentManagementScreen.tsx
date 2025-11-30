@@ -98,7 +98,9 @@ export default function AdminStudentManagementScreen() {
         return prev;
       }
 
-      const minAllowed = -prev.current_hours;
+      // Ensure we use the current_hours which should be updated when type changes
+      // Cap minimum adjustment at -current_hours (so we don't go below 0)
+      const minAllowed = -Math.max(0, prev.current_hours);
       const clampedValue = Math.min(
         Math.max(nextRaw, minAllowed),
         MAX_MANUAL_ADJUSTMENT

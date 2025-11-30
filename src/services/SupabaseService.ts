@@ -1693,16 +1693,20 @@ class SupabaseService {
 
   static async updateStudentHours(studentId: string, newHours: number, hoursType: 'volunteering' | 'social' | 'total' = 'total') {
     try {
-      console.log('📊 Updating student hours:', studentId, 'to', newHours, 'type:', hoursType);
+      // Round hours to nearest 0.5
+      const roundToHalf = (num: number) => Math.round(num * 2) / 2;
+      const roundedHours = roundToHalf(newHours);
+      
+      console.log('📊 Updating student hours:', studentId, 'to', roundedHours, 'type:', hoursType);
       
       let updateData: any = {};
       
       if (hoursType === 'volunteering') {
         // Update volunteering_hours, trigger will update total_hours
-        updateData = { volunteering_hours: newHours };
+        updateData = { volunteering_hours: roundedHours };
       } else if (hoursType === 'social') {
         // Update social_hours, trigger will update total_hours
-        updateData = { social_hours: newHours };
+        updateData = { social_hours: roundedHours };
       } else {
         // For 'total', we need to adjust the total while preserving the ratio
         // Get current values first
@@ -1718,16 +1722,37 @@ class SupabaseService {
           const currentSocial = parseFloat(student.social_hours || 0);
           
           if (currentTotal > 0) {
-            // Preserve the ratio
+            // Preserve the ratio and round to nearest 0.5
             const volunteeringRatio = currentVolunteering / currentTotal;
             const socialRatio = currentSocial / currentTotal;
+            
+            // Calculate new hours preserving ratio
+            let newVolunteering = roundedHours * volunteeringRatio;
+            let newSocial = roundedHours * socialRatio;
+            
+            // Round to nearest 0.5
+            newVolunteering = roundToHalf(newVolunteering);
+            newSocial = roundToHalf(newSocial);
+            
+            // Ensure they sum to the new total (adjust if needed due to rounding)
+            const sum = newVolunteering + newSocial;
+            if (Math.abs(sum - roundedHours) > 0.01) {
+              // Adjust the larger category to match the total
+              const diff = roundedHours - sum;
+              if (newVolunteering >= newSocial) {
+                newVolunteering = roundToHalf(newVolunteering + diff);
+              } else {
+                newSocial = roundToHalf(newSocial + diff);
+              }
+            }
+            
             updateData = {
-              volunteering_hours: newHours * volunteeringRatio,
-              social_hours: newHours * socialRatio
+              volunteering_hours: Math.max(0, newVolunteering),
+              social_hours: Math.max(0, newSocial)
             };
           } else {
-            // If no hours yet, add all to volunteering
-            updateData = { volunteering_hours: newHours };
+            // If no hours yet, add all to volunteering (rounded to 0.5)
+            updateData = { volunteering_hours: roundedHours };
           }
         } else {
           throw new Error('Student not found');

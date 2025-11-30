@@ -383,11 +383,24 @@ export default function AdminStudentDetailScreen() {
       if (!Number.isFinite(nextRaw)) {
         return prev;
       }
-      const minAllowed = -(student?.total_hours || 0);
+      
+      // Get current hours for the selected type
+      let currentHours = 0;
+      if (prev.hoursType === 'volunteering') {
+        currentHours = student?.volunteering_hours || 0;
+      } else if (prev.hoursType === 'social') {
+        currentHours = student?.social_hours || 0;
+      } else {
+        currentHours = student?.total_hours || 0;
+      }
+      
+      // Cap minimum adjustment at -currentHours (so we don't go below 0)
+      const minAllowed = -currentHours;
       const clampedValue = Math.min(
         Math.max(nextRaw, minAllowed),
         Number.POSITIVE_INFINITY
       );
+      
       return {
         ...prev,
         adjustment: clampedValue
