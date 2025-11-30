@@ -32,7 +32,6 @@ export default function AdminStudentManagementScreen() {
   const { showModal } = useModal();
   const [students, setStudents] = useState<Student[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showAdjustmentModal, setShowAdjustmentModal] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [adjustmentData, setAdjustmentData] = useState<HourAdjustment>({
@@ -59,7 +58,6 @@ export default function AdminStudentManagementScreen() {
 
   const loadStudents = async () => {
     try {
-      setLoading(true);
       const result = await SupabaseService.getAllStudents();
       // Handle the response structure - getAllStudents returns { data, error }
       const studentsData = result.data || result || [];
@@ -88,8 +86,6 @@ export default function AdminStudentManagementScreen() {
         icon: 'alert-circle',
         iconColor: '#ff4d4d'
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -282,17 +278,6 @@ export default function AdminStudentManagementScreen() {
       setSubmitting(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading students...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">

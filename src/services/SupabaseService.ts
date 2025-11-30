@@ -1653,13 +1653,38 @@ class SupabaseService {
 
   static async getAllStudents() {
     try {
-      const { data, error } = await supabase
+      // First get all students
+      const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select('*')
         .order('name', { ascending: true });
       
-      if (error) throw error;
-      return { data };
+      if (studentsError) throw studentsError;
+      if (!studentsData) return { data: [] };
+
+      // Get all auth users (students who have created accounts)
+      const { data: authUsers, error: authError } = await supabase
+        .from('auth_users')
+        .select('s_number');
+      
+      if (authError) {
+        console.error('❌ Error getting auth users:', authError);
+        // If we can't get auth users, return all students (fallback)
+        return { data: studentsData };
+      }
+
+      // Create a set of S-numbers that have accounts
+      const accountSNumbers = new Set(
+        (authUsers || []).map((au: any) => (au.s_number || '').toLowerCase())
+      );
+
+      // Filter to only include students with accounts
+      const studentsWithAccounts = studentsData.filter((student: any) => {
+        const sNumber = (student.s_number || student.student_s_number || '').toLowerCase();
+        return accountSNumbers.has(sNumber);
+      });
+      
+      return { data: studentsWithAccounts };
     } catch (error) {
       console.error('❌ Error getting all students:', error);
       return { data: [], error };
@@ -1722,6 +1747,36 @@ class SupabaseService {
       }
       
       console.log('✅ Student hours updated successfully');
+      return data;
+    } catch (error: any) {
+      console.error('❌ Error updating student hours:', error);
+      throw new Error(`Failed to update student hours: ${error.message}`);
+    }
+  }
+
+  static async updateStudentHoursBoth(studentId: string, volunteeringHours: number, socialHours: number) {
+    try {
+      console.log('📊 Updating student hours (both):', studentId, 'volunteering:', volunteeringHours, 'social:', socialHours);
+      
+      // Update both hours atomically in a single operation
+      const updateData = {
+        volunteering_hours: volunteeringHours,
+        social_hours: socialHours
+      };
+      
+      const { data, error } = await supabase
+        .from('students')
+        .update(updateData)
+        .eq('id', studentId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error updating student hours:', error);
+        throw error;
+      }
+      
+      console.log('✅ Student hours updated successfully (both types)');
       return data;
     } catch (error: any) {
       console.error('❌ Error updating student hours:', error);

@@ -523,9 +523,8 @@ export default function AdminStudentDetailScreen() {
         newVolunteering = currentVolunteering + transferData.amount;
       }
 
-      // Update both hour types
-      await SupabaseService.updateStudentHours(student.id, newVolunteering, 'volunteering');
-      await SupabaseService.updateStudentHours(student.id, newSocial, 'social');
+      // Update both hour types atomically in a single operation
+      await SupabaseService.updateStudentHoursBoth(student.id, newVolunteering, newSocial);
       
       // Create audit trail
       const transferRequest = {
