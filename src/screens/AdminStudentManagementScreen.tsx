@@ -23,6 +23,7 @@ interface HourAdjustment {
   student_name: string;
   current_hours: number;
   adjustment: number;
+  hoursType: 'volunteering' | 'social' | 'total';
   reason: string;
 }
 
@@ -39,6 +40,7 @@ export default function AdminStudentManagementScreen() {
     student_name: '',
     current_hours: 0,
     adjustment: 0,
+    hoursType: 'total',
     reason: ''
   });
   const [submitting, setSubmitting] = useState(false);
@@ -175,6 +177,7 @@ export default function AdminStudentManagementScreen() {
         student_name: getStudentName(student),
         current_hours: student.total_hours || 0,
         adjustment: 0,
+        hoursType: 'total',
         reason: ''
       });
     setShowAdjustmentModal(true);
@@ -201,54 +204,63 @@ export default function AdminStudentManagementScreen() {
     setSubmitting(true);
     
     try {
-      // Calculate new total hours
-      const newTotalHours = adjustmentData.current_hours + adjustmentData.adjustment;
+      let newHours: number;
+      let currentHours: number;
+      const student = selectedStudent;
+      if (!student) return;
       
-      // Update student hours directly in the database
-      await SupabaseService.updateStudentHours(adjustmentData.student_id, newTotalHours);
-      
-      // Create a manual hour request for audit trail
-      const adjustmentRequest = {
-        studentSNumber: selectedStudent?.s_number || selectedStudent?.student_s_number || '',
-        studentName: selectedStudent ? getStudentName(selectedStudent) : '',
-        eventName: `Manual Adjustment - ${adjustmentData.adjustment > 0 ? 'Added' : 'Removed'} ${Math.abs(adjustmentData.adjustment)} hours`,
-        eventDate: new Date().toISOString().split('T')[0],
-        hoursRequested: Math.abs(adjustmentData.adjustment).toString(),
-        description: `Manual hour adjustment by admin. Reason: ${adjustmentData.reason}. Original hours: ${adjustmentData.current_hours}, New total: ${newTotalHours}, Adjustment: ${adjustmentData.adjustment > 0 ? '+' : ''}${adjustmentData.adjustment}`,
-        type: 'volunteering' as const, // Manual adjustments default to volunteering
-        imageData: null,
-        imageName: null
-      };
-
-      // Submit the hour request for audit trail (this will create a record but not affect the already updated total)
-      const auditRequest = await SupabaseService.submitHourRequest(adjustmentRequest);
-      
-      // Auto-approve with admin notes since hours were already updated
-      if (auditRequest?.id) {
-        await SupabaseService.updateHourRequestStatus(
-          auditRequest.id,
-          'approved',
-          adjustmentData.reason,
-          'Admin',
-          Math.abs(adjustmentData.adjustment)
-        );
+      if (adjustmentData.hoursType === 'volunteering') {
+        currentHours = student.volunteering_hours || 0;
+        newHours = currentHours + adjustmentData.adjustment;
+        await SupabaseService.updateStudentHours(adjustmentData.student_id, newHours, 'volunteering');
+        adjustmentData.current_hours = currentHours;
+      } else if (adjustmentData.hoursType === 'social') {
+        currentHours = student.social_hours || 0;
+        newHours = currentHours + adjustmentData.adjustment;
+        await SupabaseService.updateStudentHours(adjustmentData.student_id, newHours, 'social');
+        adjustmentData.current_hours = currentHours;
+      } else {
+        // Total hours adjustment
+        currentHours = student.total_hours || 0;
+        newHours = currentHours + adjustmentData.adjustment;
+        await SupabaseService.updateStudentHours(adjustmentData.student_id, newHours, 'total');
+        adjustmentData.current_hours = currentHours;
       }
+      
+      const typeLabel = adjustmentData.hoursType === 'volunteering' 
+        ? 'volunteering' 
+        : adjustmentData.hoursType === 'social' 
+        ? 'social' 
+        : 'total';
+      
+      // Create audit trail as already approved (don't add hours again since we already updated them)
+      await SupabaseService.createApprovedHourRequest({
+        studentSNumber: student.s_number || student.student_s_number || '',
+        studentName: getStudentName(student),
+        eventName: `Manual Adjustment - ${adjustmentData.adjustment > 0 ? 'Added' : 'Removed'} ${Math.abs(adjustmentData.adjustment)} ${typeLabel} hours`,
+        eventDate: new Date().toISOString().split('T')[0],
+        hoursRequested: Math.abs(adjustmentData.adjustment),
+        description: `Manual ${typeLabel} hour adjustment by admin. Reason: ${adjustmentData.reason}. Original ${typeLabel} hours: ${currentHours}, New ${typeLabel}: ${newHours}, Adjustment: ${adjustmentData.adjustment > 0 ? '+' : ''}${adjustmentData.adjustment}`,
+        type: adjustmentData.hoursType === 'total' ? 'volunteering' : adjustmentData.hoursType,
+        adminNotes: adjustmentData.reason,
+        reviewedBy: 'Admin'
+      });
       
       // Reload students to show updated hours
       await loadStudents();
 
       setShowAdjustmentModal(false);
       const getSuccessMessage = () => {
-        const newTotal = adjustmentData.current_hours + adjustmentData.adjustment;
+        const newTotal = currentHours + adjustmentData.adjustment;
         const hourText = newTotal === 1 ? 'hour' : 'hours';
         const adjustmentHourText = Math.abs(adjustmentData.adjustment) === 1 ? 'hour' : 'hours';
         
         if (adjustmentData.adjustment > 0) {
-          return `Successfully added ${adjustmentData.adjustment} ${adjustmentHourText} for ${adjustmentData.student_name}. New total: ${newTotal} ${hourText}.`;
+          return `Successfully added ${adjustmentData.adjustment} ${adjustmentHourText} ${typeLabel} hours for ${adjustmentData.student_name}. New ${typeLabel}: ${newTotal} ${hourText}.`;
         } else if (adjustmentData.adjustment < 0) {
-          return `Successfully removed ${Math.abs(adjustmentData.adjustment)} ${adjustmentHourText} for ${adjustmentData.student_name}. New total: ${newTotal} ${hourText}.`;
+          return `Successfully removed ${Math.abs(adjustmentData.adjustment)} ${adjustmentHourText} ${typeLabel} hours for ${adjustmentData.student_name}. New ${typeLabel}: ${newTotal} ${hourText}.`;
         } else {
-          return `Successfully updated hours for ${adjustmentData.student_name}. Total remains: ${newTotal} ${hourText}.`;
+          return `Successfully updated ${typeLabel} hours for ${adjustmentData.student_name}. ${typeLabel} remains: ${newTotal} ${hourText}.`;
         }
       };
 
@@ -567,7 +579,55 @@ export default function AdminStudentManagementScreen() {
             {/* Student Info */}
             <div className="bg-gray-100 rounded-lg p-4 mb-4">
               <p className="text-gray-700"><span className="font-medium">Student:</span> {adjustmentData.student_name}</p>
-              <p className="text-gray-700"><span className="font-medium">Current Hours:</span> {adjustmentData.current_hours}</p>
+              <p className="text-gray-700"><span className="font-medium">Current Total:</span> {selectedStudent?.total_hours || 0}</p>
+              <p className="text-gray-700"><span className="font-medium">Volunteering:</span> {selectedStudent?.volunteering_hours || 0}</p>
+              <p className="text-gray-700"><span className="font-medium">Social:</span> {selectedStudent?.social_hours || 0}</p>
+            </div>
+
+            {/* Hour Type Selection */}
+            <div className="mb-4">
+              <label className="block text-gray-700 font-semibold mb-2">Adjust Which Hours? <span className="text-red-500">*</span></label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const current = selectedStudent?.total_hours || 0;
+                    setAdjustmentData(prev => ({ ...prev, hoursType: 'total', current_hours: current, adjustment: 0 }));
+                  }}
+                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+                    adjustmentData.hoursType === 'total'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Total
+                </button>
+                <button
+                  onClick={() => {
+                    const current = selectedStudent?.volunteering_hours || 0;
+                    setAdjustmentData(prev => ({ ...prev, hoursType: 'volunteering', current_hours: current, adjustment: 0 }));
+                  }}
+                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+                    adjustmentData.hoursType === 'volunteering'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Volunteering
+                </button>
+                <button
+                  onClick={() => {
+                    const current = selectedStudent?.social_hours || 0;
+                    setAdjustmentData(prev => ({ ...prev, hoursType: 'social', current_hours: current, adjustment: 0 }));
+                  }}
+                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+                    adjustmentData.hoursType === 'social'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Social
+                </button>
+              </div>
             </div>
 
             {/* Hour Counter */}
@@ -639,8 +699,14 @@ export default function AdminStudentManagementScreen() {
                     }}
                     transition={{ duration: 0.2 }}
                   >
-                    {adjustmentData.current_hours + adjustmentData.adjustment}
+                    {(() => {
+                      const current = adjustmentData.current_hours;
+                      return (current + adjustmentData.adjustment).toFixed(1);
+                    })()}
                   </motion.div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {adjustmentData.hoursType === 'volunteering' ? 'Volunteering' : adjustmentData.hoursType === 'social' ? 'Social' : 'Total'}
+                  </div>
                   <motion.div 
                     className="text-sm text-gray-500"
                     initial={{ opacity: 0, y: 10 }}
