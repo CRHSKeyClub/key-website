@@ -16,6 +16,17 @@ interface HourRequest {
   type?: 'volunteering' | 'social';
   status: 'pending' | 'approved' | 'rejected';
   submitted_at: string;
+  admin_notes?: string;
+  reviewed_at?: string;
+}
+
+interface Notification {
+  id: string;
+  type: 'approved' | 'rejected' | 'adjustment' | 'transfer';
+  title: string;
+  message: string;
+  adminNotes: string;
+  date: string;
 }
 
 export default function HomeScreen() {
@@ -24,12 +35,15 @@ export default function HomeScreen() {
   const [totalHours, setTotalHours] = useState(0);
   const [recentRequests, setRecentRequests] = useState<HourRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
     if (user && !isAdmin) {
       loadHours();
       loadRecentRequests();
+      loadNotifications();
     }
   }, [user, isAdmin]);
 
@@ -55,13 +69,161 @@ export default function HomeScreen() {
     }
   };
 
+  const loadNotifications = async () => {
+    if (!user?.sNumber) return;
+    
+    try {
+      const requests = await SupabaseService.getStudentHourRequests(user.sNumber);
+      const newNotifications: Notification[] = [];
+      
+      // Get last login time from localStorage (set when they log in)
+      const lastLoginTime = localStorage.getItem(`lastLogin_${user.sNumber}`);
+      
+      requests.forEach((request) => {
+        // Only show notifications for reviewed requests with admin notes
+        if ((request.status === 'approved' || request.status === 'rejected') && request.admin_notes) {
+          const reviewedDate = request.reviewed_at ? new Date(request.reviewed_at) : null;
+          
+          // Show if reviewed after last login, or if no last login time (first time)
+          if (!lastLoginTime || (reviewedDate && reviewedDate > new Date(lastLoginTime))) {
+            newNotifications.push({
+              id: request.id,
+              type: request.status === 'approved' ? 'approved' : 'rejected',
+              title: `Hour Request ${request.status === 'approved' ? 'Approved' : 'Rejected'}`,
+              message: `Your request for "${request.event_name}" (${request.hours_requested} hours) has been ${request.status}.`,
+              adminNotes: request.admin_notes,
+              date: request.reviewed_at || request.submitted_at
+            });
+          }
+        }
+        
+        // Check for manual adjustments or transfers in description
+        if (request.description && request.admin_notes) {
+          const isAdjustment = request.description.includes('Manual Adjustment') || 
+                              request.description.includes('Manual hour adjustment');
+          const isTransfer = request.description.includes('Hour Transfer') ||
+                            request.description.includes('hour transfer');
+          
+          if (isAdjustment || isTransfer) {
+            const reviewedDate = request.reviewed_at ? new Date(request.reviewed_at) : null;
+            
+            if (!lastLoginTime || (reviewedDate && reviewedDate > new Date(lastLoginTime))) {
+              if (isAdjustment) {
+                newNotifications.push({
+                  id: `adjustment_${request.id}`,
+                  type: 'adjustment',
+                  title: 'Hours Adjusted',
+                  message: `Your hours have been manually adjusted: ${request.event_name}`,
+                  adminNotes: request.admin_notes,
+                  date: request.reviewed_at || request.submitted_at
+                });
+              } else if (isTransfer) {
+                newNotifications.push({
+                  id: `transfer_${request.id}`,
+                  type: 'transfer',
+                  title: 'Hours Transferred',
+                  message: `Your hours have been transferred: ${request.event_name}`,
+                  adminNotes: request.admin_notes,
+                  date: request.reviewed_at || request.submitted_at
+                });
+              }
+            }
+          }
+        }
+      });
+      
+      // Sort by date, most recent first
+      newNotifications.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setNotifications(newNotifications);
+      
+      // Update last login time
+      localStorage.setItem(`lastLogin_${user.sNumber}`, new Date().toISOString());
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    }
+  };
+
+  const dismissNotification = (id: string) => {
+    setDismissedNotifications(prev => new Set([...prev, id]));
+  };
+
   // Calculate progress percentage (assuming 20 hours goal)
   const goalHours = 20;
   const progressPercentage = Math.min((totalHours / goalHours) * 100, 100);
 
+  const visibleNotifications = notifications.filter(n => !dismissedNotifications.has(n.id));
+
   return (
     <div className="p-8">
       <div className="max-w-4xl mx-auto">
+        {/* Notifications/Alerts */}
+        {!isAdmin && visibleNotifications.length > 0 && (
+          <div className="space-y-4 mb-8">
+            {visibleNotifications.map((notification) => (
+              <motion.div
+                key={notification.id}
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`rounded-xl p-6 border-2 ${
+                  notification.type === 'approved' 
+                    ? 'bg-green-900 bg-opacity-50 border-green-500'
+                    : notification.type === 'rejected'
+                    ? 'bg-red-900 bg-opacity-50 border-red-500'
+                    : 'bg-blue-900 bg-opacity-50 border-blue-500'
+                } backdrop-blur-sm`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    {notification.type === 'approved' && (
+                      <svg className="w-6 h-6 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {notification.type === 'rejected' && (
+                      <svg className="w-6 h-6 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {(notification.type === 'adjustment' || notification.type === 'transfer') && (
+                      <svg className="w-6 h-6 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    <div>
+                      <h3 className={`text-lg font-bold ${
+                        notification.type === 'approved' 
+                          ? 'text-green-400'
+                          : notification.type === 'rejected'
+                          ? 'text-red-400'
+                          : 'text-blue-400'
+                      }`}>
+                        {notification.title}
+                      </h3>
+                      <p className="text-gray-300 text-sm mt-1">{notification.message}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => dismissNotification(notification.id)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mt-4 p-4 bg-black bg-opacity-30 rounded-lg border border-white border-opacity-20">
+                  <p className="text-white font-semibold text-sm mb-2">Admin Notes:</p>
+                  <p className="text-gray-300 text-sm whitespace-pre-wrap">{notification.adminNotes}</p>
+                </div>
+                <p className="text-gray-400 text-xs mt-3">
+                  {new Date(notification.date).toLocaleString()}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
         {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -225,7 +225,18 @@ export default function AdminStudentManagementScreen() {
       };
 
       // Submit the hour request for audit trail (this will create a record but not affect the already updated total)
-      await SupabaseService.submitHourRequest(adjustmentRequest);
+      const auditRequest = await SupabaseService.submitHourRequest(adjustmentRequest);
+      
+      // Auto-approve with admin notes since hours were already updated
+      if (auditRequest?.id) {
+        await SupabaseService.updateHourRequestStatus(
+          auditRequest.id,
+          'approved',
+          adjustmentData.reason,
+          'Admin',
+          Math.abs(adjustmentData.adjustment)
+        );
+      }
       
       // Reload students to show updated hours
       await loadStudents();
@@ -735,7 +746,7 @@ export default function AdminStudentManagementScreen() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <label className="block text-gray-700 font-semibold mb-2">Reason for Adjustment</label>
+              <label className="block text-gray-700 font-semibold mb-2">Reason for Adjustment <span className="text-red-500">*</span></label>
               <textarea
                 value={adjustmentData.reason}
                 onChange={(e) => setAdjustmentData(prev => ({ ...prev, reason: e.target.value }))}

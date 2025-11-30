@@ -241,6 +241,20 @@ export default function AdminStudentDetailScreen() {
 
   const submitReview = async () => {
     if (!reviewModal.request || !reviewModal.action) return;
+    
+    if (!reviewModal.notes.trim()) {
+      showModal({
+        title: 'Error',
+        message: 'Admin notes are required. Please provide notes for this action.',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+      return;
+    }
 
     const { request, action, notes } = reviewModal;
     const requestId = request.id;
@@ -433,7 +447,18 @@ export default function AdminStudentDetailScreen() {
         imageData: null,
         imageName: null
       };
-      await SupabaseService.submitHourRequest(adjustmentRequest);
+      const auditRequest = await SupabaseService.submitHourRequest(adjustmentRequest);
+      
+      // Auto-approve with admin notes since hours were already updated
+      if (auditRequest?.id) {
+        await SupabaseService.updateHourRequestStatus(
+          auditRequest.id,
+          'approved',
+          adjustmentData.reason,
+          'Admin',
+          Math.abs(adjustmentData.adjustment)
+        );
+      }
       
       await loadStudentData();
       setShowAdjustHoursModal(false);
@@ -514,7 +539,19 @@ export default function AdminStudentDetailScreen() {
         imageData: null,
         imageName: null
       };
-      await SupabaseService.submitHourRequest(transferRequest);
+      // Submit the hour request for audit trail
+      const auditRequest = await SupabaseService.submitHourRequest(transferRequest);
+      
+      // Auto-approve with admin notes since hours were already updated
+      if (auditRequest?.id) {
+        await SupabaseService.updateHourRequestStatus(
+          auditRequest.id,
+          'approved',
+          transferData.reason,
+          'Admin',
+          transferData.amount
+        );
+      }
       
       await loadStudentData();
       setShowTransferHoursModal(false);
@@ -1260,15 +1297,19 @@ export default function AdminStudentDetailScreen() {
 
             <div className="mb-6">
               <label className="block text-gray-700 font-semibold mb-2">
-                Admin Notes (Optional)
+                Admin Notes <span className="text-red-500">*</span>
               </label>
               <textarea
                 value={reviewModal.notes}
                 onChange={(e) => setReviewModal(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder={`Add notes for ${reviewModal.action === 'approve' ? 'approval' : 'rejection'}...`}
+                placeholder={`Add notes for ${reviewModal.action === 'approve' ? 'approval' : 'rejection'} (required)...`}
                 rows={3}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                required
               />
+              {!reviewModal.notes.trim() && (
+                <p className="text-red-500 text-sm mt-1">Admin notes are required</p>
+              )}
             </div>
 
             {reviewModal.action === 'approve' && (
@@ -1289,7 +1330,7 @@ export default function AdminStudentDetailScreen() {
               </button>
               <button
                 onClick={submitReview}
-                disabled={processingRequest === reviewModal.request?.id}
+                disabled={processingRequest === reviewModal.request?.id || !reviewModal.notes.trim()}
                 className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${
                   reviewModal.action === 'approve'
                     ? 'bg-green-600 hover:bg-green-700 text-white'

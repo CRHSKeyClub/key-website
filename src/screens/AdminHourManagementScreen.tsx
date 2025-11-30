@@ -151,6 +151,20 @@ export default function AdminHourManagementScreen() {
 
   const submitReview = async () => {
     if (!reviewModal.request || !reviewModal.action) return;
+    
+    if (!reviewModal.notes.trim()) {
+      showModal({
+        title: 'Error',
+        message: 'Admin notes are required. Please provide notes for this action.',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+      return;
+    }
 
     const { request, action, notes } = reviewModal;
     const requestId = request.id;
@@ -674,11 +688,15 @@ export default function AdminHourManagementScreen() {
             </div>
             
             <textarea
-              placeholder="Add notes (optional)..."
+              placeholder="Add notes (required)..."
               value={reviewModal.notes}
               onChange={(e) => setReviewModal(prev => ({ ...prev, notes: e.target.value }))}
               className="w-full bg-slate-700 text-white rounded-lg p-3 mb-4 resize-none h-20"
+              required
             />
+            {!reviewModal.notes.trim() && (
+              <p className="text-red-400 text-sm mb-2">Admin notes are required</p>
+            )}
             
             <div className="flex gap-3">
               <button
@@ -690,11 +708,12 @@ export default function AdminHourManagementScreen() {
               
               <button
                 onClick={submitReview}
+                disabled={!reviewModal.notes.trim()}
                 className={`flex-1 py-2 px-4 rounded-lg text-white font-medium ${
                   reviewModal.action === 'approve' 
                     ? 'bg-green-600 hover:bg-green-700' 
                     : 'bg-red-600 hover:bg-red-700'
-                }`}
+                } disabled:bg-gray-600 disabled:cursor-not-allowed`}
               >
                 {reviewModal.action === 'approve' ? 'Approve' : 'Reject'}
               </button>
