@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,6 +45,8 @@ export default function AdminStudentManagementScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [tshirtSizeFilter, setTshirtSizeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
+  const [searchResults, setSearchResults] = useState<Student[]>([]);
   const MAX_MANUAL_ADJUSTMENT = Number.POSITIVE_INFINITY;
 
   useEffect(() => {
@@ -111,6 +113,12 @@ export default function AdminStudentManagementScreen() {
     });
   };
 
+  const getStudentName = (student: Student): string => {
+    return (student.name && student.name.trim()) || 
+           (student.student_name && student.student_name.trim()) || 
+           (student.s_number || student.student_s_number || 'Unknown Student');
+  };
+
   const filterStudents = () => {
     let filtered = students;
 
@@ -125,7 +133,7 @@ export default function AdminStudentManagementScreen() {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(student => {
-        const name = (student.name || student.student_name || '').toLowerCase();
+        const name = getStudentName(student).toLowerCase();
         const sNumber = (student.s_number || student.student_s_number || '').toLowerCase();
         return name.includes(query) || sNumber.includes(query);
       });
@@ -133,27 +141,46 @@ export default function AdminStudentManagementScreen() {
 
     // Ensure filtered results are also sorted alphabetically
     const sortedFiltered = [...filtered].sort((a, b) => {
-      const nameA = (a.name || a.student_name || '').toLowerCase();
-      const nameB = (b.name || b.student_name || '').toLowerCase();
+      const nameA = getStudentName(a).toLowerCase();
+      const nameB = getStudentName(b).toLowerCase();
       return nameA.localeCompare(nameB);
     });
 
     setFilteredStudents(sortedFiltered);
   };
 
+  const updateSearchResults = useCallback((query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setShowSearchDropdown(false);
+      return;
+    }
+
+    const searchTerm = query.toLowerCase().trim();
+    const results = students.filter(student => {
+      const name = getStudentName(student).toLowerCase();
+      const sNumber = (student.s_number || student.student_s_number || '').toLowerCase();
+      return name.includes(searchTerm) || sNumber.includes(searchTerm);
+    }).slice(0, 10); // Limit to 10 results for dropdown
+
+    setSearchResults(results);
+    setShowSearchDropdown(results.length > 0);
+  }, [students]);
+
   useEffect(() => {
     filterStudents();
-  }, [tshirtSizeFilter, students, searchQuery]);
+    updateSearchResults(searchQuery);
+  }, [tshirtSizeFilter, students, searchQuery, updateSearchResults]);
 
   const handleAdjustHours = (student: Student) => {
     setSelectedStudent(student);
-    setAdjustmentData({
-      student_id: student.id,
-      student_name: student.name || student.student_name || student.s_number || student.student_s_number || 'Unknown Student',
-      current_hours: student.total_hours || 0,
-      adjustment: 0,
-      reason: ''
-    });
+      setAdjustmentData({
+        student_id: student.id,
+        student_name: getStudentName(student),
+        current_hours: student.total_hours || 0,
+        adjustment: 0,
+        reason: ''
+      });
     setShowAdjustmentModal(true);
   };
 
@@ -187,7 +214,7 @@ export default function AdminStudentManagementScreen() {
       // Create a manual hour request for audit trail
       const adjustmentRequest = {
         studentSNumber: selectedStudent?.s_number || selectedStudent?.student_s_number || '',
-        studentName: selectedStudent?.name || selectedStudent?.student_name || selectedStudent?.s_number || selectedStudent?.student_s_number || '',
+        studentName: selectedStudent ? getStudentName(selectedStudent) : '',
         eventName: `Manual Adjustment - ${adjustmentData.adjustment > 0 ? 'Added' : 'Removed'} ${Math.abs(adjustmentData.adjustment)} hours`,
         eventDate: new Date().toISOString().split('T')[0],
         hoursRequested: Math.abs(adjustmentData.adjustment).toString(),
@@ -274,12 +301,24 @@ export default function AdminStudentManagementScreen() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Search Input */}
+            {/* Search Input with Dropdown */}
             <div className="relative">
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  updateSearchResults(e.target.value);
+                }}
+                onFocus={() => {
+                  if (searchQuery.trim() && searchResults.length > 0) {
+                    setShowSearchDropdown(true);
+                  }
+                }}
+                onBlur={() => {
+                  // Delay hiding dropdown to allow click events
+                  setTimeout(() => setShowSearchDropdown(false), 200);
+                }}
                 placeholder="Search by name or S-number..."
                 className="bg-slate-700 text-white px-4 py-2 pl-10 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
               />
@@ -291,6 +330,48 @@ export default function AdminStudentManagementScreen() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
+              
+              {/* Search Dropdown */}
+              {showSearchDropdown && searchResults.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto"
+                >
+                  {searchResults.map((student) => {
+                    const sNumber = student.s_number || student.student_s_number || '';
+                    const name = getStudentName(student);
+                    return (
+                      <motion.div
+                        key={student.id}
+                        onClick={() => {
+                          setSearchQuery('');
+                          setShowSearchDropdown(false);
+                          navigate(`/admin-students/${encodeURIComponent(sNumber)}`);
+                        }}
+                        className="px-4 py-3 hover:bg-slate-700 cursor-pointer border-b border-slate-700 last:border-b-0 transition-colors"
+                        whileHover={{ backgroundColor: 'rgba(51, 65, 85, 0.8)' }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-white font-semibold text-lg">{name}</p>
+                            <p className="text-blue-300 text-sm">{sNumber}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-white text-sm font-medium">
+                              {student.total_hours || 0} hrs
+                            </p>
+                            {student.tshirt_size && (
+                              <p className="text-gray-400 text-xs">{student.tshirt_size}</p>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              )}
             </div>
 
             {/* T-Shirt Size Filter */}
@@ -397,9 +478,7 @@ export default function AdminStudentManagementScreen() {
                     
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white">
-                        {(student.name && student.name.trim()) || 
-                         (student.student_name && student.student_name.trim()) || 
-                         (student.s_number || student.student_s_number || 'Unknown Student')}
+                        {getStudentName(student)}
                       </h3>
                       <p className="text-blue-300 text-sm">{student.s_number || student.student_s_number}</p>
                       {student.tshirt_size && (

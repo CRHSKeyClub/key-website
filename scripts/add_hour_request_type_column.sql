@@ -18,3 +18,4 @@ WHERE type IS NULL;
 ALTER TABLE hour_requests
 ALTER COLUMN type SET NOT NULL;
 
+
