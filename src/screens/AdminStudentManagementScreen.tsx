@@ -119,7 +119,7 @@ export default function AdminStudentManagementScreen() {
            (student.s_number || student.student_s_number || 'Unknown Student');
   };
 
-  const filterStudents = () => {
+  const filterStudents = useCallback(() => {
     let filtered = students;
 
     // Filter by t-shirt size
@@ -147,7 +147,7 @@ export default function AdminStudentManagementScreen() {
     });
 
     setFilteredStudents(sortedFiltered);
-  };
+  }, [students, tshirtSizeFilter, searchQuery]);
 
   const updateSearchResults = useCallback((query: string) => {
     if (!query.trim()) {
@@ -170,7 +170,7 @@ export default function AdminStudentManagementScreen() {
   useEffect(() => {
     filterStudents();
     updateSearchResults(searchQuery);
-  }, [tshirtSizeFilter, students, searchQuery, updateSearchResults]);
+  }, [filterStudents, updateSearchResults, searchQuery]);
 
   const handleAdjustHours = (student: Student) => {
     setSelectedStudent(student);

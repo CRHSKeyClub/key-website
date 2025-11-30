@@ -63,6 +63,26 @@ export default function AdminStudentDetailScreen() {
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'hours' | 'attendance'>('overview');
+  const [showAdjustHoursModal, setShowAdjustHoursModal] = useState(false);
+  const [showTransferHoursModal, setShowTransferHoursModal] = useState(false);
+  const [adjustmentData, setAdjustmentData] = useState({
+    adjustment: 0,
+    reason: ''
+  });
+  const [transferData, setTransferData] = useState({
+    amount: 0,
+    fromType: 'volunteering' as 'volunteering' | 'social',
+    toType: 'social' as 'volunteering' | 'social',
+    reason: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [reviewModal, setReviewModal] = useState({
+    visible: false,
+    request: null as HourRequest | null,
+    action: null as 'approve' | 'reject' | null,
+    notes: ''
+  });
+  const [processingRequest, setProcessingRequest] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -210,6 +230,79 @@ export default function AdminStudentDetailScreen() {
     }
   };
 
+  const handleReviewRequest = (request: HourRequest, action: 'approve' | 'reject') => {
+    setReviewModal({
+      visible: true,
+      request,
+      action,
+      notes: ''
+    });
+  };
+
+  const submitReview = async () => {
+    if (!reviewModal.request || !reviewModal.action) return;
+
+    const { request, action, notes } = reviewModal;
+    const requestId = request.id;
+
+    if (processingRequest === requestId) return;
+    setProcessingRequest(requestId);
+
+    // Close modal immediately
+    setReviewModal({ visible: false, request: null, action: null, notes: '' });
+
+    try {
+      const result = await SupabaseService.updateHourRequestStatus(
+        requestId,
+        action === 'approve' ? 'approved' : 'rejected',
+        notes,
+        'Admin',
+        request.hours_requested
+      );
+
+      if (result) {
+        await loadStudentData();
+        showModal({
+          title: 'Success',
+          message: `Request ${action === 'approve' ? 'approved' : 'rejected'} successfully!`,
+          onCancel: () => {},
+          onConfirm: () => {},
+          cancelText: '',
+          confirmText: 'OK',
+          icon: 'checkmark-circle',
+          iconColor: '#4CAF50'
+        });
+      } else {
+        await loadStudentData();
+        showModal({
+          title: 'Error',
+          message: 'Failed to update request status',
+          onCancel: () => {},
+          onConfirm: () => {},
+          cancelText: '',
+          confirmText: 'OK',
+          icon: 'alert-circle',
+          iconColor: '#ff4d4d'
+        });
+      }
+    } catch (error) {
+      console.error('Error processing request:', error);
+      await loadStudentData();
+      showModal({
+        title: 'Error',
+        message: 'An error occurred while processing the request',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+    } finally {
+      setProcessingRequest(null);
+    }
+  };
+
   const handleDeleteHourRequest = async (requestId: string, eventName: string) => {
     showModal({
       title: 'Delete Hour Request',
@@ -248,6 +341,209 @@ export default function AdminStudentDetailScreen() {
       icon: 'alert-circle',
       iconColor: '#ff4d4d'
     });
+  };
+
+  const handleAdjustHours = () => {
+    setAdjustmentData({
+      adjustment: 0,
+      reason: ''
+    });
+    setShowAdjustHoursModal(true);
+  };
+
+  const handleTransferHours = () => {
+    setTransferData({
+      amount: 0,
+      fromType: 'volunteering',
+      toType: 'social',
+      reason: ''
+    });
+    setShowTransferHoursModal(true);
+  };
+
+  const handleAdjustmentStep = (delta: number) => {
+    setAdjustmentData(prev => {
+      const nextRaw = Number((prev.adjustment + delta).toFixed(1));
+      if (!Number.isFinite(nextRaw)) {
+        return prev;
+      }
+      const minAllowed = -(student?.total_hours || 0);
+      const clampedValue = Math.min(
+        Math.max(nextRaw, minAllowed),
+        Number.POSITIVE_INFINITY
+      );
+      return {
+        ...prev,
+        adjustment: clampedValue
+      };
+    });
+  };
+
+  const handleTransferStep = (delta: number) => {
+    setTransferData(prev => {
+      const nextRaw = Number((prev.amount + delta).toFixed(1));
+      if (!Number.isFinite(nextRaw)) {
+        return prev;
+      }
+      const maxAllowed = prev.fromType === 'volunteering' 
+        ? (student?.volunteering_hours || 0)
+        : (student?.social_hours || 0);
+      const clampedValue = Math.min(
+        Math.max(nextRaw, 0),
+        maxAllowed
+      );
+      return {
+        ...prev,
+        amount: clampedValue
+      };
+    });
+  };
+
+  const handleSubmitAdjustment = async () => {
+    if (!adjustmentData.reason.trim()) {
+      showModal({
+        title: 'Error',
+        message: 'Please provide a reason for the hour adjustment.',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+      return;
+    }
+
+    if (!student) return;
+
+    setSubmitting(true);
+    try {
+      const newTotalHours = (student.total_hours || 0) + adjustmentData.adjustment;
+      await SupabaseService.updateStudentHours(student.id, newTotalHours, 'total');
+      
+      // Create audit trail
+      const adjustmentRequest = {
+        studentSNumber: student.s_number || student.student_s_number || '',
+        studentName: student.name || student.student_name || '',
+        eventName: `Manual Adjustment - ${adjustmentData.adjustment > 0 ? 'Added' : 'Removed'} ${Math.abs(adjustmentData.adjustment)} hours`,
+        eventDate: new Date().toISOString().split('T')[0],
+        hoursRequested: Math.abs(adjustmentData.adjustment).toString(),
+        description: `Manual hour adjustment by admin. Reason: ${adjustmentData.reason}. Original hours: ${student.total_hours || 0}, New total: ${newTotalHours}, Adjustment: ${adjustmentData.adjustment > 0 ? '+' : ''}${adjustmentData.adjustment}`,
+        type: 'volunteering' as const,
+        imageData: null,
+        imageName: null
+      };
+      await SupabaseService.submitHourRequest(adjustmentRequest);
+      
+      await loadStudentData();
+      setShowAdjustHoursModal(false);
+      
+      showModal({
+        title: 'Success',
+        message: `Successfully ${adjustmentData.adjustment > 0 ? 'added' : 'removed'} ${Math.abs(adjustmentData.adjustment)} hour${Math.abs(adjustmentData.adjustment) === 1 ? '' : 's'}. New total: ${newTotalHours} hours.`,
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'checkmark-circle',
+        iconColor: '#4CAF50'
+      });
+    } catch (error) {
+      console.error('Failed to adjust hours:', error);
+      showModal({
+        title: 'Error',
+        message: 'Failed to adjust hours. Please try again.',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmitTransfer = async () => {
+    if (!transferData.reason.trim()) {
+      showModal({
+        title: 'Error',
+        message: 'Please provide a reason for transferring hours.',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+      return;
+    }
+
+    if (!student || transferData.amount <= 0) return;
+
+    setSubmitting(true);
+    try {
+      const currentVolunteering = student.volunteering_hours || 0;
+      const currentSocial = student.social_hours || 0;
+      
+      let newVolunteering = currentVolunteering;
+      let newSocial = currentSocial;
+      
+      if (transferData.fromType === 'volunteering') {
+        newVolunteering = currentVolunteering - transferData.amount;
+        newSocial = currentSocial + transferData.amount;
+      } else {
+        newSocial = currentSocial - transferData.amount;
+        newVolunteering = currentVolunteering + transferData.amount;
+      }
+
+      // Update both hour types
+      await SupabaseService.updateStudentHours(student.id, newVolunteering, 'volunteering');
+      await SupabaseService.updateStudentHours(student.id, newSocial, 'social');
+      
+      // Create audit trail
+      const transferRequest = {
+        studentSNumber: student.s_number || student.student_s_number || '',
+        studentName: student.name || student.student_name || '',
+        eventName: `Hour Transfer - ${transferData.amount} hour${transferData.amount === 1 ? '' : 's'} from ${transferData.fromType} to ${transferData.toType}`,
+        eventDate: new Date().toISOString().split('T')[0],
+        hoursRequested: transferData.amount.toString(),
+        description: `Hour transfer by admin. Reason: ${transferData.reason}. Transferred ${transferData.amount} hour${transferData.amount === 1 ? '' : 's'} from ${transferData.fromType} to ${transferData.toType}. Before: Volunteering: ${currentVolunteering}, Social: ${currentSocial}. After: Volunteering: ${newVolunteering}, Social: ${newSocial}.`,
+        type: transferData.toType,
+        imageData: null,
+        imageName: null
+      };
+      await SupabaseService.submitHourRequest(transferRequest);
+      
+      await loadStudentData();
+      setShowTransferHoursModal(false);
+      
+      showModal({
+        title: 'Success',
+        message: `Successfully transferred ${transferData.amount} hour${transferData.amount === 1 ? '' : 's'} from ${transferData.fromType} to ${transferData.toType}.`,
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'checkmark-circle',
+        iconColor: '#4CAF50'
+      });
+    } catch (error) {
+      console.error('Failed to transfer hours:', error);
+      showModal({
+        title: 'Error',
+        message: 'Failed to transfer hours. Please try again.',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDeleteAttendance = async (attendanceId: string, meetingDate: string) => {
@@ -391,6 +687,20 @@ export default function AdminStudentDetailScreen() {
                     <div className="text-purple-400 font-semibold">{socialHours.toFixed(1)}</div>
                     <div className="text-gray-400">Social</div>
                   </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={handleAdjustHours}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Adjust Hours
+                  </button>
+                  <button
+                    onClick={handleTransferHours}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Transfer Hours
+                  </button>
                 </div>
               </div>
             </div>
@@ -574,15 +884,42 @@ export default function AdminStudentDetailScreen() {
                           )}
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleDeleteHourRequest(request.id, request.event_name)}
-                        className="ml-4 p-2 text-red-400 hover:text-red-300 hover:bg-red-400 hover:bg-opacity-20 rounded-lg transition-colors"
-                        title="Delete hour request"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {request.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleReviewRequest(request, 'approve')}
+                              disabled={processingRequest === request.id}
+                              className="p-2 text-green-400 hover:text-green-300 hover:bg-green-400 hover:bg-opacity-20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Approve request"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleReviewRequest(request, 'reject')}
+                              disabled={processingRequest === request.id}
+                              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400 hover:bg-opacity-20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              title="Reject request"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleDeleteHourRequest(request.id, request.event_name)}
+                          disabled={processingRequest === request.id}
+                          className="p-2 text-red-400 hover:text-red-300 hover:bg-red-400 hover:bg-opacity-20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Delete hour request"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
 
                     {request.description && (
@@ -682,6 +1019,289 @@ export default function AdminStudentDetailScreen() {
           )}
         </motion.div>
       </div>
+
+      {/* Adjust Hours Modal */}
+      {showAdjustHoursModal && student && (
+        <motion.div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Adjust Total Hours</h3>
+            
+            <div className="bg-gray-100 rounded-lg p-4 mb-4">
+              <p className="text-gray-700"><span className="font-medium">Student:</span> {studentName}</p>
+              <p className="text-gray-700"><span className="font-medium">Current Total Hours:</span> {totalHours.toFixed(1)}</p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-700 font-semibold mb-2">Adjust Hours</label>
+              <div className="flex items-center justify-center gap-4 bg-gray-50 rounded-lg p-4">
+                <button
+                  onClick={() => handleAdjustmentStep(-0.5)}
+                  className="w-12 h-12 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xl font-bold transition-colors"
+                >
+                  −
+                </button>
+                <div className="text-center min-w-[120px]">
+                  <div className="text-3xl font-bold text-gray-900">
+                    {(totalHours + adjustmentData.adjustment).toFixed(1)}
+                  </div>
+                  {adjustmentData.adjustment !== 0 && (
+                    <div className={`text-sm ${adjustmentData.adjustment > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {adjustmentData.adjustment > 0 ? '+' : ''}{adjustmentData.adjustment.toFixed(1)}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleAdjustmentStep(0.5)}
+                  className="w-12 h-12 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-xl font-bold transition-colors"
+                >
+                  +
+                </button>
+              </div>
+              <div className="flex justify-center gap-2 mt-3">
+                <button
+                  onClick={() => setAdjustmentData(prev => ({ ...prev, adjustment: 0 }))}
+                  className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-sm transition-colors"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-gray-700 font-semibold mb-2">Reason for Adjustment</label>
+              <textarea
+                value={adjustmentData.reason}
+                onChange={(e) => setAdjustmentData(prev => ({ ...prev, reason: e.target.value }))}
+                placeholder="Enter reason for this hour adjustment..."
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAdjustHoursModal(false)}
+                className="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitAdjustment}
+                disabled={submitting || !adjustmentData.reason.trim()}
+                className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-colors"
+              >
+                {submitting ? 'Processing...' : 'Submit'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Transfer Hours Modal */}
+      {showTransferHoursModal && student && (
+        <motion.div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Transfer Hours</h3>
+            
+            <div className="bg-gray-100 rounded-lg p-4 mb-4">
+              <p className="text-gray-700"><span className="font-medium">Student:</span> {studentName}</p>
+              <p className="text-gray-700"><span className="font-medium">Current Volunteering:</span> {volunteeringHours.toFixed(1)}</p>
+              <p className="text-gray-700"><span className="font-medium">Current Social:</span> {socialHours.toFixed(1)}</p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-700 font-semibold mb-2">Transfer Direction</label>
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setTransferData(prev => ({ ...prev, fromType: 'volunteering', toType: 'social' }))}
+                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+                    transferData.fromType === 'volunteering'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Volunteering → Social
+                </button>
+                <button
+                  onClick={() => setTransferData(prev => ({ ...prev, fromType: 'social', toType: 'volunteering' }))}
+                  className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors ${
+                    transferData.fromType === 'social'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-200 text-gray-700'
+                  }`}
+                >
+                  Social → Volunteering
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-gray-700 font-semibold mb-2">Amount to Transfer</label>
+              <div className="flex items-center justify-center gap-4 bg-gray-50 rounded-lg p-4">
+                <button
+                  onClick={() => handleTransferStep(-0.5)}
+                  className="w-12 h-12 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xl font-bold transition-colors"
+                >
+                  −
+                </button>
+                <div className="text-center min-w-[120px]">
+                  <div className="text-3xl font-bold text-gray-900">
+                    {transferData.amount.toFixed(1)}
+                  </div>
+                  <div className="text-sm text-gray-500">hours</div>
+                </div>
+                <button
+                  onClick={() => handleTransferStep(0.5)}
+                  className="w-12 h-12 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center text-xl font-bold transition-colors"
+                >
+                  +
+                </button>
+              </div>
+              <div className="mt-2 text-sm text-gray-600 text-center">
+                Max: {transferData.fromType === 'volunteering' ? volunteeringHours.toFixed(1) : socialHours.toFixed(1)} hours
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-gray-700 font-semibold mb-2">Reason for Transfer</label>
+              <textarea
+                value={transferData.reason}
+                onChange={(e) => setTransferData(prev => ({ ...prev, reason: e.target.value }))}
+                placeholder="Enter reason for transferring hours..."
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+
+            {transferData.amount > 0 && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-gray-700">
+                  After transfer:
+                  <br />
+                  <span className="font-semibold">Volunteering:</span> {
+                    transferData.fromType === 'volunteering'
+                      ? (volunteeringHours - transferData.amount).toFixed(1)
+                      : (volunteeringHours + transferData.amount).toFixed(1)
+                  } hours
+                  <br />
+                  <span className="font-semibold">Social:</span> {
+                    transferData.fromType === 'social'
+                      ? (socialHours - transferData.amount).toFixed(1)
+                      : (socialHours + transferData.amount).toFixed(1)
+                  } hours
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowTransferHoursModal(false)}
+                className="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitTransfer}
+                disabled={submitting || !transferData.reason.trim() || transferData.amount <= 0}
+                className="flex-1 py-3 px-4 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg font-semibold transition-colors"
+              >
+                {submitting ? 'Processing...' : 'Transfer'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Review Modal */}
+      {reviewModal.visible && reviewModal.request && reviewModal.action && (
+        <motion.div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 50 }}
+            className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl"
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              {reviewModal.action === 'approve' ? 'Approve' : 'Reject'} Request
+            </h3>
+            
+            <div className="bg-gray-100 rounded-lg p-4 mb-4">
+              <p className="text-gray-700"><span className="font-medium">Event:</span> {reviewModal.request.event_name}</p>
+              <p className="text-gray-700"><span className="font-medium">Hours:</span> {reviewModal.request.hours_requested}</p>
+              <p className="text-gray-700"><span className="font-medium">Type:</span> {reviewModal.request.type === 'social' ? 'Social' : 'Volunteering'}</p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-gray-700 font-semibold mb-2">
+                Admin Notes (Optional)
+              </label>
+              <textarea
+                value={reviewModal.notes}
+                onChange={(e) => setReviewModal(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder={`Add notes for ${reviewModal.action === 'approve' ? 'approval' : 'rejection'}...`}
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+
+            {reviewModal.action === 'approve' && (
+              <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Note:</span> Approving this request will add {reviewModal.request.hours_requested} hour{reviewModal.request.hours_requested !== 1 ? 's' : ''} to the student's {reviewModal.request.type === 'social' ? 'social' : 'volunteering'} hours.
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReviewModal({ visible: false, request: null, action: null, notes: '' })}
+                className="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold transition-colors"
+                disabled={processingRequest === reviewModal.request?.id}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitReview}
+                disabled={processingRequest === reviewModal.request?.id}
+                className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${
+                  reviewModal.action === 'approve'
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+              >
+                {processingRequest === reviewModal.request?.id ? 'Processing...' : (reviewModal.action === 'approve' ? 'Approve' : 'Reject')}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }
