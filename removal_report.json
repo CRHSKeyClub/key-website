@@ -1,0 +1,496 @@
+[
+  {
+    "id": "9d8d00ee-be4c-405f-94ac-4fea3fe5ad4f",
+    "studentName": "Grayson Panek",
+    "studentSNumber": "s925500",
+    "hoursRequested": 17,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 17 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 35,
+      "social": 0,
+      "total": 35
+    },
+    "hoursAfter": {
+      "volunteering": 18,
+      "social": 0,
+      "total": 18
+    }
+  },
+  {
+    "id": "d86a5403-bfc7-42a5-a419-433d2a5ac816",
+    "studentName": "Hayden Yep",
+    "studentSNumber": "s927687",
+    "hoursRequested": 12,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 12 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 26,
+      "social": 0,
+      "total": 26
+    },
+    "hoursAfter": {
+      "volunteering": 14,
+      "social": 0,
+      "total": 14
+    }
+  },
+  {
+    "id": "d8ce30ab-e4f7-4c4b-a330-e8bee0a7b453",
+    "studentName": "Hawa Akhtar Motiwala",
+    "studentSNumber": "s190619",
+    "hoursRequested": 1,
+    "type": "social",
+    "eventName": "Manual Adjustment - Added 1 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 2,
+      "social": 0,
+      "total": 2
+    },
+    "hoursAfter": {
+      "volunteering": 2,
+      "social": 0,
+      "total": 2
+    }
+  },
+  {
+    "id": "a488b73c-c8b6-4e87-9a3a-52ca412b3757",
+    "studentName": "Ginna Castanon",
+    "studentSNumber": "s895820",
+    "hoursRequested": 1,
+    "type": "social",
+    "eventName": "Manual Adjustment - Added 1 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 7,
+      "social": 0,
+      "total": 7
+    },
+    "hoursAfter": {
+      "volunteering": 7,
+      "social": 0,
+      "total": 7
+    }
+  },
+  {
+    "id": "abacaa2f-372b-4035-8b4a-97e5cd241080",
+    "studentName": "Gabriella Hodgson",
+    "studentSNumber": "s892841",
+    "hoursRequested": 3,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 3 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 6,
+      "social": 0,
+      "total": 6
+    },
+    "hoursAfter": {
+      "volunteering": 3,
+      "social": 0,
+      "total": 3
+    }
+  },
+  {
+    "id": "932a5565-41eb-40ec-8bde-6f5e29c41802",
+    "studentName": "Gabriel Andrade Garcia",
+    "studentSNumber": "s239511",
+    "hoursRequested": 6,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 6 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 12,
+      "social": 0,
+      "total": 12
+    },
+    "hoursAfter": {
+      "volunteering": 6,
+      "social": 0,
+      "total": 6
+    }
+  },
+  {
+    "id": "6d68dffa-3505-4fcf-85ff-614be2752529",
+    "studentName": "Danna Espinosa",
+    "studentSNumber": "s136729",
+    "hoursRequested": 1,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 1 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 3,
+      "social": 0,
+      "total": 3
+    },
+    "hoursAfter": {
+      "volunteering": 2,
+      "social": 0,
+      "total": 2
+    }
+  },
+  {
+    "id": "15ca1ba2-12b9-48a9-8a5c-1a896b4982f7",
+    "studentName": "Daniela Alvarez",
+    "studentSNumber": "s888557",
+    "hoursRequested": 8,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 8 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 21,
+      "social": 0,
+      "total": 21
+    },
+    "hoursAfter": {
+      "volunteering": 13,
+      "social": 0,
+      "total": 13
+    }
+  },
+  {
+    "id": "4bb83817-d30c-4cc8-9bb9-b32ec9c60814",
+    "studentName": "Emily Castillo",
+    "studentSNumber": "s891148",
+    "hoursRequested": 1,
+    "type": "social",
+    "eventName": "Manual Adjustment - Added 1 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 4,
+      "social": 0,
+      "total": 4
+    },
+    "hoursAfter": {
+      "volunteering": 4,
+      "social": 0,
+      "total": 4
+    }
+  },
+  {
+    "id": "28054fb3-d7a2-4880-871a-a87e4fa22cf2",
+    "studentName": "Delilah Garcia",
+    "studentSNumber": "s908990",
+    "hoursRequested": 10,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 10 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 20,
+      "social": 0,
+      "total": 20
+    },
+    "hoursAfter": {
+      "volunteering": 10,
+      "social": 0,
+      "total": 10
+    }
+  },
+  {
+    "id": "04b41385-76c5-4206-9847-4ab0d457232e",
+    "studentName": "Divyansh Motwani",
+    "studentSNumber": "s172659",
+    "hoursRequested": 9,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 9 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 18,
+      "social": 0,
+      "total": 18
+    },
+    "hoursAfter": {
+      "volunteering": 9,
+      "social": 0,
+      "total": 9
+    }
+  },
+  {
+    "id": "74d3c93f-1ae0-421c-bb96-0d55981dbb0a",
+    "studentName": "Alyssa",
+    "studentSNumber": "s110027",
+    "hoursRequested": 9,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 9 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 18,
+      "social": 0,
+      "total": 18
+    },
+    "hoursAfter": {
+      "volunteering": 9,
+      "social": 0,
+      "total": 9
+    }
+  },
+  {
+    "id": "a5e6d559-412c-4555-a785-f9542b425b77",
+    "studentName": "allyson hoang",
+    "studentSNumber": "s927155",
+    "hoursRequested": 21,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 21 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 26,
+      "social": 0,
+      "total": 26
+    },
+    "hoursAfter": {
+      "volunteering": 5,
+      "social": 0,
+      "total": 5
+    }
+  },
+  {
+    "id": "069db2c0-4713-4854-8899-9cd952c60ccb",
+    "studentName": "Alisha Kamboj",
+    "studentSNumber": "s179150",
+    "hoursRequested": 7,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 7 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 17,
+      "social": 0,
+      "total": 17
+    },
+    "hoursAfter": {
+      "volunteering": 10,
+      "social": 0,
+      "total": 10
+    }
+  },
+  {
+    "id": "3a366895-6f87-4f5f-9c01-30fc3c57fb34",
+    "studentName": "Alina Martinez",
+    "studentSNumber": "s867137",
+    "hoursRequested": 3,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 3 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 9,
+      "social": 0,
+      "total": 9
+    },
+    "hoursAfter": {
+      "volunteering": 6,
+      "social": 0,
+      "total": 6
+    }
+  },
+  {
+    "id": "d863435a-a1bc-4389-9650-2e21866864f5",
+    "studentName": "Alice Sosa",
+    "studentSNumber": "s127820",
+    "hoursRequested": 12,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 12 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 30,
+      "social": 0,
+      "total": 30
+    },
+    "hoursAfter": {
+      "volunteering": 18,
+      "social": 0,
+      "total": 18
+    }
+  },
+  {
+    "id": "6979b850-8f52-4f68-a6c5-ba0d32919765",
+    "studentName": "Alice Guirguis",
+    "studentSNumber": "s210963",
+    "hoursRequested": 10,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 10 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 23,
+      "social": 0,
+      "total": 23
+    },
+    "hoursAfter": {
+      "volunteering": 13,
+      "social": 0,
+      "total": 13
+    }
+  },
+  {
+    "id": "43f7bac6-da9c-42bf-87fc-78f80b1ebfe4",
+    "studentName": "Ajitesh Kowkuntla",
+    "studentSNumber": "s219164",
+    "hoursRequested": 5,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 5 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 11,
+      "social": 0,
+      "total": 11
+    },
+    "hoursAfter": {
+      "volunteering": 6,
+      "social": 0,
+      "total": 6
+    }
+  },
+  {
+    "id": "cc9953cc-e8c3-449c-bc09-4a22d2496e95",
+    "studentName": "Aidan Nguyen",
+    "studentSNumber": "s906491",
+    "hoursRequested": 1,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 1 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 2,
+      "social": 0,
+      "total": 2
+    },
+    "hoursAfter": {
+      "volunteering": 1,
+      "social": 0,
+      "total": 1
+    }
+  },
+  {
+    "id": "48e6084f-bdc6-4817-bd90-f86de9f00504",
+    "studentName": "s885447",
+    "studentSNumber": "s885447",
+    "hoursRequested": 4,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 4 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 4,
+      "social": 0,
+      "total": 4
+    },
+    "hoursAfter": {
+      "volunteering": 0,
+      "social": 0,
+      "total": 0
+    }
+  },
+  {
+    "id": "9845583b-0a92-4538-877b-2f0e8b9a7ec7",
+    "studentName": "s156604",
+    "studentSNumber": "s156604",
+    "hoursRequested": 9,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 9 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 9,
+      "social": 0,
+      "total": 9
+    },
+    "hoursAfter": {
+      "volunteering": 0,
+      "social": 0,
+      "total": 0
+    }
+  },
+  {
+    "id": "102b831e-29de-4838-849f-db8438bbb854",
+    "studentName": "Sarah Castro",
+    "studentSNumber": "s113465",
+    "hoursRequested": 5.5,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 5.5 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 5.5,
+      "social": 0,
+      "total": 5.5
+    },
+    "hoursAfter": {
+      "volunteering": 0,
+      "social": 0,
+      "total": 0
+    }
+  },
+  {
+    "id": "45ab6a3a-4828-4462-9fd2-d8c31335e01f",
+    "studentName": "Brij",
+    "studentSNumber": "s942101",
+    "hoursRequested": 10,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 10 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 24,
+      "social": 0,
+      "total": 24
+    },
+    "hoursAfter": {
+      "volunteering": 14,
+      "social": 0,
+      "total": 14
+    }
+  },
+  {
+    "id": "838c25c3-0766-4e46-8307-b7073a222473",
+    "studentName": "Brij",
+    "studentSNumber": "s942101",
+    "hoursRequested": 9,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 9 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 14,
+      "social": 0,
+      "total": 14
+    },
+    "hoursAfter": {
+      "volunteering": 5,
+      "social": 0,
+      "total": 5
+    }
+  },
+  {
+    "id": "36253a84-dbf0-49f2-b974-88111ca9dd46",
+    "studentName": "s935062",
+    "studentSNumber": "s935062",
+    "hoursRequested": 33,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 33 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 35,
+      "social": 0,
+      "total": 35
+    },
+    "hoursAfter": {
+      "volunteering": 2,
+      "social": 0,
+      "total": 2
+    }
+  },
+  {
+    "id": "a34511a0-be6f-4217-8088-ed726ea9a3bf",
+    "studentName": "s886552",
+    "studentSNumber": "s886552",
+    "hoursRequested": 21,
+    "type": "volunteering",
+    "eventName": "Manual Adjustment - Added 21 hours",
+    "success": true,
+    "hoursBefore": {
+      "volunteering": 22,
+      "social": 0,
+      "total": 22
+    },
+    "hoursAfter": {
+      "volunteering": 1,
+      "social": 0,
+      "total": 1
+    }
+  }
+]

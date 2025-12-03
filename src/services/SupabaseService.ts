@@ -1007,7 +1007,7 @@ class SupabaseService {
                 last_hour_update: new Date().toISOString()
               });
               
-              console.log(`✅ Subtracted ${requestedHours} social hours from student ${studentSNumber}`);
+              console.log(`✅ Subtracted ${requestedHours} social credits from student ${studentSNumber}`);
               console.log(`   Previous: ${currentSocialHours}, New: ${newSocialHours}`);
             } else {
               // Subtract from volunteering_hours (default)
@@ -1103,7 +1103,7 @@ class SupabaseService {
               last_hour_update: new Date().toISOString()
             });
             
-            console.log(`✅ Added ${requestedHours} social hours to student ${studentSNumber}`);
+            console.log(`✅ Added ${requestedHours} social credits to student ${studentSNumber}`);
           } else {
             // Default: Add approved hours to volunteering_hours
             const currentVolunteeringHours = parseFloat(student.volunteering_hours || 0);
@@ -1691,7 +1691,17 @@ class SupabaseService {
     }
   }
 
-  static async updateStudentHours(studentId: string, newHours: number, hoursType: 'volunteering' | 'social' | 'total' = 'total') {
+  static async updateStudentHours(
+    studentId: string, 
+    newHours: number, 
+    hoursType: 'volunteering' | 'social' | 'total' = 'total',
+    createAuditRecord?: {
+      studentSNumber: string;
+      studentName: string;
+      reason: string;
+      eventName?: string;
+    }
+  ) {
     try {
       // Round hours to nearest 0.5
       const roundToHalf = (num: number) => Math.round(num * 2) / 2;
@@ -1699,67 +1709,75 @@ class SupabaseService {
       
       console.log('📊 Updating student hours:', studentId, 'to', roundedHours, 'type:', hoursType);
       
+      // Get current student data first (needed for audit trail and for 'total' type)
+      const { data: studentBefore } = await supabase
+        .from('students')
+        .select('s_number, name, volunteering_hours, social_hours, total_hours')
+        .eq('id', studentId)
+        .single();
+      
+      if (!studentBefore) {
+        throw new Error('Student not found');
+      }
+
+      const currentVolunteering = parseFloat(studentBefore.volunteering_hours || 0) || 0;
+      const currentSocial = parseFloat(studentBefore.social_hours || 0) || 0;
+      const currentTotal = parseFloat(studentBefore.total_hours || 0) || 0;
+      
       let updateData: any = {};
+      let hoursAdded = { volunteering: 0, social: 0 };
       
       if (hoursType === 'volunteering') {
         // Update volunteering_hours, trigger will update total_hours
         updateData = { volunteering_hours: roundedHours };
+        hoursAdded.volunteering = roundedHours - currentVolunteering;
       } else if (hoursType === 'social') {
         // Update social_hours, trigger will update total_hours
         updateData = { social_hours: roundedHours };
+        hoursAdded.social = roundedHours - currentSocial;
       } else {
         // For 'total', we need to adjust the total while preserving the ratio
-        // Get current values first
-        const { data: student } = await supabase
-          .from('students')
-          .select('volunteering_hours, social_hours, total_hours')
-          .eq('id', studentId)
-          .single();
+        const currentTotalCalc = currentVolunteering + currentSocial;
         
-        if (student) {
-          const currentTotal = parseFloat(student.total_hours || 0);
-          const currentVolunteering = parseFloat(student.volunteering_hours || 0);
-          const currentSocial = parseFloat(student.social_hours || 0);
+        if (currentTotalCalc > 0) {
+          // Preserve the ratio and round to nearest 0.5
+          const volunteeringRatio = currentVolunteering / currentTotalCalc;
+          const socialRatio = currentSocial / currentTotalCalc;
           
-          if (currentTotal > 0) {
-            // Preserve the ratio and round to nearest 0.5
-            const volunteeringRatio = currentVolunteering / currentTotal;
-            const socialRatio = currentSocial / currentTotal;
-            
-            // Calculate new hours preserving ratio
-            let newVolunteering = roundedHours * volunteeringRatio;
-            let newSocial = roundedHours * socialRatio;
-            
-            // Round to nearest 0.5
-            newVolunteering = roundToHalf(newVolunteering);
-            newSocial = roundToHalf(newSocial);
-            
-            // Ensure they sum to the new total (adjust if needed due to rounding)
-            const sum = newVolunteering + newSocial;
-            if (Math.abs(sum - roundedHours) > 0.01) {
-              // Adjust the larger category to match the total
-              const diff = roundedHours - sum;
-              if (newVolunteering >= newSocial) {
-                newVolunteering = roundToHalf(newVolunteering + diff);
-              } else {
-                newSocial = roundToHalf(newSocial + diff);
-              }
+          // Calculate new hours preserving ratio
+          let newVolunteering = roundedHours * volunteeringRatio;
+          let newSocial = roundedHours * socialRatio;
+          
+          // Round to nearest 0.5
+          newVolunteering = roundToHalf(newVolunteering);
+          newSocial = roundToHalf(newSocial);
+          
+          // Ensure they sum to the new total (adjust if needed due to rounding)
+          const sum = newVolunteering + newSocial;
+          if (Math.abs(sum - roundedHours) > 0.01) {
+            // Adjust the larger category to match the total
+            const diff = roundedHours - sum;
+            if (newVolunteering >= newSocial) {
+              newVolunteering = roundToHalf(newVolunteering + diff);
+            } else {
+              newSocial = roundToHalf(newSocial + diff);
             }
-            
-            updateData = {
-              volunteering_hours: Math.max(0, newVolunteering),
-              social_hours: Math.max(0, newSocial)
-            };
-          } else {
-            // If no hours yet, add all to volunteering (rounded to 0.5)
-            updateData = { volunteering_hours: roundedHours };
           }
+          
+          updateData = {
+            volunteering_hours: Math.max(0, newVolunteering),
+            social_hours: Math.max(0, newSocial)
+          };
+          hoursAdded.volunteering = newVolunteering - currentVolunteering;
+          hoursAdded.social = newSocial - currentSocial;
         } else {
-          throw new Error('Student not found');
+          // If no hours yet, add all to volunteering (rounded to 0.5)
+          updateData = { volunteering_hours: roundedHours };
+          hoursAdded.volunteering = roundedHours;
         }
       }
       
-      const { data, error } = await supabase
+      const { data: studentAfter, error } = await supabase
         .from('students')
         .update(updateData)
         .eq('id', studentId)
@@ -1771,8 +1789,47 @@ class SupabaseService {
         throw error;
       }
       
+      // Create audit record if hours changed and audit info provided
+      if (createAuditRecord && (hoursAdded.volunteering !== 0 || hoursAdded.social !== 0)) {
+        try {
+          // Create separate records for volunteering and social if both changed
+          if (hoursAdded.volunteering !== 0) {
+            const isAddition = hoursAdded.volunteering > 0;
+            await this.createApprovedHourRequest({
+              studentSNumber: createAuditRecord.studentSNumber || studentBefore.s_number || '',
+              studentName: createAuditRecord.studentName || studentBefore.name || 'Unknown',
+              eventName: createAuditRecord.eventName || `Manual Adjustment - ${isAddition ? 'Added' : 'Removed'} ${Math.abs(hoursAdded.volunteering)} volunteering hours`,
+              eventDate: new Date().toISOString().split('T')[0],
+              hoursRequested: Math.abs(hoursAdded.volunteering), // Always positive for the record
+              description: `Manual ${hoursType} hour adjustment by admin. ${createAuditRecord.reason || 'No reason provided'}. Original volunteering hours: ${currentVolunteering}, New volunteering hours: ${studentAfter.volunteering_hours || 0}, Adjustment: ${isAddition ? '+' : ''}${hoursAdded.volunteering}`,
+              type: 'volunteering',
+              adminNotes: createAuditRecord.reason || 'Admin adjustment',
+              reviewedBy: 'Admin'
+            });
+          }
+          
+          if (hoursAdded.social !== 0) {
+            const isAddition = hoursAdded.social > 0;
+            await this.createApprovedHourRequest({
+              studentSNumber: createAuditRecord.studentSNumber || studentBefore.s_number || '',
+              studentName: createAuditRecord.studentName || studentBefore.name || 'Unknown',
+              eventName: createAuditRecord.eventName || `Manual Adjustment - ${isAddition ? 'Added' : 'Removed'} ${Math.abs(hoursAdded.social)} social credits`,
+              eventDate: new Date().toISOString().split('T')[0],
+              hoursRequested: Math.abs(hoursAdded.social), // Always positive for the record
+              description: `Manual ${hoursType} hour adjustment by admin. ${createAuditRecord.reason || 'No reason provided'}. Original social credits: ${currentSocial}, New social credits: ${studentAfter.social_hours || 0}, Adjustment: ${isAddition ? '+' : ''}${hoursAdded.social}`,
+              type: 'social',
+              adminNotes: createAuditRecord.reason || 'Admin adjustment',
+              reviewedBy: 'Admin'
+            });
+          }
+        } catch (auditError: any) {
+          // Log but don't fail if audit record creation fails
+          console.warn('⚠️ Failed to create audit record (hours still updated):', auditError.message);
+        }
+      }
+      
       console.log('✅ Student hours updated successfully');
-      return data;
+      return studentAfter;
     } catch (error: any) {
       console.error('❌ Error updating student hours:', error);
       throw new Error(`Failed to update student hours: ${error.message}`);

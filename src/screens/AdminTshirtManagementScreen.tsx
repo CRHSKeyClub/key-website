@@ -312,7 +312,7 @@ export default function AdminTshirtManagementScreen() {
                   </div>
                   <div className="text-right">
                     <div className="text-gray-400 text-sm">
-                      {student.total_hours || 0} hrs ({(student.volunteering_hours || 0)} vol • {(student.social_hours || 0)} social)
+                      {student.total_hours || 0} hrs ({(student.volunteering_hours || 0)} vol • {(student.social_hours || 0)} social credits)
                     </div>
                     {!student.tshirt_size && (
                       <div className="text-yellow-400 text-sm font-medium">

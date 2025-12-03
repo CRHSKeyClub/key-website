@@ -211,42 +211,59 @@ export default function AdminStudentManagementScreen() {
       const student = selectedStudent;
       if (!student) return;
       
-      if (adjustmentData.hoursType === 'volunteering') {
-        currentHours = student.volunteering_hours || 0;
-        newHours = currentHours + adjustmentData.adjustment;
-        await SupabaseService.updateStudentHours(adjustmentData.student_id, newHours, 'volunteering');
-        adjustmentData.current_hours = currentHours;
-      } else if (adjustmentData.hoursType === 'social') {
-        currentHours = student.social_hours || 0;
-        newHours = currentHours + adjustmentData.adjustment;
-        await SupabaseService.updateStudentHours(adjustmentData.student_id, newHours, 'social');
-        adjustmentData.current_hours = currentHours;
-      } else {
-        // Total hours adjustment
-        currentHours = student.total_hours || 0;
-        newHours = currentHours + adjustmentData.adjustment;
-        await SupabaseService.updateStudentHours(adjustmentData.student_id, newHours, 'total');
-        adjustmentData.current_hours = currentHours;
-      }
-      
       const typeLabel = adjustmentData.hoursType === 'volunteering' 
         ? 'volunteering' 
         : adjustmentData.hoursType === 'social' 
         ? 'social' 
         : 'total';
       
-      // Create audit trail as already approved (don't add hours again since we already updated them)
-      await SupabaseService.createApprovedHourRequest({
-        studentSNumber: student.s_number || student.student_s_number || '',
-        studentName: getStudentName(student),
-        eventName: `Manual Adjustment - ${adjustmentData.adjustment > 0 ? 'Added' : 'Removed'} ${Math.abs(adjustmentData.adjustment)} ${typeLabel} hours`,
-        eventDate: new Date().toISOString().split('T')[0],
-        hoursRequested: Math.abs(adjustmentData.adjustment),
-        description: `Manual ${typeLabel} hour adjustment by admin. Reason: ${adjustmentData.reason}. Original ${typeLabel} hours: ${currentHours}, New ${typeLabel}: ${newHours}, Adjustment: ${adjustmentData.adjustment > 0 ? '+' : ''}${adjustmentData.adjustment}`,
-        type: adjustmentData.hoursType === 'total' ? 'volunteering' : adjustmentData.hoursType,
-        adminNotes: adjustmentData.reason,
-        reviewedBy: 'Admin'
-      });
+      if (adjustmentData.hoursType === 'volunteering') {
+        currentHours = student.volunteering_hours || 0;
+        newHours = currentHours + adjustmentData.adjustment;
+        await SupabaseService.updateStudentHours(
+          adjustmentData.student_id, 
+          newHours, 
+          'volunteering',
+          {
+            studentSNumber: student.s_number || student.student_s_number || '',
+            studentName: getStudentName(student),
+            reason: adjustmentData.reason,
+            eventName: `Manual Adjustment - ${adjustmentData.adjustment > 0 ? 'Added' : 'Removed'} ${Math.abs(adjustmentData.adjustment)} ${typeLabel} hours`
+          }
+        );
+        adjustmentData.current_hours = currentHours;
+      } else if (adjustmentData.hoursType === 'social') {
+        currentHours = student.social_hours || 0;
+        newHours = currentHours + adjustmentData.adjustment;
+        await SupabaseService.updateStudentHours(
+          adjustmentData.student_id, 
+          newHours, 
+          'social',
+          {
+            studentSNumber: student.s_number || student.student_s_number || '',
+            studentName: getStudentName(student),
+            reason: adjustmentData.reason,
+            eventName: `Manual Adjustment - ${adjustmentData.adjustment > 0 ? 'Added' : 'Removed'} ${Math.abs(adjustmentData.adjustment)} ${typeLabel} hours`
+          }
+        );
+        adjustmentData.current_hours = currentHours;
+      } else {
+        // Total hours adjustment
+        currentHours = student.total_hours || 0;
+        newHours = currentHours + adjustmentData.adjustment;
+        await SupabaseService.updateStudentHours(
+          adjustmentData.student_id, 
+          newHours, 
+          'total',
+          {
+            studentSNumber: student.s_number || student.student_s_number || '',
+            studentName: getStudentName(student),
+            reason: adjustmentData.reason,
+            eventName: `Manual Adjustment - ${adjustmentData.adjustment > 0 ? 'Added' : 'Removed'} ${Math.abs(adjustmentData.adjustment)} ${typeLabel} hours`
+          }
+        );
+        adjustmentData.current_hours = currentHours;
+      }
       
       // Reload students to show updated hours
       await loadStudents();
@@ -511,7 +528,7 @@ export default function AdminStudentManagementScreen() {
                           {student.total_hours || 0} {student.total_hours === 1 ? 'hr' : 'hrs'} total
                         </span>
                         <span className="text-gray-400 text-xs">
-                          {(student.volunteering_hours || 0)} vol • {(student.social_hours || 0)} social
+                          {(student.volunteering_hours || 0)} vol • {(student.social_hours || 0)} social credits
                         </span>
                       </div>
                     </div>
@@ -583,7 +600,7 @@ export default function AdminStudentManagementScreen() {
               <p className="text-gray-700"><span className="font-medium">Student:</span> {adjustmentData.student_name}</p>
               <p className="text-gray-700"><span className="font-medium">Current Total:</span> {selectedStudent?.total_hours || 0}</p>
               <p className="text-gray-700"><span className="font-medium">Volunteering:</span> {selectedStudent?.volunteering_hours || 0}</p>
-              <p className="text-gray-700"><span className="font-medium">Social:</span> {selectedStudent?.social_hours || 0}</p>
+              <p className="text-gray-700"><span className="font-medium">Social Credits:</span> {selectedStudent?.social_hours || 0}</p>
             </div>
 
             {/* Hour Type Selection */}
@@ -627,7 +644,7 @@ export default function AdminStudentManagementScreen() {
                       : 'bg-gray-200 text-gray-700'
                   }`}
                 >
-                  Social
+                  Social Credits
                 </button>
               </div>
             </div>
@@ -707,7 +724,7 @@ export default function AdminStudentManagementScreen() {
                     })()}
                   </motion.div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {adjustmentData.hoursType === 'volunteering' ? 'Volunteering' : adjustmentData.hoursType === 'social' ? 'Social' : 'Total'}
+                    {adjustmentData.hoursType === 'volunteering' ? 'Volunteering' : adjustmentData.hoursType === 'social' ? 'Social Credits' : 'Total'}
                   </div>
                   <motion.div 
                     className="text-sm text-gray-500"

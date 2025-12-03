@@ -351,13 +351,13 @@ export default function HourRequestScreen() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    Social
+                    Social Credits
                   </motion.button>
                 </div>
                 <p className="text-slate-400 text-sm mt-2">
                   {hoursType === 'volunteering' 
                     ? 'Service hours for volunteering activities'
-                    : 'Hours for social events and activities'}
+                    : 'Social credits for social events and activities'}
                 </p>
               </div>
               
