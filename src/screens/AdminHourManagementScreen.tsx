@@ -289,6 +289,56 @@ export default function AdminHourManagementScreen() {
     }
   };
 
+  const handleToggleType = async (request: HourRequest) => {
+    const requestId = request.id;
+    
+    if (processingRequests.has(requestId)) return;
+    setProcessingRequests(prev => new Set([...prev, requestId]));
+
+    const newType = request.type === 'volunteering' ? 'social' : 'volunteering';
+
+    try {
+      await SupabaseService.updateHourRequestType(requestId, newType);
+      
+      // Update the local state
+      setAllRequests(prev => prev.map(r => 
+        r.id === requestId ? { ...r, type: newType } : r
+      ));
+      setFilteredRequests(prev => prev.map(r => 
+        r.id === requestId ? { ...r, type: newType } : r
+      ));
+      
+      showModal({
+        title: 'Success',
+        message: `Request type changed to ${newType}!`,
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'checkmark-circle',
+        iconColor: '#4CAF50'
+      });
+    } catch (error) {
+      console.error('Failed to update request type:', error);
+      showModal({
+        title: 'Error',
+        message: 'Failed to update request type',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+    } finally {
+      setProcessingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(requestId);
+        return newSet;
+      });
+    }
+  };
+
   const extractPhotoData = (description: string) => {
     if (!description) return null;
     
@@ -537,6 +587,38 @@ export default function AdminHourManagementScreen() {
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="text-lg font-semibold text-white">{request.event_name}</h4>
                     <span className="text-blue-400 font-bold">{request.hours_requested} hours</span>
+                  </div>
+
+                  {/* Type Display and Toggle */}
+                  <div className="flex items-center gap-3 mb-4 bg-slate-800 bg-opacity-50 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                      </svg>
+                      <span className="text-slate-300 font-medium">Type:</span>
+                    </div>
+                    
+                    <div className={`px-3 py-1 rounded-full text-sm font-bold ${
+                      request.type === 'volunteering' 
+                        ? 'bg-purple-600 text-white' 
+                        : 'bg-orange-600 text-white'
+                    }`}>
+                      {request.type === 'volunteering' ? 'Volunteering' : 'Social'}
+                    </div>
+
+                    {isRequestPending(request) && (
+                      <button
+                        onClick={() => handleToggleType(request)}
+                        disabled={isProcessing}
+                        className="ml-auto flex items-center gap-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors"
+                        title={`Change to ${request.type === 'volunteering' ? 'Social' : 'Volunteering'}`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        Switch to {request.type === 'volunteering' ? 'Social' : 'Volunteering'}
+                      </button>
+                    )}
                   </div>
 
                   {/* Description */}

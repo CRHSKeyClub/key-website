@@ -1134,6 +1134,32 @@ class SupabaseService {
     }
   }
 
+  static async updateHourRequestType(requestId: string, newType: 'volunteering' | 'social') {
+    try {
+      console.log('🔄 Updating hour request type:', { requestId, newType });
+      
+      const { data: updatedRequest, error } = await supabase
+        .from('hour_requests')
+        .update({
+          type: newType
+        })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error updating request type:', error);
+        throw error;
+      }
+
+      console.log('✅ Request type updated successfully');
+      return updatedRequest;
+    } catch (error) {
+      console.error('❌ Error updating hour request type:', error);
+      throw error;
+    }
+  }
+
   static async getProofPhotoLibrary(options: {
     status?: string;
     searchTerm?: string;
