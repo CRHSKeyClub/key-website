@@ -1160,6 +1160,32 @@ class SupabaseService {
     }
   }
 
+  static async updateHourRequestHours(requestId: string, newHours: number) {
+    try {
+      console.log('🔄 Updating hour request hours:', { requestId, newHours });
+      
+      const { data: updatedRequest, error } = await supabase
+        .from('hour_requests')
+        .update({
+          hours_requested: newHours
+        })
+        .eq('id', requestId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error updating request hours:', error);
+        throw error;
+      }
+
+      console.log('✅ Request hours updated successfully');
+      return updatedRequest;
+    } catch (error) {
+      console.error('❌ Error updating hour request hours:', error);
+      throw error;
+    }
+  }
+
   static async getProofPhotoLibrary(options: {
     status?: string;
     searchTerm?: string;

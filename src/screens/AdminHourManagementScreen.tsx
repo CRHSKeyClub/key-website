@@ -52,6 +52,14 @@ export default function AdminHourManagementScreen() {
     request: null as HourRequest | null
   });
 
+  const [editingHours, setEditingHours] = useState<{
+    requestId: string | null;
+    value: string;
+  }>({
+    requestId: null,
+    value: ''
+  });
+
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -339,6 +347,90 @@ export default function AdminHourManagementScreen() {
     }
   };
 
+  const handleStartEditHours = (request: HourRequest) => {
+    setEditingHours({
+      requestId: request.id,
+      value: request.hours_requested.toString()
+    });
+  };
+
+  const handleCancelEditHours = () => {
+    setEditingHours({
+      requestId: null,
+      value: ''
+    });
+  };
+
+  const handleSaveHours = async (request: HourRequest) => {
+    const requestId = request.id;
+    const newHours = parseFloat(editingHours.value);
+
+    // Validate hours
+    if (isNaN(newHours) || newHours <= 0) {
+      showModal({
+        title: 'Error',
+        message: 'Please enter a valid number of hours greater than 0',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+      return;
+    }
+
+    if (processingRequests.has(requestId)) return;
+    setProcessingRequests(prev => new Set([...prev, requestId]));
+
+    try {
+      await SupabaseService.updateHourRequestHours(requestId, newHours);
+      
+      // Update the local state
+      setAllRequests(prev => prev.map(r => 
+        r.id === requestId ? { ...r, hours_requested: newHours } : r
+      ));
+      setFilteredRequests(prev => prev.map(r => 
+        r.id === requestId ? { ...r, hours_requested: newHours } : r
+      ));
+      
+      // Clear editing state
+      setEditingHours({
+        requestId: null,
+        value: ''
+      });
+      
+      showModal({
+        title: 'Success',
+        message: `Hours updated to ${newHours}!`,
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'checkmark-circle',
+        iconColor: '#4CAF50'
+      });
+    } catch (error) {
+      console.error('Failed to update hours:', error);
+      showModal({
+        title: 'Error',
+        message: 'Failed to update hours',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+    } finally {
+      setProcessingRequests(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(requestId);
+        return newSet;
+      });
+    }
+  };
+
   const extractPhotoData = (description: string) => {
     if (!description) return null;
     
@@ -586,7 +678,69 @@ export default function AdminHourManagementScreen() {
                   {/* Event Info */}
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="text-lg font-semibold text-white">{request.event_name}</h4>
-                    <span className="text-blue-400 font-bold">{request.hours_requested} hours</span>
+                    
+                    {/* Hours Display/Edit */}
+                    <div className="flex items-center gap-2">
+                      {editingHours.requestId === request.id ? (
+                        // Edit mode
+                        <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-1">
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0.5"
+                            value={editingHours.value}
+                            onChange={(e) => setEditingHours(prev => ({ ...prev, value: e.target.value }))}
+                            className="w-20 bg-slate-700 text-white text-center rounded px-2 py-1 text-sm"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSaveHours(request);
+                              } else if (e.key === 'Escape') {
+                                handleCancelEditHours();
+                              }
+                            }}
+                          />
+                          <span className="text-blue-400 text-sm">hours</span>
+                          <button
+                            onClick={() => handleSaveHours(request)}
+                            disabled={isProcessing}
+                            className="text-green-400 hover:text-green-300 disabled:text-gray-500"
+                            title="Save"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={handleCancelEditHours}
+                            disabled={isProcessing}
+                            className="text-red-400 hover:text-red-300 disabled:text-gray-500"
+                            title="Cancel"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        // View mode
+                        <div className="flex items-center gap-2">
+                          <span className="text-blue-400 font-bold">{request.hours_requested} hours</span>
+                          {isRequestPending(request) && (
+                            <button
+                              onClick={() => handleStartEditHours(request)}
+                              disabled={isProcessing}
+                              className="text-slate-400 hover:text-blue-400 disabled:text-gray-600 transition-colors"
+                              title="Edit hours"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Type Display and Toggle */}
