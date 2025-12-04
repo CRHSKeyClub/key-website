@@ -987,7 +987,7 @@ class SupabaseService {
         throw new Error('Hour request not found');
       }
 
-      // If the request was approved, subtract the hours from the student's total
+      // If the request was approved, revert the hours change
       if (request.status === 'approved' && request.student_s_number) {
         const studentSNumber = request.student_s_number;
         const student = await this.getStudent(studentSNumber);
@@ -995,31 +995,56 @@ class SupabaseService {
         if (student) {
           const requestedHours = parseFloat(request.hours_requested || 0);
           const hoursType = (request.type || 'volunteering').toLowerCase();
+          const eventName = (request.event_name || '').toLowerCase();
+          const description = (request.description || '').toLowerCase();
+          
+          // Check if this was an adjustment that REMOVED hours (so we should ADD them back)
+          const wasRemoval = eventName.includes('removed') || 
+                           eventName.includes('deleted') ||
+                           description.includes('removed') ||
+                           description.includes('deleted') ||
+                           description.includes('subtracted');
           
           if (!isNaN(requestedHours) && requestedHours > 0) {
             if (hoursType === 'social') {
-              // Subtract from social_hours
               const currentSocialHours = parseFloat(student.social_hours || 0);
-              const newSocialHours = Math.max(0, currentSocialHours - requestedHours);
+              let newSocialHours;
+              
+              if (wasRemoval) {
+                // This was a removal, so ADD hours back
+                newSocialHours = currentSocialHours + requestedHours;
+                console.log(`✅ Adding back ${requestedHours} social credits to student ${studentSNumber}`);
+              } else {
+                // This was an addition, so SUBTRACT hours
+                newSocialHours = Math.max(0, currentSocialHours - requestedHours);
+                console.log(`✅ Subtracting ${requestedHours} social credits from student ${studentSNumber}`);
+              }
               
               await this.updateStudent(studentSNumber, {
                 social_hours: newSocialHours,
                 last_hour_update: new Date().toISOString()
               });
               
-              console.log(`✅ Subtracted ${requestedHours} social credits from student ${studentSNumber}`);
               console.log(`   Previous: ${currentSocialHours}, New: ${newSocialHours}`);
             } else {
-              // Subtract from volunteering_hours (default)
               const currentVolunteeringHours = parseFloat(student.volunteering_hours || 0);
-              const newVolunteeringHours = Math.max(0, currentVolunteeringHours - requestedHours);
+              let newVolunteeringHours;
+              
+              if (wasRemoval) {
+                // This was a removal, so ADD hours back
+                newVolunteeringHours = currentVolunteeringHours + requestedHours;
+                console.log(`✅ Adding back ${requestedHours} volunteering hours to student ${studentSNumber}`);
+              } else {
+                // This was an addition, so SUBTRACT hours
+                newVolunteeringHours = Math.max(0, currentVolunteeringHours - requestedHours);
+                console.log(`✅ Subtracting ${requestedHours} volunteering hours from student ${studentSNumber}`);
+              }
               
               await this.updateStudent(studentSNumber, {
                 volunteering_hours: newVolunteeringHours,
                 last_hour_update: new Date().toISOString()
               });
               
-              console.log(`✅ Subtracted ${requestedHours} volunteering hours from student ${studentSNumber}`);
               console.log(`   Previous: ${currentVolunteeringHours}, New: ${newVolunteeringHours}`);
             }
           }
