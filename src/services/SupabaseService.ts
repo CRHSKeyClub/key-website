@@ -1768,6 +1768,25 @@ class SupabaseService {
     }
   }
 
+  static async getAllStudentsForExport() {
+    try {
+      // Get ALL students from the database without filtering by account status
+      // This is used for exports where we want complete data
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('students')
+        .select('*')
+        .order('name', { ascending: true });
+      
+      if (studentsError) throw studentsError;
+      if (!studentsData) return { data: [] };
+      
+      return { data: studentsData };
+    } catch (error) {
+      console.error('❌ Error getting all students for export:', error);
+      return { data: [], error };
+    }
+  }
+
   static async updateStudentHours(
     studentId: string, 
     newHours: number, 

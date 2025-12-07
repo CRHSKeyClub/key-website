@@ -36,6 +36,7 @@ import PublicEventsScreen from '../screens/PublicEventsScreen';
 import NewsletterScreen from '../screens/NewsletterScreen';
 import AnimationScreen from '../screens/AnimationScreen';
 import AdminPhotoLibraryScreen from '../screens/AdminPhotoLibraryScreen';
+import AdminStudentExportScreen from '../screens/AdminStudentExportScreen';
 
 // Layout component for authenticated routes with navbar
 function AuthenticatedLayout() {
@@ -96,6 +97,7 @@ function AppRouter() {
           <Route path="/create-announcement" element={<CreateAnnouncementScreen />} />
           <Route path="/admin-students" element={<AdminStudentManagementScreen />} />
           <Route path="/admin-students/:studentId" element={<AdminStudentDetailScreen />} />
+          <Route path="/admin-students-export" element={<AdminStudentExportScreen />} />
           <Route path="/admin-meetings" element={<AdminMeetingManagementScreen />} />
           <Route path="/admin-tshirt-management" element={<AdminTshirtManagementScreen />} />
           <Route path="/admin-photo-library" element={<AdminPhotoLibraryScreen />} />
