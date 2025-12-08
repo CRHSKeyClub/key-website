@@ -146,7 +146,7 @@ export default function AdminStudentExportScreen() {
           escapeCSV(student.volunteering_hours ?? 0),
           escapeCSV(student.social_hours ?? 0),
           escapeCSV(student.total_hours ?? 0),
-          escapeCSV(student.tshirt_size || ''),
+          escapeCSV(student.tshirt_size || 'zero'),
           escapeCSV(student.account_status || ''),
           escapeCSV(student.role || ''),
           escapeCSV(formatDate(student.account_created)),
