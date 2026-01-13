@@ -179,18 +179,8 @@ class SupabaseService {
       console.log('🚀 Starting registration for:', sNumber);
       console.log('📊 Registration data:', { sNumber, name, tshirtSize });
 
-      // Test Supabase connection first
-      console.log('🧪 Testing Supabase connection...');
-      const { error: testError } = await supabase
-        .from('students')
-        .select('count')
-        .limit(1);
-      
-      if (testError) {
-        console.error('❌ Supabase connection test failed:', testError);
-        throw new Error(`Database connection failed: ${testError.message}`);
-      }
-      console.log('✅ Supabase connection test passed');
+      // Note: Connection test removed to avoid timeout issues
+      // Connection will be validated on actual queries
 
       let student = await this.getStudent(sNumber);
       console.log('👤 Student lookup result:', student ? 'Found existing student' : 'Student not found');
@@ -358,9 +348,15 @@ class SupabaseService {
     try {
       console.log('📅 Getting all events with attendees...');
       
+      // Only load recent events (last 3 years) to improve performance with large datasets
+      // Note: If you need to see older events, remove the date filter below
+      const threeYearsAgo = new Date();
+      threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+      
       const { data: eventsData, error: eventsError } = await supabase
         .from('events')
         .select('*')
+        .gte('event_date', threeYearsAgo.toISOString()) // Only recent events (remove this line to see all events)
         .order('event_date');
 
       if (eventsError) {
@@ -918,26 +914,53 @@ class SupabaseService {
 
   static async getAllHourRequests() {
     try {
+      // Optimize query: select only needed columns and add timeout handling
+      // Only load recent pending requests (last 12 months) to improve performance with large datasets
+      // Note: If you need to see older pending requests, remove the date filter below
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      
       const { data, error } = await supabase
         .from('hour_requests')
-        .select('*')
+        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
         .eq('status', 'pending')
+        .gte('submitted_at', oneYearAgo.toISOString()) // Only recent requests (remove this line to see all pending)
         .order('submitted_at', { ascending: true })
         .limit(100);
 
-      if (error) throw error;
+      if (error) {
+        // Check for timeout errors
+        if (error.code === '57014' || error.message?.includes('timeout')) {
+          console.error('❌ Query timeout - database may be slow or need indexes. Error:', error);
+          // Return empty array instead of throwing to prevent app crash
+          return [];
+        }
+        throw error;
+      }
       return data || [];
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting all hour requests:', error);
+      // If it's a timeout, return empty array instead of throwing
+      if (error.code === '57014' || error.message?.includes('timeout')) {
+        console.warn('⚠️ Returning empty array due to timeout');
+        return [];
+      }
       throw error;
     }
   }
 
   static async searchHourRequests(searchTerm: string, status: string = 'pending', limit: number = 100) {
     try {
+      // Optimize: select only needed columns
+      // Only search recent requests (last 2 years) to improve performance with large datasets
+      // Note: Search will still work but only finds recent records. Remove date filter to search all records.
+      const twoYearsAgo = new Date();
+      twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+      
       let query = supabase
         .from('hour_requests')
-        .select('*');
+        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
+        .gte('submitted_at', twoYearsAgo.toISOString()); // Only recent requests (remove this line to search all records)
 
       // Filter by status if specified
       if (status !== 'all') {
@@ -959,10 +982,22 @@ class SupabaseService {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        // Check for timeout errors
+        if (error.code === '57014' || error.message?.includes('timeout')) {
+          console.error('❌ Query timeout - database may be slow or need indexes. Error:', error);
+          return [];
+        }
+        throw error;
+      }
       return data || [];
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error searching hour requests:', error);
+      // If it's a timeout, return empty array instead of throwing
+      if (error.code === '57014' || error.message?.includes('timeout')) {
+        console.warn('⚠️ Returning empty array due to timeout');
+        return [];
+      }
       throw error;
     }
   }
@@ -1730,23 +1765,39 @@ class SupabaseService {
 
   static async getAllStudents() {
     try {
-      // First get all students
+      // Optimize: Select only needed columns and add pagination/timeout handling
+      // Reduced limit from 5000 to 1000 for better performance with large datasets
+      // Note: If you have more than 1000 students, consider using search/filter instead
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
-        .select('*')
-        .order('name', { ascending: true });
+        .select('id, s_number, name, email, volunteering_hours, social_hours, total_hours, tshirt_size, account_status, account_created, last_login')
+        .order('name', { ascending: true })
+        .limit(1000); // Reduced from 5000, but increased from 500 for safety
       
-      if (studentsError) throw studentsError;
+      if (studentsError) {
+        // Check for timeout errors
+        if (studentsError.code === '57014' || studentsError.message?.includes('timeout')) {
+          console.error('❌ Query timeout - database may be slow or need indexes. Error:', studentsError);
+          return { data: [], error: studentsError };
+        }
+        throw studentsError;
+      }
       if (!studentsData) return { data: [] };
 
-      // Get all auth users (students who have created accounts)
+      // Get all auth users (students who have created accounts) - optimized with limit
       const { data: authUsers, error: authError } = await supabase
         .from('auth_users')
-        .select('s_number');
+        .select('s_number')
+        .limit(1000); // Match students limit
       
       if (authError) {
         console.error('❌ Error getting auth users:', authError);
-        // If we can't get auth users, return all students (fallback)
+        // If we can't get auth users due to timeout, return all students (fallback)
+        if (authError.code === '57014' || authError.message?.includes('timeout')) {
+          console.warn('⚠️ Auth users query timed out, returning all students');
+          return { data: studentsData };
+        }
+        // For other errors, still try to return students
         return { data: studentsData };
       }
 
@@ -1762,8 +1813,13 @@ class SupabaseService {
       });
       
       return { data: studentsWithAccounts };
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error getting all students:', error);
+      // If it's a timeout, return empty array instead of throwing
+      if (error.code === '57014' || error.message?.includes('timeout')) {
+        console.warn('⚠️ Returning empty array due to timeout');
+        return { data: [], error };
+      }
       return { data: [], error };
     }
   }
@@ -1772,16 +1828,25 @@ class SupabaseService {
     try {
       // Get ALL students from the database without filtering by account status
       // This is used for exports where we want complete data
+      // Note: This may timeout with very large datasets (>10,000 students)
+      // If it times out, consider adding pagination or date filtering
       const { data: studentsData, error: studentsError } = await supabase
         .from('students')
         .select('*')
         .order('name', { ascending: true });
       
-      if (studentsError) throw studentsError;
+      if (studentsError) {
+        // Check for timeout errors
+        if (studentsError.code === '57014' || studentsError.message?.includes('timeout')) {
+          console.error('❌ Export query timeout - dataset may be too large. Consider adding pagination.');
+          return { data: [], error: studentsError };
+        }
+        throw studentsError;
+      }
       if (!studentsData) return { data: [] };
       
       return { data: studentsData };
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error getting all students for export:', error);
       return { data: [], error };
     }

@@ -22,7 +22,7 @@ interface HourRequest {
 
 export default function AdminHourManagementScreen() {
   const navigate = useNavigate();
-  const { deleteHourRequest } = useHours();
+  const { deleteHourRequest, hourRequests: contextHourRequests, loading: contextLoading, refreshHourRequests } = useHours();
   const { showModal } = useModal();
   
   const [allRequests, setAllRequests] = useState<HourRequest[]>([]);
@@ -62,9 +62,41 @@ export default function AdminHourManagementScreen() {
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Helper to filter and set requests
+  const filterAndSetRequests = useCallback((requests: HourRequest[]) => {
+    let filtered = requests;
+    
+    // Apply status filter
+    if (filter !== 'all') {
+      filtered = filtered.filter(r => r.status === filter);
+    }
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(r => 
+        r.student_name?.toLowerCase().includes(query) ||
+        r.student_s_number?.toLowerCase().includes(query) ||
+        r.event_name?.toLowerCase().includes(query) ||
+        r.description?.toLowerCase().includes(query)
+      );
+    }
+    
+    setAllRequests(requests);
+    setFilteredRequests(filtered);
+  }, [filter, searchQuery]);
+
+  // Use context data on initial load if available (avoids redundant query)
   useEffect(() => {
-    loadData();
-  }, []);
+    if (!contextLoading && contextHourRequests.length > 0 && allRequests.length === 0) {
+      console.log('✅ Using cached hour requests from context:', contextHourRequests.length);
+      filterAndSetRequests(contextHourRequests);
+      setLoading(false);
+    } else if (!contextLoading && contextHourRequests.length === 0 && allRequests.length === 0) {
+      // Only load if context doesn't have data
+      loadData();
+    }
+  }, [contextLoading, contextHourRequests, allRequests.length, filterAndSetRequests]);
 
   // Debounced search effect - only trigger when searchQuery changes (not on initial mount)
   useEffect(() => {
@@ -91,14 +123,30 @@ export default function AdminHourManagementScreen() {
   // Reload when filter changes (but not on initial mount)
   useEffect(() => {
     if (allRequests.length > 0) {
-      loadData();
+      // Try filtering existing context data first if no search
+      if (!searchQuery.trim() && contextHourRequests.length > 0) {
+        filterAndSetRequests(contextHourRequests);
+      } else {
+        loadData();
+      }
     }
   }, [filter]);
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh: boolean = false) => {
     try {
       setLoading(true);
       console.log('🔄 Loading hour requests from database...');
+      
+      // If no search query and context has data, try filtering context first
+      if (!forceRefresh && !searchQuery.trim() && contextHourRequests.length > 0) {
+        console.log('📦 Using context data first, refreshing in background...');
+        filterAndSetRequests(contextHourRequests);
+        setLastLoadTime(new Date());
+        setLoading(false);
+        // Refresh in background (will update context, which will update this screen)
+        refreshHourRequests().catch(err => console.error('Background refresh failed:', err));
+        return;
+      }
       
       let requests: HourRequest[];
       
@@ -122,16 +170,23 @@ export default function AdminHourManagementScreen() {
       console.log('✅ Data loading completed successfully');
     } catch (error: any) {
       console.error('❌ Error loading requests:', error);
-      showModal({
-        title: 'Error',
-        message: `Failed to load hour requests: ${error.message}`,
-        onCancel: () => {},
-        onConfirm: () => {},
-        cancelText: '',
-        confirmText: 'OK',
-        icon: 'alert-circle',
-        iconColor: '#ff4d4d'
-      });
+      
+      // If error but we have context data, use that as fallback
+      if (contextHourRequests.length > 0) {
+        console.warn('⚠️ Using cached context data due to error');
+        filterAndSetRequests(contextHourRequests);
+      } else {
+        showModal({
+          title: 'Error',
+          message: `Failed to load hour requests: ${error.message}`,
+          onCancel: () => {},
+          onConfirm: () => {},
+          cancelText: '',
+          confirmText: 'OK',
+          icon: 'alert-circle',
+          iconColor: '#ff4d4d'
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -139,7 +194,7 @@ export default function AdminHourManagementScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadData();
+    await loadData(true); // Force refresh
     setRefreshing(false);
   };
 

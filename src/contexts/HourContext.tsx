@@ -56,8 +56,13 @@ export function HourProvider({ children }: HourProviderProps) {
       const requests = await SupabaseService.getAllHourRequests();
       setHourRequests(requests);
       console.log(`Loaded ${requests.length} hour requests`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load hour requests:', error);
+      // If timeout, set empty array to prevent app crash
+      if (error.code === '57014' || error.message?.includes('timeout')) {
+        console.warn('⚠️ Setting empty hour requests due to timeout');
+        setHourRequests([]);
+      }
     }
   }, []);
 

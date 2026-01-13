@@ -202,6 +202,28 @@ The application uses Supabase with the following main tables:
 
 See `database_schema.sql` for complete schema.
 
+### Performance Optimization
+
+**⚠️ CRITICAL: If you're experiencing loading issues or timeout errors:**
+
+1. **Apply Database Indexes** (most important!):
+   - Go to your Supabase Dashboard → SQL Editor
+   - Copy and paste the contents of `scripts/add_performance_indexes.sql`
+   - Run the script to create necessary indexes
+   - These indexes are critical for query performance
+
+2. **See `LOADING_OPTIMIZATION_GUIDE.md`** for:
+   - Complete optimization checklist
+   - Troubleshooting slow queries
+   - Additional performance tips
+   - Monitoring and debugging
+
+**Already Optimized:**
+- ✅ AdminHourManagementScreen now uses cached context data (avoids redundant queries)
+- ✅ Timeout error handling with graceful fallbacks
+- ✅ Query limits to prevent large result sets
+- ✅ Optimized column selection (not selecting all columns)
+
 ## 🚀 Deployment
 
 ### Netlify (Recommended)

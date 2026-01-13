@@ -41,20 +41,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Test connection immediately
-console.log('🧪 Testing Supabase connection...');
-void supabase
-  .from('students')
-  .select('count')
-  .limit(1)
-  .then(({ error }) => {
-    if (error) {
-      console.error('❌ Supabase connection test failed:', error);
-    } else {
-      console.log('✅ Supabase connection test successful');
-    }
-  })
-  .catch((err: any) => {
-    console.error('❌ Supabase connection exception:', err);
-  });
+// Note: Connection test removed to avoid blocking/timeout issues
+// The connection will be tested on first actual query
 
