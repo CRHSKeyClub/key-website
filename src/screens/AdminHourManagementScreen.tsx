@@ -96,7 +96,7 @@ export default function AdminHourManagementScreen() {
       // Only load if context doesn't have data
       loadData();
     }
-  }, [contextLoading, contextHourRequests, allRequests.length, filterAndSetRequests]);
+  }, [contextLoading, contextHourRequests.length, allRequests.length, filterAndSetRequests]);
 
   // Debounced search effect - only trigger when searchQuery changes (not on initial mount)
   useEffect(() => {
@@ -118,6 +118,7 @@ export default function AdminHourManagementScreen() {
         clearTimeout(searchTimeoutRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
   // Reload when filter changes (but not on initial mount)
@@ -130,7 +131,7 @@ export default function AdminHourManagementScreen() {
         loadData();
       }
     }
-  }, [filter]);
+  }, [filter, searchQuery, contextHourRequests.length, filterAndSetRequests, allRequests.length]);
 
   const loadData = async (forceRefresh: boolean = false) => {
     try {

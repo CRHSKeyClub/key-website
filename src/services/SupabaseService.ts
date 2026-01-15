@@ -912,32 +912,62 @@ class SupabaseService {
     }
   }
 
-  static async getAllHourRequests() {
+  /**
+   * Optimized loader for pending hour requests.
+   * - Uses index-friendly pattern: WHERE status = 'pending' ORDER BY submitted_at ASC LIMIT N
+   * - Returns a light list for the admin screen.
+   * - Supports keyset pagination via lastSubmittedAt (no OFFSET).
+   */
+  static async getHourRequestsPage(
+    lastSubmittedAt: string | null = null,
+    pageSize: number = 100
+  ) {
     try {
-      // Optimize query: select only needed columns and add timeout handling
-      // Only load recent pending requests (last 12 months) to improve performance with large datasets
-      // Note: If you need to see older pending requests, remove the date filter below
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from('hour_requests')
-        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
+        .select(
+          // Keep the fields the admin screen actually uses.
+          'id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name'
+        )
         .eq('status', 'pending')
-        .gte('submitted_at', oneYearAgo.toISOString()) // Only recent requests (remove this line to see all pending)
+        // ASC order so Postgres can walk the index efficiently
         .order('submitted_at', { ascending: true })
-        .limit(100);
+        .limit(pageSize);
+
+      // Keyset pagination: only fetch rows *after* the last one we saw
+      if (lastSubmittedAt) {
+        query = query.gt('submitted_at', lastSubmittedAt);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
-        // Check for timeout errors
-        if (error.code === '57014' || error.message?.includes('timeout')) {
-          console.error('❌ Query timeout - database may be slow or need indexes. Error:', error);
-          // Return empty array instead of throwing to prevent app crash
+        // Graceful handling for occasional timeouts
+        if ((error as any).code === '57014' || (error as any).message?.includes('timeout')) {
+          console.warn('⚠️ hour_requests page query timed out, returning empty page');
           return [];
         }
         throw error;
       }
+
+      // Already ASC (oldest first) which is what admins usually want.
       return data || [];
+    } catch (error: any) {
+      console.error('Error getting hour requests page:', error);
+      if (error.code === '57014' || error.message?.includes('timeout')) {
+        console.warn('⚠️ Returning empty page due to timeout');
+        return [];
+      }
+      throw error;
+    }
+  }
+
+  static async getAllHourRequests() {
+    try {
+      // Backwards-compatible wrapper: load the first page of pending requests.
+      // Uses the optimized, index-friendly getHourRequestsPage() under the hood.
+      const data = await this.getHourRequestsPage(null, 100);
+      return data;
     } catch (error: any) {
       console.error('Error getting all hour requests:', error);
       // If it's a timeout, return empty array instead of throwing
