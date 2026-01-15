@@ -253,8 +253,8 @@ export default function AdminHourManagementScreen() {
       );
 
       if (result) {
-        // Reload data to get a new pending request to replace the approved one
-        await loadData();
+        // Force a fresh reload from the database so the list auto-refreshes
+        await loadData(true);
         
         showModal({
           title: 'Success',
