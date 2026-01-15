@@ -121,17 +121,22 @@ export default function AdminHourManagementScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
-  // Reload when filter changes (but not on initial mount)
+  // Reload when filter changes (but not on initial mount or search changes)
   useEffect(() => {
-    if (allRequests.length > 0) {
-      // Try filtering existing context data first if no search
-      if (!searchQuery.trim() && contextHourRequests.length > 0) {
-        filterAndSetRequests(contextHourRequests);
-      } else {
-        loadData();
-      }
+    // If there's an active search, let the search effect handle loading.
+    if (searchQuery.trim()) {
+      return;
     }
-  }, [filter, searchQuery, contextHourRequests.length, filterAndSetRequests, allRequests.length]);
+
+    // When the filter changes with no search term:
+    // - Prefer re-filtering existing context data
+    // - Only hit Supabase if we don't have context data yet
+    if (contextHourRequests.length > 0) {
+      filterAndSetRequests(contextHourRequests);
+    } else {
+      loadData();
+    }
+  }, [filter, searchQuery, contextHourRequests.length, filterAndSetRequests, loadData]);
 
   const loadData = async (forceRefresh: boolean = false) => {
     try {
