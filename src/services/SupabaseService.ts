@@ -1299,6 +1299,11 @@ class SupabaseService {
   }>> {
     try {
       const { status, searchTerm, startDate, endDate } = options;
+
+      // Limit to recent records and a reasonable page size to avoid timeouts
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
       const { data, error } = await supabase
         .from('hour_requests')
         .select(
@@ -1316,10 +1321,16 @@ class SupabaseService {
             reviewed_at
           `
         )
-        .order('submitted_at', { ascending: false });
+        .gte('submitted_at', oneYearAgo.toISOString())
+        .order('submitted_at', { ascending: false })
+        .limit(300);
 
       if (error) {
         console.error('❌ Error fetching proof photo library:', error);
+        // Gracefully handle timeouts by returning an empty library instead of crashing
+        if ((error as any).code === '57014' || (error as any).message?.includes('timeout')) {
+          return [];
+        }
         throw error;
       }
 

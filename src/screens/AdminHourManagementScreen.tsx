@@ -136,7 +136,7 @@ export default function AdminHourManagementScreen() {
     } else {
       loadData();
     }
-  }, [filter, searchQuery, contextHourRequests.length, filterAndSetRequests, loadData]);
+  }, [filter, searchQuery, contextHourRequests.length, filterAndSetRequests]);
 
   const loadData = async (forceRefresh: boolean = false) => {
     try {
