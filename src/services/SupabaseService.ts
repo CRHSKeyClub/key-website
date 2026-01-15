@@ -920,14 +920,15 @@ class SupabaseService {
    */
   static async getHourRequestsPage(
     lastSubmittedAt: string | null = null,
-    pageSize: number = 100
+    pageSize: number = 25
   ) {
     try {
       let query = supabase
         .from('hour_requests')
         .select(
-          // Keep the fields the admin screen actually uses.
-          'id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name'
+          // Lightweight list fields; heavy fields (description, admin_notes, image_name)
+          // are fetched only when needed via separate queries to keep this fast.
+          'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by'
         )
         .eq('status', 'pending')
         // ASC order so Postgres can walk the index efficiently
@@ -966,7 +967,7 @@ class SupabaseService {
     try {
       // Backwards-compatible wrapper: load the first page of pending requests.
       // Uses the optimized, index-friendly getHourRequestsPage() under the hood.
-      const data = await this.getHourRequestsPage(null, 100);
+      const data = await this.getHourRequestsPage(null, 25);
       return data;
     } catch (error: any) {
       console.error('Error getting all hour requests:', error);
