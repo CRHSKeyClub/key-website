@@ -1325,6 +1325,7 @@ class SupabaseService {
       
       const normalizedStatus = (status || '').toString().trim().toLowerCase();
       const isApprovedOrRejected = normalizedStatus === 'approved' || normalizedStatus === 'rejected';
+      let request: any = null;
       
       // If approving/rejecting, move directly to archive table instead of updating in place
       if (isApprovedOrRejected) {
@@ -1363,7 +1364,7 @@ class SupabaseService {
           if (archiveError.code === '42P01') {
             console.warn('⚠️ Archive table does not exist, updating in place instead');
             // Fallback to regular update (trigger should handle it)
-            const { data: request, error: updateError } = await supabase
+            const { data: updatedRequestData, error: updateError } = await supabase
               .from('hour_requests')
               .update({
                 status: normalizedStatus,
@@ -1381,28 +1382,50 @@ class SupabaseService {
             }
             
             // Set request for shared approval logic below
-            request = updatedRequest;
+            request = updatedRequestData;
           } else {
             console.error('❌ Error archiving request:', archiveError);
             throw archiveError;
           }
         } else {
           // Archive succeeded, now delete from pending table
-        const { error: deleteError } = await supabase
-          .from('hour_requests')
-          .delete()
-          .eq('id', requestId);
+          const { error: deleteError } = await supabase
+            .from('hour_requests')
+            .delete()
+            .eq('id', requestId);
 
-        if (deleteError) {
-          console.error('❌ Error deleting request from pending table:', deleteError);
-          // Don't throw - the request is already archived, just log the error
-          console.warn('⚠️ Request archived but could not be deleted from pending table. This is okay.');
+          if (deleteError) {
+            console.error('❌ Error deleting request from pending table:', deleteError);
+            // Don't throw - the request is already archived, just log the error
+            console.warn('⚠️ Request archived but could not be deleted from pending table. This is okay.');
+          }
+
+          console.log('✅ Request moved to archive table:', archivedRequest.id);
+
+          // Use archived request for approval logic
+          request = archivedRequest;
         }
+      } else {
+        // For other status changes (shouldn't happen, but handle it)
+        const { data: updatedRequest, error: updateError } = await supabase
+          .from('hour_requests')
+          .update({
+            status: normalizedStatus,
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: reviewedBy,
+            admin_notes: adminNotes
+          })
+          .eq('id', requestId)
+          .select()
+          .single();
 
-        console.log('✅ Request moved to archive table:', archivedRequest.id);
-
-        // Use archived request for approval logic
-        request = archivedRequest;
+        if (updateError) {
+          console.error('❌ Error updating request status:', updateError);
+          throw updateError;
+        }
+        
+        // For non-approved/rejected, return early
+        return updatedRequest;
       }
 
       // Approval logic - only runs if status is approved
