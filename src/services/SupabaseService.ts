@@ -1237,10 +1237,26 @@ class SupabaseService {
             console.error('❌ Error fetching hour request details:', otherError);
             throw otherError;
           }
+          
+          // Log what fields we got back
+          console.log(`📋 Got request from ${otherTable}, fields:`, Object.keys(otherData || {}));
+          console.log(`📋 Has description field:`, 'description' in (otherData || {}));
+          console.log(`📋 Description value type:`, typeof otherData?.description);
+          console.log(`📋 Description length:`, otherData?.description?.length || 'null/undefined');
+          
           return otherData;
         }
         console.error('❌ Error fetching hour request details:', error);
         throw error;
+      }
+
+      // Log what fields we got back
+      console.log(`📋 Got request from ${tableName}, fields:`, Object.keys(data || {}));
+      console.log(`📋 Has description field:`, 'description' in (data || {}));
+      console.log(`📋 Description value type:`, typeof data?.description);
+      console.log(`📋 Description length:`, data?.description?.length || 'null/undefined');
+      if (data?.description) {
+        console.log(`📋 Description preview:`, data.description.substring(0, 200));
       }
 
       return data;

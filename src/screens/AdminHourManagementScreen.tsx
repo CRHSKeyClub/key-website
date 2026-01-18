@@ -505,18 +505,28 @@ export default function AdminHourManagementScreen() {
       // Fetch full request details including description
       const fullRequest = await SupabaseService.getHourRequestDetails(requestId, status);
       
-      if (fullRequest?.description) {
-        console.log(`✅ Loaded description for request ${requestId}, length: ${fullRequest.description.length}`);
-        console.log(`📝 Description preview: ${fullRequest.description.substring(0, 300)}...`);
+      console.log(`📦 Full request object for ${requestId}:`, {
+        hasDescription: 'description' in (fullRequest || {}),
+        descriptionType: typeof fullRequest?.description,
+        descriptionValue: fullRequest?.description ? fullRequest.description.substring(0, 100) : fullRequest?.description,
+        allKeys: fullRequest ? Object.keys(fullRequest) : []
+      });
+      
+      // Access description field - check multiple possible field names
+      const description = fullRequest?.description || fullRequest?.Description || fullRequest?.desc || null;
+      
+      if (description && typeof description === 'string' && description.length > 0) {
+        console.log(`✅ Loaded description for request ${requestId}, length: ${description.length}`);
+        console.log(`📝 Description preview: ${description.substring(0, 300)}...`);
         
         // Store the description for this request - create new object to trigger re-render
         setLoadedImageData(prev => ({
           ...prev,
-          [requestId]: fullRequest.description
+          [requestId]: description
         }));
         
         // Try extracting photo data to verify it works
-        const extracted = extractPhotoData(fullRequest.description);
+        const extracted = extractPhotoData(description);
         console.log(`📸 Extracted photo data: ${extracted ? 'SUCCESS' : 'FAILED'}`);
         if (extracted) {
           console.log(`📸 Photo data preview: ${extracted.substring(0, 50)}...`);
@@ -524,15 +534,20 @@ export default function AdminHourManagementScreen() {
         } else {
           console.log(`⚠️ Photo extraction failed. Checking description patterns...`);
           // Log what patterns exist in description
-          const hasPhotoData = fullRequest.description.includes('[PHOTO_DATA:');
-          const hasPhotoColon = fullRequest.description.includes('Photo:');
-          const hasDataImage = fullRequest.description.includes('data:image/');
+          const hasPhotoData = description.includes('[PHOTO_DATA:');
+          const hasPhotoColon = description.includes('Photo:');
+          const hasDataImage = description.includes('data:image/');
+          const hasBase64 = /[A-Za-z0-9+/]{100,}/.test(description);
           console.log(`   - Has [PHOTO_DATA:]: ${hasPhotoData}`);
           console.log(`   - Has Photo:: ${hasPhotoColon}`);
           console.log(`   - Has data:image/: ${hasDataImage}`);
+          console.log(`   - Has base64-like string: ${hasBase64}`);
         }
       } else {
         console.log(`⚠️ No description found for request ${requestId}`);
+        console.log(`   - fullRequest?.description:`, fullRequest?.description);
+        console.log(`   - fullRequest?.Description:`, fullRequest?.Description);
+        console.log(`   - fullRequest?.desc:`, fullRequest?.desc);
       }
     } catch (error) {
       console.error(`❌ Error loading image for request ${requestId}:`, error);
