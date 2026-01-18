@@ -1034,9 +1034,8 @@ class SupabaseService {
       let query = supabase
         .from('hour_requests')
         .select(
-          // Reduced fields to minimize egress - removed large text fields for list view
-          // Load description and admin_notes only when viewing details (reduces egress by ~70%)
-          'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name'
+          // Include description for photo extraction (photos are stored in description field)
+          'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name, description'
         )
         .eq('status', 'pending')
         // ASC order so Postgres can walk the index efficiently
@@ -1105,19 +1104,19 @@ class SupabaseService {
       if (status === 'all') {
         // Query both tables and combine results
         const [pendingData, archiveData] = await Promise.all([
-          // Query pending from main table (reduced fields to minimize egress)
+          // Query pending from main table (include description for photo extraction)
           supabase
             .from('hour_requests')
-            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
+            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name, description')
             .eq('status', 'pending')
             .gte('submitted_at', twoYearsAgo.toISOString())
             .order('submitted_at', { ascending: true })
             .limit(limit),
           
-          // Query approved/rejected from archive table (reduced fields to minimize egress)
+          // Query approved/rejected from archive table (include description for photo extraction)
           supabase
             .from('hour_requests_archive')
-            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
+            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name, description')
             .in('status', ['approved', 'rejected'])
             .gte('submitted_at', twoYearsAgo.toISOString())
             .order('submitted_at', { ascending: true })
@@ -1161,10 +1160,10 @@ class SupabaseService {
       // Query single table based on status
       const tableName = status === 'pending' ? 'hour_requests' : 'hour_requests_archive';
       
-      // Reduced fields for search to minimize egress - description/admin_notes loaded separately
+      // Include description for photo extraction (photos are stored in description field)
       let query = supabase
         .from(tableName)
-        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
+        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name, description')
         .eq('status', status)
         .gte('submitted_at', twoYearsAgo.toISOString())
         .limit(limit); // Add limit early to reduce data transfer
