@@ -34,8 +34,8 @@ export default function AdminHourManagementScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [lastLoadTime, setLastLoadTime] = useState<Date | null>(null);
   const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
-  // Track which requests have loaded their image data (description)
-  const [loadedImageData, setLoadedImageData] = useState<Map<string, string>>(new Map());
+  // Track which requests have loaded their image data (description) - using object instead of Map for React reactivity
+  const [loadedImageData, setLoadedImageData] = useState<Record<string, string>>({});
   // Track which requests are currently loading images
   const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
   
@@ -488,13 +488,15 @@ export default function AdminHourManagementScreen() {
 
   // Load image data on-demand for a specific request
   const loadImageForRequest = async (requestId: string) => {
-    if (loadedImageData.has(requestId) || loadingImages.has(requestId)) {
+    if (loadedImageData[requestId] || loadingImages.has(requestId)) {
       // Already loaded or currently loading
+      console.log(`⏭️ Skipping load for ${requestId} - already loaded or loading`);
       return;
     }
 
     try {
       setLoadingImages(prev => new Set(prev).add(requestId));
+      console.log(`🔄 Loading image for request ${requestId}...`);
       
       // Find the request to get its status
       const request = allRequests.find(r => r.id === requestId);
@@ -505,20 +507,29 @@ export default function AdminHourManagementScreen() {
       
       if (fullRequest?.description) {
         console.log(`✅ Loaded description for request ${requestId}, length: ${fullRequest.description.length}`);
-        // Store the description for this request - create new Map to trigger re-render
-        setLoadedImageData(prev => {
-          const newMap = new Map(prev);
-          newMap.set(requestId, fullRequest.description);
-          return newMap;
-        });
+        console.log(`📝 Description preview: ${fullRequest.description.substring(0, 300)}...`);
+        
+        // Store the description for this request - create new object to trigger re-render
+        setLoadedImageData(prev => ({
+          ...prev,
+          [requestId]: fullRequest.description
+        }));
         
         // Try extracting photo data to verify it works
         const extracted = extractPhotoData(fullRequest.description);
         console.log(`📸 Extracted photo data: ${extracted ? 'SUCCESS' : 'FAILED'}`);
         if (extracted) {
           console.log(`📸 Photo data preview: ${extracted.substring(0, 50)}...`);
+          console.log(`📸 Photo data length: ${extracted.length}`);
         } else {
-          console.log(`⚠️ Photo extraction failed. Description sample: ${fullRequest.description.substring(0, 200)}`);
+          console.log(`⚠️ Photo extraction failed. Checking description patterns...`);
+          // Log what patterns exist in description
+          const hasPhotoData = fullRequest.description.includes('[PHOTO_DATA:');
+          const hasPhotoColon = fullRequest.description.includes('Photo:');
+          const hasDataImage = fullRequest.description.includes('data:image/');
+          console.log(`   - Has [PHOTO_DATA:]: ${hasPhotoData}`);
+          console.log(`   - Has Photo:: ${hasPhotoColon}`);
+          console.log(`   - Has data:image/: ${hasDataImage}`);
         }
       } else {
         console.log(`⚠️ No description found for request ${requestId}`);
@@ -812,8 +823,8 @@ export default function AdminHourManagementScreen() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request, index) => {
-              // Get loaded description (from Map or from request itself)
-              const loadedDescription = loadedImageData.get(request.id) || request.description || null;
+              // Get loaded description (from object or from request itself)
+              const loadedDescription = loadedImageData[request.id] || request.description || null;
               
               // Extract photo data from description - recalculate every render to catch updates
               const photoData = loadedDescription ? extractPhotoData(loadedDescription) : null;
@@ -823,24 +834,25 @@ export default function AdminHourManagementScreen() {
               const isLoadingImage = loadingImages.has(request.id);
               
               // Show button/section if image_name exists OR if description exists OR if we have photoData
-              const hasImageAvailable = request.image_name || request.description || loadedImageData.has(request.id) || photoData;
+              const hasLoadedDescription = !!loadedImageData[request.id];
+              const hasImageAvailable = request.image_name || request.description || hasLoadedDescription || photoData;
               // Can load ONLY if we don't have description yet (neither request.description nor loadedImageData) and need to fetch it
               // Show button only if image_name exists but description is missing (need to fetch)
-              const hasDescription = !!request.description || loadedImageData.has(request.id);
+              const hasDescription = !!request.description || hasLoadedDescription;
               const canLoadImage = request.image_name && !hasDescription && !photoData;
               
               // Debug logging - log every time we have image_name or loaded description
-              if (request.image_name || loadedImageData.has(request.id)) {
-                console.log(`📸 Request ${request.id}:`, {
+              if (request.image_name || hasLoadedDescription || photoData) {
+                console.log(`📸 Request ${request.id} (${request.student_name}):`, {
                   image_name: request.image_name,
-                  hasDescription: !!request.description,
-                  descriptionLength: request.description?.length || 0,
-                  hasLoadedDescription: loadedImageData.has(request.id),
-                  loadedDescriptionLength: loadedImageData.get(request.id)?.length || 0,
-                  photoData: photoData ? `EXTRACTED (${photoData.substring(0, 50)}...)` : 'NOT FOUND',
+                  hasRequestDescription: !!request.description,
+                  requestDescriptionLength: request.description?.length || 0,
+                  hasLoadedDescription,
+                  loadedDescriptionLength: loadedImageData[request.id]?.length || 0,
+                  photoData: photoData ? `EXTRACTED (length: ${photoData.length}, preview: ${photoData.substring(0, 50)}...)` : 'NOT FOUND',
                   canLoadImage,
                   hasImageAvailable,
-                  loadedDescriptionSample: loadedDescription ? loadedDescription.substring(0, 100) : 'none'
+                  loadedDescriptionSample: loadedDescription ? loadedDescription.substring(0, 150) : 'none'
                 });
               }
 
