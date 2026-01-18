@@ -827,34 +827,42 @@ export default function AdminHourManagementScreen() {
               const loadedDescription = loadedImageData[request.id] || request.description || null;
               
               // Extract photo data from description - recalculate every render to catch updates
+              // Always check description for images, not just image_name column
               const photoData = loadedDescription ? extractPhotoData(loadedDescription) : null;
               
               const cleanDescriptionText = loadedDescription ? cleanDescription(loadedDescription) : '';
               const isProcessing = processingRequests.has(request.id);
               const isLoadingImage = loadingImages.has(request.id);
               
-              // Show button/section if image_name exists OR if description exists OR if we have photoData
+              // Images are stored in the description column, NOT the image_name column
+              // We need to check the description column for images, not rely on image_name
               const hasLoadedDescription = !!loadedImageData[request.id];
-              const hasImageAvailable = request.image_name || request.description || hasLoadedDescription || photoData;
-              // Can load ONLY if we don't have description yet (neither request.description nor loadedImageData) and need to fetch it
-              // Show button only if image_name exists but description is missing (need to fetch)
               const hasDescription = !!request.description || hasLoadedDescription;
-              const canLoadImage = request.image_name && !hasDescription && !photoData;
               
-              // Debug logging - log every time we have image_name or loaded description
-              if (request.image_name || hasLoadedDescription || photoData) {
-                console.log(`📸 Request ${request.id} (${request.student_name}):`, {
-                  image_name: request.image_name,
-                  hasRequestDescription: !!request.description,
-                  requestDescriptionLength: request.description?.length || 0,
-                  hasLoadedDescription,
-                  loadedDescriptionLength: loadedImageData[request.id]?.length || 0,
-                  photoData: photoData ? `EXTRACTED (length: ${photoData.length}, preview: ${photoData.substring(0, 50)}...)` : 'NOT FOUND',
-                  canLoadImage,
-                  hasImageAvailable,
-                  loadedDescriptionSample: loadedDescription ? loadedDescription.substring(0, 150) : 'none'
-                });
-              }
+              // Show button/section if:
+              // 1. We don't have description loaded yet (need to check description column for images)
+              // 2. OR we have description loaded and found photoData in it
+              // Don't check image_name - images are in description column
+              const hasImageAvailable = !hasDescription || photoData;
+              
+              // Can load if we don't have description loaded yet
+              // We need to fetch and check the description column for images
+              // Don't check image_name column - images are in description
+              const canLoadImage = !hasDescription && !photoData;
+              
+              // Debug logging - log for all requests to see what's happening
+              console.log(`📸 Request ${request.id} (${request.student_name}):`, {
+                image_name: request.image_name,
+                hasRequestDescription: !!request.description,
+                requestDescriptionLength: request.description?.length || 0,
+                hasLoadedDescription,
+                loadedDescriptionLength: loadedImageData[request.id]?.length || 0,
+                photoData: photoData ? `EXTRACTED (length: ${photoData.length}, preview: ${photoData.substring(0, 50)}...)` : 'NOT FOUND',
+                canLoadImage,
+                hasImageAvailable,
+                hasDescription,
+                loadedDescriptionSample: loadedDescription ? loadedDescription.substring(0, 150) : 'none'
+              });
 
               return (
                 <motion.div
