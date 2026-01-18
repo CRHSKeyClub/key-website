@@ -29,7 +29,8 @@ export default function AdminHourManagementScreen() {
   const [filteredRequests, setFilteredRequests] = useState<HourRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState('all');
+  // This page only shows pending requests - no filter needed
+  // const [filter, setFilter] = useState('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [lastLoadTime, setLastLoadTime] = useState<Date | null>(null);
   const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
@@ -63,13 +64,12 @@ export default function AdminHourManagementScreen() {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Helper to filter and set requests
+  // This page only shows pending requests from hour_requests table
   const filterAndSetRequests = useCallback((requests: HourRequest[]) => {
-    let filtered = requests;
+    // Only show pending requests (filter out any non-pending that might be in context)
+    const pendingOnly = requests.filter(r => r.status === 'pending');
     
-    // Apply status filter
-    if (filter !== 'all') {
-      filtered = filtered.filter(r => r.status === filter);
-    }
+    let filtered = pendingOnly;
     
     // Apply search filter
     if (searchQuery.trim()) {
@@ -82,9 +82,9 @@ export default function AdminHourManagementScreen() {
       );
     }
     
-    setAllRequests(requests);
+    setAllRequests(pendingOnly);
     setFilteredRequests(filtered);
-  }, [filter, searchQuery]);
+  }, [searchQuery]);
 
   // Use context data on initial load if available (avoids redundant query)
   useEffect(() => {
@@ -121,22 +121,8 @@ export default function AdminHourManagementScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
 
-  // Reload when filter changes (but not on initial mount or search changes)
-  useEffect(() => {
-    // If there's an active search, let the search effect handle loading.
-    if (searchQuery.trim()) {
-      return;
-    }
-
-    // When the filter changes with no search term:
-    // - Prefer re-filtering existing context data
-    // - Only hit Supabase if we don't have context data yet
-    if (contextHourRequests.length > 0) {
-      filterAndSetRequests(contextHourRequests);
-    } else {
-      loadData();
-    }
-  }, [filter, searchQuery, contextHourRequests.length, filterAndSetRequests]);
+  // This page only shows pending requests - filter removed
+  // useEffect removed since we don't have filter changes anymore
 
   const loadData = async (forceRefresh: boolean = false) => {
     try {
@@ -156,23 +142,15 @@ export default function AdminHourManagementScreen() {
       
       let requests: HourRequest[];
       
-      // If there's a search query, use the search function
+      // This page ONLY shows pending requests from hour_requests table
+      // If there's a search query, search only in pending requests
       if (searchQuery.trim()) {
-        console.log('🔍 Searching hour requests with query:', searchQuery);
-        // Search with the selected filter (pending uses main table, approved/rejected use archive)
-        requests = await SupabaseService.searchHourRequests(searchQuery.trim(), filter, 100);
+        console.log('🔍 Searching pending hour requests with query:', searchQuery);
+        // Only search pending requests in hour_requests table
+        requests = await SupabaseService.searchHourRequests(searchQuery.trim(), 'pending', 100);
       } else {
-        // Otherwise, get requests based on filter
-        if (filter === 'all') {
-          // For 'all', query both pending and archived
-          requests = await SupabaseService.searchHourRequests('', 'all', 100);
-        } else if (filter === 'pending') {
-          // For pending, use the optimized getAllHourRequests (faster!)
-          requests = await SupabaseService.getAllHourRequests();
-        } else {
-          // For approved/rejected, search archive table
-          requests = await SupabaseService.searchHourRequests('', filter, 100);
-        }
+        // Always use getAllHourRequests which only queries hour_requests table for pending
+        requests = await SupabaseService.getAllHourRequests();
       }
       
       setAllRequests(requests);
@@ -210,10 +188,10 @@ export default function AdminHourManagementScreen() {
     setRefreshing(false);
   };
 
-  const handleFilterChange = (newFilter: string) => {
-    setFilter(newFilter);
-    // useEffect will trigger loadData when filter changes
-  };
+  // Filter removed - this page only shows pending requests
+  // const handleFilterChange = (newFilter: string) => {
+  //   setFilter(newFilter);
+  // };
 
   const handleReviewRequest = (request: HourRequest, action: 'approve' | 'reject') => {
     setReviewModal({
@@ -585,11 +563,12 @@ export default function AdminHourManagementScreen() {
   };
 
   const getFilterCounts = () => {
+    // This page only shows pending requests
     return {
       all: allRequests.length,
-      pending: allRequests.filter(r => r.status === 'pending').length,
-      approved: allRequests.filter(r => r.status === 'approved').length,
-      rejected: allRequests.filter(r => r.status === 'rejected').length
+      pending: allRequests.length, // All requests shown are pending
+      approved: 0,
+      rejected: 0
     };
   };
 
@@ -650,25 +629,17 @@ export default function AdminHourManagementScreen() {
 
       {/* Filter Tabs */}
       <div className="p-4">
-        <div className="bg-slate-800 bg-opacity-60 rounded-lg p-1 flex gap-1 mb-4">
-          {[
-            { key: 'all', label: 'All', count: counts.all },
-            { key: 'pending', label: 'Pending', count: counts.pending },
-            { key: 'approved', label: 'Approved', count: counts.approved },
-            { key: 'rejected', label: 'Rejected', count: counts.rejected }
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => handleFilterChange(tab.key)}
-              className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
-                filter === tab.key
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700'
-              }`}
-            >
-              {tab.label} ({tab.count})
-            </button>
-          ))}
+        {/* This page only shows pending requests - filter removed since we only query pending table */}
+        <div className="bg-slate-800 bg-opacity-60 rounded-lg p-3 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-slate-300 font-medium">Showing Pending Requests Only</span>
+            </div>
+            <span className="text-blue-400 font-bold text-lg">Pending: {counts.pending}</span>
+          </div>
         </div>
 
         {/* Search Bar */}
