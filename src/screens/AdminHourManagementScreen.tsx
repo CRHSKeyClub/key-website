@@ -505,12 +505,21 @@ export default function AdminHourManagementScreen() {
       
       if (fullRequest?.description) {
         console.log(`✅ Loaded description for request ${requestId}, length: ${fullRequest.description.length}`);
-        // Store the description for this request
-        setLoadedImageData(prev => new Map(prev).set(requestId, fullRequest.description));
+        // Store the description for this request - create new Map to trigger re-render
+        setLoadedImageData(prev => {
+          const newMap = new Map(prev);
+          newMap.set(requestId, fullRequest.description);
+          return newMap;
+        });
         
         // Try extracting photo data to verify it works
         const extracted = extractPhotoData(fullRequest.description);
         console.log(`📸 Extracted photo data: ${extracted ? 'SUCCESS' : 'FAILED'}`);
+        if (extracted) {
+          console.log(`📸 Photo data preview: ${extracted.substring(0, 50)}...`);
+        } else {
+          console.log(`⚠️ Photo extraction failed. Description sample: ${fullRequest.description.substring(0, 200)}`);
+        }
       } else {
         console.log(`⚠️ No description found for request ${requestId}`);
       }
@@ -803,33 +812,37 @@ export default function AdminHourManagementScreen() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request, index) => {
-              // Check if image data has been loaded on-demand OR if description already exists
-              const loadedDescription = loadedImageData.get(request.id) || request.description;
-              // Always check if description contains image data (even if description exists initially)
+              // Get loaded description (from Map or from request itself)
+              const loadedDescription = loadedImageData.get(request.id) || request.description || null;
+              
+              // Extract photo data from description - recalculate every render to catch updates
               const photoData = loadedDescription ? extractPhotoData(loadedDescription) : null;
-              const cleanDescriptionText = loadedDescription ? cleanDescription(loadedDescription) : (request.description || '');
+              
+              const cleanDescriptionText = loadedDescription ? cleanDescription(loadedDescription) : '';
               const isProcessing = processingRequests.has(request.id);
               const isLoadingImage = loadingImages.has(request.id);
               
-              // Debug logging
-              if (request.image_name || request.description) {
+              // Show button/section if image_name exists OR if description exists OR if we have photoData
+              const hasImageAvailable = request.image_name || request.description || loadedImageData.has(request.id) || photoData;
+              // Can load ONLY if we don't have description yet (neither request.description nor loadedImageData) and need to fetch it
+              // Show button only if image_name exists but description is missing (need to fetch)
+              const hasDescription = !!request.description || loadedImageData.has(request.id);
+              const canLoadImage = request.image_name && !hasDescription && !photoData;
+              
+              // Debug logging - log every time we have image_name or loaded description
+              if (request.image_name || loadedImageData.has(request.id)) {
                 console.log(`📸 Request ${request.id}:`, {
                   image_name: request.image_name,
                   hasDescription: !!request.description,
                   descriptionLength: request.description?.length || 0,
                   hasLoadedDescription: loadedImageData.has(request.id),
                   loadedDescriptionLength: loadedImageData.get(request.id)?.length || 0,
-                  photoData: photoData ? 'EXTRACTED' : 'NOT FOUND'
+                  photoData: photoData ? `EXTRACTED (${photoData.substring(0, 50)}...)` : 'NOT FOUND',
+                  canLoadImage,
+                  hasImageAvailable,
+                  loadedDescriptionSample: loadedDescription ? loadedDescription.substring(0, 100) : 'none'
                 });
               }
-              
-              // Show button/section if image_name exists OR if description exists (might contain image data)
-              // Always check description for images - it might contain image data even if image_name is missing
-              const hasImageAvailable = request.image_name || request.description || photoData;
-              // Can load ONLY if we don't have description yet and need to fetch it
-              // If description exists, we've already checked it for images above (via photoData extraction)
-              // Show button only if image_name exists but description is missing (need to fetch)
-              const canLoadImage = request.image_name && !request.description && !loadedImageData.has(request.id) && !photoData;
 
               return (
                 <motion.div
