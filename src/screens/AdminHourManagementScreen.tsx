@@ -34,6 +34,10 @@ export default function AdminHourManagementScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [lastLoadTime, setLastLoadTime] = useState<Date | null>(null);
   const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
+  // Track which requests have loaded their image data (description)
+  const [loadedImageData, setLoadedImageData] = useState<Map<string, string>>(new Map());
+  // Track which requests are currently loading images
+  const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
   
   const [reviewModal, setReviewModal] = useState({
     visible: false,
@@ -482,6 +486,48 @@ export default function AdminHourManagementScreen() {
     }
   };
 
+  // Load image data on-demand for a specific request
+  const loadImageForRequest = async (requestId: string) => {
+    if (loadedImageData.has(requestId) || loadingImages.has(requestId)) {
+      // Already loaded or currently loading
+      return;
+    }
+
+    try {
+      setLoadingImages(prev => new Set(prev).add(requestId));
+      
+      // Find the request to get its status
+      const request = allRequests.find(r => r.id === requestId);
+      const status = request?.status || 'pending';
+      
+      // Fetch full request details including description
+      const fullRequest = await SupabaseService.getHourRequestDetails(requestId, status);
+      
+      if (fullRequest?.description) {
+        // Store the description for this request
+        setLoadedImageData(prev => new Map(prev).set(requestId, fullRequest.description));
+      }
+    } catch (error) {
+      console.error(`❌ Error loading image for request ${requestId}:`, error);
+      showModal({
+        title: 'Error',
+        message: 'Failed to load proof photo. Please try again.',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#EF4444'
+      });
+    } finally {
+      setLoadingImages(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(requestId);
+        return newSet;
+      });
+    }
+  };
+
   const extractPhotoData = (description: string) => {
     if (!description) return null;
     
@@ -750,23 +796,14 @@ export default function AdminHourManagementScreen() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request, index) => {
-              // Lazy-load description/images - only load if image_name exists but description is missing
-              const photoData = request.description ? extractPhotoData(request.description) : null;
-              const cleanDescriptionText = request.description ? cleanDescription(request.description) : '';
+              // Check if image data has been loaded on-demand
+              const loadedDescription = loadedImageData.get(request.id);
+              const photoData = loadedDescription ? extractPhotoData(loadedDescription) : null;
+              const cleanDescriptionText = loadedDescription ? cleanDescription(loadedDescription) : (request.description || '');
               const isProcessing = processingRequests.has(request.id);
-              const shouldLoadImage = request.image_name && !request.description;
-              
-              // Debug: log to check if description has photo data
-              if (request.description) {
-                const hasPhotoPattern = request.description.includes('[PHOTO_DATA:') ||
-                                       request.description.includes('data:image/') ||
-                                       request.description.includes('Photo:') ||
-                                       (request.description.length > 100 && /^[A-Za-z0-9+/=\s]+$/.test(request.description.trim()));
-                if (hasPhotoPattern) {
-                  console.log(`📸 Request ${request.id} description likely contains photo data (length: ${request.description.length})`);
-                }
-              }
-              const hasImageIndicator = request.image_name || photoData; // Show if image_name exists OR if photoData is loaded
+              const isLoadingImage = loadingImages.has(request.id);
+              const hasImageAvailable = request.image_name || loadedDescription; // Show button if image_name exists OR if description is loaded
+              const canLoadImage = request.image_name && !loadedDescription; // Can load if image_name exists but description not loaded yet
 
               return (
                 <motion.div
@@ -895,71 +932,92 @@ export default function AdminHourManagementScreen() {
                     </div>
                   )}
 
-                  {/* Enhanced Photo Section - Show when photo is loaded */}
-                  {photoData && (
+                  {/* Photo Section - Button to load or display if loaded */}
+                  {hasImageAvailable && (
                     <div className="mb-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span className="text-blue-400 font-semibold">Proof Photo Available</span>
-                        <div className="flex-1"></div>
-                        <span className="text-xs text-green-400 bg-green-900 px-2 py-1 rounded-full">Click to View</span>
-                      </div>
-                      
-                      <div className="bg-slate-800 rounded-lg p-3 border border-slate-600">
-                        <div className="flex items-center gap-4">
-                          <button
-                            onClick={() => viewPhoto(request.event_name, photoData)}
-                            className="relative group"
-                          >
-                            <img 
+                      {canLoadImage ? (
+                        // Show button to load image
+                        <button
+                          onClick={() => loadImageForRequest(request.id)}
+                          disabled={isLoadingImage || isProcessing}
+                          className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-3 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors"
+                        >
+                          {isLoadingImage ? (
+                            <>
+                              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              <span>Loading Proof Photo...</span>
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                              <span>Load Proof Photo</span>
+                            </>
+                          )}
+                        </button>
+                      ) : photoData ? (
+                        // Show image if loaded
+                        <div className="mb-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-blue-400 font-semibold">Proof Photo Available</span>
+                          </div>
+                          <div className="relative group">
+                            <img
+                              onClick={() => viewPhoto(request.event_name, photoData)}
                               src={photoData} 
                               alt="Proof photo thumbnail"
-                              className="w-20 h-20 rounded-lg object-cover border-2 border-blue-400 hover:border-blue-300 transition-colors cursor-pointer"
+                              className="w-full h-auto max-h-64 object-contain rounded-lg cursor-pointer border border-slate-600 hover:border-blue-400 transition-colors"
                             />
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                              <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
-                              </svg>
-                            </div>
-                          </button>
-                          
-                          <div className="flex-1">
-                            <p className="text-slate-300 text-sm mb-2">
-                              <strong>To view the full-size image:</strong> Click the thumbnail above or the button below
-                            </p>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => viewPhoto(request.event_name, photoData)}
-                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
-                              >
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">
+                              <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg flex items-center gap-2">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
-                                View Full Size Image
-                              </button>
-                              
-                              <button
-                                onClick={() => {
-                                  const link = document.createElement('a');
-                                  link.href = photoData;
-                                  link.download = `${request.student_name}_${request.event_name}_proof.jpg`;
-                                  link.click();
-                                }}
-                                className="flex items-center gap-1 bg-slate-600 hover:bg-slate-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Download
-                              </button>
+                                Click to view full size
+                              </div>
                             </div>
                           </div>
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              onClick={() => viewPhoto(request.event_name, photoData)}
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                              View Full Size
+                            </button>
+                            <button
+                              onClick={() => {
+                                const link = document.createElement('a');
+                                link.href = photoData;
+                                link.download = request.image_name || `${request.event_name}_proof.jpg`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              Download Photo
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      ) : null
+                    }
+                  </div>
                   )}
 
                   {/* Date */}
