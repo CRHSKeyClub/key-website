@@ -504,8 +504,15 @@ export default function AdminHourManagementScreen() {
       const fullRequest = await SupabaseService.getHourRequestDetails(requestId, status);
       
       if (fullRequest?.description) {
+        console.log(`✅ Loaded description for request ${requestId}, length: ${fullRequest.description.length}`);
         // Store the description for this request
         setLoadedImageData(prev => new Map(prev).set(requestId, fullRequest.description));
+        
+        // Try extracting photo data to verify it works
+        const extracted = extractPhotoData(fullRequest.description);
+        console.log(`📸 Extracted photo data: ${extracted ? 'SUCCESS' : 'FAILED'}`);
+      } else {
+        console.log(`⚠️ No description found for request ${requestId}`);
       }
     } catch (error) {
       console.error(`❌ Error loading image for request ${requestId}:`, error);
@@ -803,6 +810,19 @@ export default function AdminHourManagementScreen() {
               const cleanDescriptionText = loadedDescription ? cleanDescription(loadedDescription) : (request.description || '');
               const isProcessing = processingRequests.has(request.id);
               const isLoadingImage = loadingImages.has(request.id);
+              
+              // Debug logging
+              if (request.image_name || request.description) {
+                console.log(`📸 Request ${request.id}:`, {
+                  image_name: request.image_name,
+                  hasDescription: !!request.description,
+                  descriptionLength: request.description?.length || 0,
+                  hasLoadedDescription: loadedImageData.has(request.id),
+                  loadedDescriptionLength: loadedImageData.get(request.id)?.length || 0,
+                  photoData: photoData ? 'EXTRACTED' : 'NOT FOUND'
+                });
+              }
+              
               // Show button/section if image_name exists OR if description exists (might contain image data)
               // Always check description for images - it might contain image data even if image_name is missing
               const hasImageAvailable = request.image_name || request.description || photoData;
@@ -968,8 +988,7 @@ export default function AdminHourManagementScreen() {
                         </button>
                       ) : photoData ? (
                         // Show image if we extracted photo data from description
-                        // Show image if loaded
-                        <div className="mb-4">
+                        <>
                           <div className="flex items-center gap-2 mb-3">
                             <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -1021,10 +1040,14 @@ export default function AdminHourManagementScreen() {
                               Download Photo
                             </button>
                           </div>
+                        </>
+                      ) : (
+                        // Show nothing if description was loaded but no photo found
+                        <div className="text-center py-4 text-slate-400 text-sm">
+                          No photo found in description
                         </div>
-                      ) : null
-                    }
-                  </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Date */}
