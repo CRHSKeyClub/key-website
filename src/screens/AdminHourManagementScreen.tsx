@@ -485,24 +485,68 @@ export default function AdminHourManagementScreen() {
   const extractPhotoData = (description: string) => {
     if (!description) return null;
     
+    // Try multiple patterns to extract photo data (handles both app and website formats)
     const patterns = [
-      /Photo: ([^|]+)/,
-      /\[PHOTO_DATA:(.*?)\]/,
-      /data:image\/[^;]+;base64,[^|]+/
+      // Pattern 1: [PHOTO_DATA:...] format (website format)
+      /\[PHOTO_DATA:(.*?)\]/s, // 's' flag for multiline
+      // Pattern 2: Photo: ... format (may have pipe separator or newline)
+      /Photo:\s*([^\n|]+)/s,
+      // Pattern 3: Full data URI (data:image/...;base64,...) - capture everything including newlines
+      /data:image\/[^;]+;base64,([A-Za-z0-9+/=\s\n]+)/s,
+      // Pattern 4: Base64 string without data URI prefix (app format) - must be long enough
+      /([A-Za-z0-9+/=\s]{200,})/ // Large base64 string (at least 200 chars, allow spaces/newlines)
     ];
     
     for (const pattern of patterns) {
       const match = description.match(pattern);
       if (match) {
-        const photoData = match[1] || match[0];
+        let photoData = (match[1] || match[0]).trim();
+        
+        // Remove newlines and extra whitespace from base64
+        photoData = photoData.replace(/\s+/g, '');
+        
+        // If it already has data:image/ prefix, return as-is
         if (photoData.startsWith('data:image/')) {
-          return photoData;
+          // Also clean this one
+          return photoData.replace(/\s+/g, '');
         }
-        if (photoData && !photoData.startsWith('data:')) {
+        
+        // If it's just base64 data (from app), add data URI prefix
+        // Check if it looks like base64 (long string of base64 chars)
+        if (photoData.length > 100 && /^[A-Za-z0-9+/=]+$/.test(photoData)) {
+          // Try to detect image type from first few chars or default to jpeg
+          if (photoData.substring(0, 20).includes('iVBORw0KGgo')) {
+            // PNG signature (looks for PNG magic bytes in base64)
+            return `data:image/png;base64,${photoData}`;
+          } else if (photoData.substring(0, 20).includes('/9j/')) {
+            // JPEG signature (looks for JPEG magic bytes in base64)
+            return `data:image/jpeg;base64,${photoData}`;
+          } else {
+            // Default to JPEG for app images
+            return `data:image/jpeg;base64,${photoData}`;
+          }
+        }
+        
+        // If we got here but data looks valid, try adding prefix anyway
+        if (photoData.length > 100) {
           return `data:image/jpeg;base64,${photoData}`;
         }
-        return photoData;
       }
+    }
+    
+    // Last resort: check if description contains large base64-like string anywhere
+    // Remove common text patterns and check if remainder is base64
+    const textRemoved = description
+      .replace(/\[PHOTO_DATA:.*?\]/gs, '')
+      .replace(/Photo:.*?/g, '')
+      .replace(/data:image\/[^;]+;base64,/, '')
+      .replace(/[^A-Za-z0-9+/=\s]/g, '')
+      .replace(/\s+/g, '')
+      .trim();
+    
+    // If what's left is a large base64-like string, use it
+    if (textRemoved.length > 100 && /^[A-Za-z0-9+/=]+$/.test(textRemoved)) {
+      return `data:image/jpeg;base64,${textRemoved}`;
     }
     
     return null;
@@ -712,9 +756,15 @@ export default function AdminHourManagementScreen() {
               const isProcessing = processingRequests.has(request.id);
               const shouldLoadImage = request.image_name && !request.description;
               
-              // Debug: log image_name to see if it's being loaded
-              if (request.image_name) {
-                console.log(`📸 Request ${request.id} has image_name: ${request.image_name}`);
+              // Debug: log to check if description has photo data
+              if (request.description) {
+                const hasPhotoPattern = request.description.includes('[PHOTO_DATA:') ||
+                                       request.description.includes('data:image/') ||
+                                       request.description.includes('Photo:') ||
+                                       (request.description.length > 100 && /^[A-Za-z0-9+/=\s]+$/.test(request.description.trim()));
+                if (hasPhotoPattern) {
+                  console.log(`📸 Request ${request.id} description likely contains photo data (length: ${request.description.length})`);
+                }
               }
               const hasImageIndicator = request.image_name || photoData; // Show if image_name exists OR if photoData is loaded
 
@@ -845,67 +895,8 @@ export default function AdminHourManagementScreen() {
                     </div>
                   )}
 
-                  {/* Proof Photo Section - Show load button for ALL requests without description */}
-                  {!request.description && (
-                    <div className="mb-4">
-                      <div className="bg-slate-800 rounded-lg p-4 border-2 border-blue-500 border-dashed">
-                        <div className="flex items-center gap-4">
-                          <div className="w-24 h-24 bg-slate-700 rounded-lg flex items-center justify-center border-2 border-blue-400">
-                            <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <p className="text-blue-400 font-semibold text-lg">
-                                {request.image_name ? 'Proof Photo Available' : 'Check for Proof Photo'}
-                              </p>
-                            </div>
-                            <p className="text-slate-300 text-sm mb-3">
-                              {request.image_name 
-                                ? 'A proof photo is attached. Click the button below to load and view it.'
-                                : 'All requests may have proof photos. Click below to load details and check.'}
-                            </p>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  console.log(`📸 Loading details for request ${request.id}...`);
-                                  const fullRequest = await SupabaseService.getHourRequestDetails(request.id, request.status);
-                                  console.log(`✅ Loaded full request:`, fullRequest);
-                                  // Check if description has photo data
-                                  const hasPhoto = fullRequest.description && (
-                                    fullRequest.description.includes('[PHOTO_DATA:') ||
-                                    fullRequest.description.includes('data:image/') ||
-                                    fullRequest.description.includes('Photo:')
-                                  );
-                                  console.log(`📸 Request has photo: ${hasPhoto}`);
-                                  // Update request in state
-                                  setAllRequests(prev => prev.map(r => r.id === request.id ? { ...r, description: fullRequest.description } : r));
-                                  setFilteredRequests(prev => prev.map(r => r.id === request.id ? { ...r, description: fullRequest.description } : r));
-                                } catch (error) {
-                                  console.error('❌ Failed to load details:', error);
-                                  alert('Failed to load request details. Please try again.');
-                                }
-                              }}
-                              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors shadow-lg"
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                              </svg>
-                              {request.image_name ? 'Load Proof Photo' : 'Load Request Details'}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Enhanced Photo Section - Show when photo is loaded (already handled above) */}
-                  {false && photoData && (
+                  {/* Enhanced Photo Section - Show when photo is loaded */}
+                  {photoData && (
                     <div className="mb-4">
                       <div className="flex items-center gap-2 mb-3">
                         <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
