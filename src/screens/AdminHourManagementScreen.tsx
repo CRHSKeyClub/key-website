@@ -159,12 +159,18 @@ export default function AdminHourManagementScreen() {
       // If there's a search query, use the search function
       if (searchQuery.trim()) {
         console.log('🔍 Searching hour requests with query:', searchQuery);
-        requests = await SupabaseService.searchHourRequests(searchQuery.trim(), filter === 'all' ? 'pending' : filter, 100);
+        // Search with the selected filter (pending uses main table, approved/rejected use archive)
+        requests = await SupabaseService.searchHourRequests(searchQuery.trim(), filter, 100);
       } else {
-        // Otherwise, get all pending requests (or filtered by status)
+        // Otherwise, get requests based on filter
         if (filter === 'all') {
+          // For 'all', query both pending and archived
+          requests = await SupabaseService.searchHourRequests('', 'all', 100);
+        } else if (filter === 'pending') {
+          // For pending, use the optimized getAllHourRequests (faster!)
           requests = await SupabaseService.getAllHourRequests();
         } else {
+          // For approved/rejected, search archive table
           requests = await SupabaseService.searchHourRequests('', filter, 100);
         }
       }
@@ -619,15 +625,26 @@ export default function AdminHourManagementScreen() {
             </svg>
           </button>
           <h1 className="text-3xl font-bold text-blue-400 text-center flex-1">Hour Requests</h1>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="text-blue-400 hover:text-blue-300 p-2 rounded-lg bg-blue-900 bg-opacity-50"
-          >
-            <svg className={`w-6 h-6 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/admin-hour-requests-stats')}
+              className="text-blue-400 hover:text-blue-300 px-4 py-2 rounded-lg bg-blue-900 bg-opacity-50 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Stats
+            </button>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="text-blue-400 hover:text-blue-300 p-2 rounded-lg bg-blue-900 bg-opacity-50"
+            >
+              <svg className={`w-6 h-6 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          </div>
         </div>
       </motion.div>
 

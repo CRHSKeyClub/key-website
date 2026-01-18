@@ -898,14 +898,49 @@ class SupabaseService {
 
   static async getStudentHourRequests(sNumber: string) {
     try {
-      const { data, error } = await supabase
-        .from('hour_requests')
-        .select('*')
-        .eq('student_s_number', sNumber.toLowerCase())
-        .order('submitted_at', { ascending: false });
-
-      if (error) throw error;
-      return data || [];
+      // Query both tables to get full history (pending from main, approved/rejected from archive)
+      const [pendingData, archiveData] = await Promise.all([
+        // Get pending requests from main table
+        supabase
+          .from('hour_requests')
+          .select('*')
+          .eq('student_s_number', sNumber.toLowerCase())
+          .eq('status', 'pending')
+          .order('submitted_at', { ascending: false }),
+        
+        // Get approved/rejected requests from archive table
+        supabase
+          .from('hour_requests_archive')
+          .select('*')
+          .eq('student_s_number', sNumber.toLowerCase())
+          .in('status', ['approved', 'rejected'])
+          .order('submitted_at', { ascending: false })
+      ]);
+      
+      // Combine results (handle errors gracefully)
+      const pending = pendingData.error && pendingData.error.code !== '42P01' 
+        ? [] 
+        : (pendingData.data || []);
+      
+      const archived = archiveData.error && archiveData.error.code !== '42P01'
+        ? []
+        : (archiveData.data || []);
+      
+      // If archive table doesn't exist, fall back to just main table
+      if (archiveData.error && archiveData.error.code === '42P01') {
+        console.log('ℹ️ Archive table not found, returning only pending requests');
+        return pending;
+      }
+      
+      // Combine and sort by submitted_at (newest first)
+      const combined = [...pending, ...archived];
+      combined.sort((a, b) => {
+        const dateA = new Date(a.submitted_at).getTime();
+        const dateB = new Date(b.submitted_at).getTime();
+        return dateB - dateA; // Descending order
+      });
+      
+      return combined;
     } catch (error) {
       console.error('Error getting student hour requests:', error);
       throw error;
@@ -987,15 +1022,75 @@ class SupabaseService {
       const twoYearsAgo = new Date();
       twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
       
-      let query = supabase
-        .from('hour_requests')
-        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
-        .gte('submitted_at', twoYearsAgo.toISOString()); // Only recent requests (remove this line to search all records)
-
-      // Filter by status if specified
-      if (status !== 'all') {
-        query = query.eq('status', status);
+      // Determine which table(s) to query based on status
+      // - pending → hour_requests (main table, faster!)
+      // - approved/rejected → hour_requests_archive (archive table)
+      // - all → query both tables and combine
+      
+      if (status === 'all') {
+        // Query both tables and combine results
+        const [pendingData, archiveData] = await Promise.all([
+          // Query pending from main table
+          supabase
+            .from('hour_requests')
+            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
+            .eq('status', 'pending')
+            .gte('submitted_at', twoYearsAgo.toISOString())
+            .order('submitted_at', { ascending: true })
+            .limit(limit),
+          
+          // Query approved/rejected from archive table
+          supabase
+            .from('hour_requests_archive')
+            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
+            .in('status', ['approved', 'rejected'])
+            .gte('submitted_at', twoYearsAgo.toISOString())
+            .order('submitted_at', { ascending: true })
+            .limit(limit)
+        ]);
+        
+        // Handle errors gracefully
+        if (pendingData.error && pendingData.error.code !== '42P01') {
+          console.error('❌ Error querying pending requests:', pendingData.error);
+        }
+        if (archiveData.error && archiveData.error.code !== '42P01') {
+          console.error('❌ Error querying archive requests:', archiveData.error);
+        }
+        
+        let combined = [
+          ...(pendingData.data || []),
+          ...(archiveData.data || [])
+        ];
+        
+        // Apply search filter if provided
+        if (searchTerm.trim()) {
+          const searchPattern = searchTerm.trim().toLowerCase();
+          combined = combined.filter(r => 
+            r.student_name?.toLowerCase().includes(searchPattern) ||
+            r.student_s_number?.toLowerCase().includes(searchPattern) ||
+            r.event_name?.toLowerCase().includes(searchPattern) ||
+            r.description?.toLowerCase().includes(searchPattern)
+          );
+        }
+        
+        // Sort and limit combined results
+        combined.sort((a, b) => {
+          const dateA = new Date(a.submitted_at).getTime();
+          const dateB = new Date(b.submitted_at).getTime();
+          return dateA - dateB;
+        });
+        
+        return combined.slice(0, limit);
       }
+      
+      // Query single table based on status
+      const tableName = status === 'pending' ? 'hour_requests' : 'hour_requests_archive';
+      
+      let query = supabase
+        .from(tableName)
+        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
+        .eq('status', status)
+        .gte('submitted_at', twoYearsAgo.toISOString());
 
       // Apply search - Supabase text search using ilike (case-insensitive)
       if (searchTerm.trim()) {
@@ -1017,6 +1112,12 @@ class SupabaseService {
         if (error.code === '57014' || error.message?.includes('timeout')) {
           console.error('❌ Query timeout - database may be slow or need indexes. Error:', error);
           return [];
+        }
+        // If archive table doesn't exist yet, fall back to main table for backwards compatibility
+        if (error.code === '42P01' && status !== 'pending') {
+          console.log('ℹ️ Archive table not found, falling back to main table');
+          // Retry with main table (will only find pending)
+          return this.searchHourRequests(searchTerm, 'pending', limit);
         }
         throw error;
       }
@@ -1304,8 +1405,10 @@ class SupabaseService {
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-      const { data, error } = await supabase
-        .from('hour_requests')
+      // Try using the archive view first (combines both tables)
+      // Falls back to main table if view doesn't exist (backwards compatible)
+      let query = supabase
+        .from('hour_requests_archive')
         .select(
           `
             id,
@@ -1324,6 +1427,37 @@ class SupabaseService {
         .gte('submitted_at', oneYearAgo.toISOString())
         .order('submitted_at', { ascending: false })
         .limit(300);
+
+      let { data, error } = await query;
+
+      // If archive table doesn't exist, fall back to main table
+      if (error && (error as any).code === '42P01') {
+        console.log('ℹ️ Archive table not found, querying main table');
+        query = supabase
+          .from('hour_requests')
+          .select(
+            `
+              id,
+              student_name,
+              student_s_number,
+              event_name,
+              event_date,
+              description,
+              image_name,
+              status,
+              hours_requested,
+              submitted_at,
+              reviewed_at
+            `
+          )
+          .gte('submitted_at', oneYearAgo.toISOString())
+          .order('submitted_at', { ascending: false })
+          .limit(300);
+        
+        const result = await query;
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) {
         console.error('❌ Error fetching proof photo library:', error);
