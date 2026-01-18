@@ -796,14 +796,20 @@ export default function AdminHourManagementScreen() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request, index) => {
-              // Check if image data has been loaded on-demand
-              const loadedDescription = loadedImageData.get(request.id);
+              // Check if image data has been loaded on-demand OR if description already exists
+              const loadedDescription = loadedImageData.get(request.id) || request.description;
+              // Always check if description contains image data (even if description exists initially)
               const photoData = loadedDescription ? extractPhotoData(loadedDescription) : null;
               const cleanDescriptionText = loadedDescription ? cleanDescription(loadedDescription) : (request.description || '');
               const isProcessing = processingRequests.has(request.id);
               const isLoadingImage = loadingImages.has(request.id);
-              const hasImageAvailable = request.image_name || loadedDescription; // Show button if image_name exists OR if description is loaded
-              const canLoadImage = request.image_name && !loadedDescription; // Can load if image_name exists but description not loaded yet
+              // Show button/section if image_name exists OR if description exists (might contain image data)
+              // Always check description for images - it might contain image data even if image_name is missing
+              const hasImageAvailable = request.image_name || request.description || photoData;
+              // Can load ONLY if we don't have description yet and need to fetch it
+              // If description exists, we've already checked it for images above (via photoData extraction)
+              // Show button only if image_name exists but description is missing (need to fetch)
+              const canLoadImage = request.image_name && !request.description && !loadedImageData.has(request.id) && !photoData;
 
               return (
                 <motion.div
@@ -936,7 +942,7 @@ export default function AdminHourManagementScreen() {
                   {hasImageAvailable && (
                     <div className="mb-4">
                       {canLoadImage ? (
-                        // Show button to load image
+                        // Show button to load image when description doesn't exist yet
                         <button
                           onClick={() => loadImageForRequest(request.id)}
                           disabled={isLoadingImage || isProcessing}
@@ -961,6 +967,7 @@ export default function AdminHourManagementScreen() {
                           )}
                         </button>
                       ) : photoData ? (
+                        // Show image if we extracted photo data from description
                         // Show image if loaded
                         <div className="mb-4">
                           <div className="flex items-center gap-2 mb-3">
