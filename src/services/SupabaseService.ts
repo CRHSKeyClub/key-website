@@ -1034,8 +1034,9 @@ class SupabaseService {
       let query = supabase
         .from('hour_requests')
         .select(
-          // Include description for photo extraction (photos are stored in description field)
-          'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name, description'
+          // Exclude description (contains large base64 images) - load on demand to prevent timeouts
+          // Keep image_name to know if image exists
+          'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name'
         )
         .eq('status', 'pending')
         // ASC order so Postgres can walk the index efficiently
@@ -1104,19 +1105,19 @@ class SupabaseService {
       if (status === 'all') {
         // Query both tables and combine results
         const [pendingData, archiveData] = await Promise.all([
-          // Query pending from main table (include description for photo extraction)
+          // Query pending from main table (exclude description - contains large base64 images)
           supabase
             .from('hour_requests')
-            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name, description')
+            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
             .eq('status', 'pending')
             .gte('submitted_at', twoYearsAgo.toISOString())
             .order('submitted_at', { ascending: true })
             .limit(limit),
           
-          // Query approved/rejected from archive table (include description for photo extraction)
+          // Query approved/rejected from archive table (exclude description - contains large base64 images)
           supabase
             .from('hour_requests_archive')
-            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name, description')
+            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
             .in('status', ['approved', 'rejected'])
             .gte('submitted_at', twoYearsAgo.toISOString())
             .order('submitted_at', { ascending: true })
@@ -1160,10 +1161,10 @@ class SupabaseService {
       // Query single table based on status
       const tableName = status === 'pending' ? 'hour_requests' : 'hour_requests_archive';
       
-      // Include description for photo extraction (photos are stored in description field)
+      // Exclude description (contains large base64 images) - load on demand to prevent timeouts
       let query = supabase
         .from(tableName)
-        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name, description')
+        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
         .eq('status', status)
         .gte('submitted_at', twoYearsAgo.toISOString())
         .limit(limit); // Add limit early to reduce data transfer
@@ -1205,6 +1206,47 @@ class SupabaseService {
         console.warn('⚠️ Returning empty array due to timeout');
         return [];
       }
+      throw error;
+    }
+  }
+
+  /**
+   * Get full hour request details including description (with image data)
+   * Use this to lazy-load images when viewing a specific request
+   */
+  static async getHourRequestDetails(requestId: string, status: string = 'pending') {
+    try {
+      const tableName = status === 'pending' ? 'hour_requests' : 'hour_requests_archive';
+      
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .eq('id', requestId)
+        .single();
+
+      if (error) {
+        // If not found in first table, try the other one
+        if (error.code === 'PGRST116') {
+          const otherTable = status === 'pending' ? 'hour_requests_archive' : 'hour_requests';
+          const { data: otherData, error: otherError } = await supabase
+            .from(otherTable)
+            .select('*')
+            .eq('id', requestId)
+            .single();
+
+          if (otherError) {
+            console.error('❌ Error fetching hour request details:', otherError);
+            throw otherError;
+          }
+          return otherData;
+        }
+        console.error('❌ Error fetching hour request details:', error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ Error fetching hour request details:', error);
       throw error;
     }
   }

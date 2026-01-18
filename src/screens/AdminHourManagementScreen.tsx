@@ -12,7 +12,7 @@ interface HourRequest {
   event_name: string;
   event_date: string | null;
   hours_requested: number;
-  description: string;
+  description?: string; // Optional - loaded on demand to prevent timeouts
   type?: 'volunteering' | 'social';
   status: 'pending' | 'approved' | 'rejected';
   submitted_at: string | null;
@@ -701,9 +701,11 @@ export default function AdminHourManagementScreen() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request, index) => {
-              const photoData = extractPhotoData(request.description);
-              const cleanDescriptionText = cleanDescription(request.description);
+              // Lazy-load description/images - only load if image_name exists but description is missing
+              const photoData = request.description ? extractPhotoData(request.description) : null;
+              const cleanDescriptionText = request.description ? cleanDescription(request.description) : '';
               const isProcessing = processingRequests.has(request.id);
+              const shouldLoadImage = request.image_name && !request.description;
 
               return (
                 <motion.div
@@ -832,6 +834,37 @@ export default function AdminHourManagementScreen() {
                     </div>
                   )}
 
+                  {/* Lazy-load images - show placeholder if image_name exists but not loaded yet */}
+                  {shouldLoadImage && !photoData && (
+                    <div className="mb-4">
+                      <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
+                        <div className="flex items-center gap-3">
+                          <div className="w-20 h-20 bg-slate-700 rounded-lg flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-slate-300 text-sm">Loading proof photo...</p>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const fullRequest = await SupabaseService.getHourRequestDetails(request.id, request.status);
+                                  // Update request in state
+                                  setAllRequests(prev => prev.map(r => r.id === request.id ? { ...r, description: fullRequest.description } : r));
+                                  setFilteredRequests(prev => prev.map(r => r.id === request.id ? { ...r, description: fullRequest.description } : r));
+                                } catch (error) {
+                                  console.error('Failed to load image:', error);
+                                }
+                              }}
+                              className="text-blue-400 hover:text-blue-300 text-sm mt-1"
+                            >
+                              Click to load image
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* Enhanced Photo Section */}
                   {photoData && (
                     <div className="mb-4">
