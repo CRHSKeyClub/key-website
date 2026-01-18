@@ -158,7 +158,12 @@ export default function AdminHourManagementScreen() {
       setFilteredRequests(requests); // Search results are already filtered
       setLastLoadTime(new Date());
       
-      console.log('✅ Data loading completed successfully');
+      // Debug: log image_name for all requests
+      const requestsWithImages = requests.filter(r => r.image_name);
+      console.log(`✅ Data loading completed: ${requests.length} requests, ${requestsWithImages.length} with images`);
+      if (requestsWithImages.length > 0) {
+        console.log('📸 Requests with images:', requestsWithImages.map(r => ({ id: r.id, student: r.student_name, image_name: r.image_name })));
+      }
     } catch (error: any) {
       console.error('❌ Error loading requests:', error);
       
@@ -706,6 +711,12 @@ export default function AdminHourManagementScreen() {
               const cleanDescriptionText = request.description ? cleanDescription(request.description) : '';
               const isProcessing = processingRequests.has(request.id);
               const shouldLoadImage = request.image_name && !request.description;
+              
+              // Debug: log image_name to see if it's being loaded
+              if (request.image_name) {
+                console.log(`📸 Request ${request.id} has image_name: ${request.image_name}`);
+              }
+              const hasImageIndicator = request.image_name || photoData; // Show if image_name exists OR if photoData is loaded
 
               return (
                 <motion.div
@@ -834,34 +845,119 @@ export default function AdminHourManagementScreen() {
                     </div>
                   )}
 
-                  {/* Lazy-load images - show placeholder if image_name exists but not loaded yet */}
-                  {shouldLoadImage && !photoData && (
+                  {/* Proof Photo Section - Always show if image_name exists OR if photo is loaded */}
+                  {(request.image_name || photoData) && (
                     <div className="mb-4">
-                      <div className="bg-slate-800 rounded-lg p-4 border border-slate-600">
-                        <div className="flex items-center gap-3">
-                          <div className="w-20 h-20 bg-slate-700 rounded-lg flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+                      {photoData ? (
+                        // Image is loaded - show thumbnail and view button
+                        <>
+                          <div className="flex items-center gap-2 mb-3">
+                            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="text-blue-400 font-semibold">Proof Photo Available</span>
+                            <div className="flex-1"></div>
+                            <span className="text-xs text-green-400 bg-green-900 px-2 py-1 rounded-full">Click to View</span>
                           </div>
-                          <div className="flex-1">
-                            <p className="text-slate-300 text-sm">Loading proof photo...</p>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const fullRequest = await SupabaseService.getHourRequestDetails(request.id, request.status);
-                                  // Update request in state
-                                  setAllRequests(prev => prev.map(r => r.id === request.id ? { ...r, description: fullRequest.description } : r));
-                                  setFilteredRequests(prev => prev.map(r => r.id === request.id ? { ...r, description: fullRequest.description } : r));
-                                } catch (error) {
-                                  console.error('Failed to load image:', error);
-                                }
-                              }}
-                              className="text-blue-400 hover:text-blue-300 text-sm mt-1"
-                            >
-                              Click to load image
-                            </button>
+                          
+                          <div className="bg-slate-800 rounded-lg p-3 border border-slate-600">
+                            <div className="flex items-center gap-4">
+                              <button
+                                onClick={() => viewPhoto(request.event_name, photoData)}
+                                className="relative group"
+                              >
+                                <img 
+                                  src={photoData} 
+                                  alt="Proof photo thumbnail"
+                                  className="w-20 h-20 rounded-lg object-cover border-2 border-blue-400 hover:border-blue-300 transition-colors cursor-pointer"
+                                />
+                                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+                                  <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                  </svg>
+                                </div>
+                              </button>
+                              
+                              <div className="flex-1">
+                                <p className="text-slate-300 text-sm mb-2">
+                                  <strong>To view the full-size image:</strong> Click the thumbnail above or the button below
+                                </p>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => viewPhoto(request.event_name, photoData)}
+                                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
+                                  >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                    </svg>
+                                    View Full Size Image
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => {
+                                      const link = document.createElement('a');
+                                      link.href = photoData;
+                                      link.download = `${request.student_name}_${request.event_name}_proof.jpg`;
+                                      link.click();
+                                    }}
+                                    className="flex items-center gap-1 bg-slate-600 hover:bg-slate-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Download
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        // Image not loaded yet - show load button
+                        <div className="bg-slate-800 rounded-lg p-4 border-2 border-blue-500 border-dashed">
+                          <div className="flex items-center gap-4">
+                            <div className="w-24 h-24 bg-slate-700 rounded-lg flex items-center justify-center border-2 border-blue-400">
+                              <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                              </svg>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <p className="text-blue-400 font-semibold text-lg">Proof Photo Available</p>
+                              </div>
+                              <p className="text-slate-300 text-sm mb-3">
+                                A proof photo is attached to this request. Click the button below to load and view it.
+                              </p>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    console.log(`📸 Loading image for request ${request.id}...`);
+                                    const fullRequest = await SupabaseService.getHourRequestDetails(request.id, request.status);
+                                    console.log(`✅ Loaded full request:`, fullRequest);
+                                    // Update request in state
+                                    setAllRequests(prev => prev.map(r => r.id === request.id ? { ...r, description: fullRequest.description } : r));
+                                    setFilteredRequests(prev => prev.map(r => r.id === request.id ? { ...r, description: fullRequest.description } : r));
+                                  } catch (error) {
+                                    console.error('❌ Failed to load image:', error);
+                                    alert('Failed to load proof photo. Please try again.');
+                                  }
+                                }}
+                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors shadow-lg"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                Load Proof Photo
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   )}
                   
@@ -898,17 +994,17 @@ export default function AdminHourManagementScreen() {
                           
                           <div className="flex-1">
                             <p className="text-slate-300 text-sm mb-2">
-                              Click the photo to view full size and approve/reject the request
+                              <strong>To view the full-size image:</strong> Click the thumbnail above or the button below
                             </p>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => viewPhoto(request.event_name, photoData)}
-                                className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                                 </svg>
-                                View Full Size
+                                View Full Size Image
                               </button>
                               
                               <button
