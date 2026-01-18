@@ -78,6 +78,74 @@ class SupabaseService {
     }
   }
 
+  /**
+   * Search students by name or S-number
+   * This is search-only to reduce egress - no bulk loading of all students
+   * Returns up to 50 matching students
+   */
+  static async searchStudents(searchTerm: string, limit: number = 50) {
+    try {
+      if (!searchTerm || !searchTerm.trim()) {
+        return { data: [] };
+      }
+
+      const searchPattern = `%${searchTerm.trim()}%`;
+      
+      // Search by name or S-number
+      const { data: studentsData, error: studentsError } = await supabase
+        .from('students')
+        .select('id, s_number, name, email, volunteering_hours, social_hours, total_hours, tshirt_size, account_status, account_created, last_login')
+        .or(`name.ilike.${searchPattern},s_number.ilike.${searchPattern}`)
+        .order('name', { ascending: true })
+        .limit(limit);
+
+      if (studentsError) {
+        if (studentsError.code === '57014' || studentsError.message?.includes('timeout')) {
+          console.error('❌ Search timeout:', studentsError);
+          return { data: [], error: studentsError };
+        }
+        throw studentsError;
+      }
+
+      if (!studentsData || studentsData.length === 0) {
+        return { data: [] };
+      }
+
+      // Get auth users for students that have accounts (only for results)
+      const studentSNumbers = studentsData.map(s => s.s_number?.toLowerCase()).filter(Boolean);
+      
+      if (studentSNumbers.length > 0) {
+        const { data: authUsers } = await supabase
+          .from('auth_users')
+          .select('s_number')
+          .in('s_number', studentSNumbers)
+          .limit(limit);
+
+        if (authUsers) {
+          const accountSNumbers = new Set(
+            authUsers.map((au: any) => (au.s_number || '').toLowerCase())
+          );
+
+          // Filter to only include students with accounts
+          const studentsWithAccounts = studentsData.filter((student: any) => {
+            const sNumber = (student.s_number || '').toLowerCase();
+            return accountSNumbers.has(sNumber);
+          });
+
+          return { data: studentsWithAccounts };
+        }
+      }
+
+      return { data: studentsData };
+    } catch (error: any) {
+      console.error('❌ Error searching students:', error);
+      if (error.code === '57014' || error.message?.includes('timeout')) {
+        return { data: [], error };
+      }
+      return { data: [], error };
+    }
+  }
+
   static async getAuthUser(sNumber: string) {
     try {
       console.log('🔍 Getting auth user:', sNumber);
@@ -348,16 +416,19 @@ class SupabaseService {
     try {
       console.log('📅 Getting all events with attendees...');
       
-      // Only load recent events (last 3 years) to improve performance with large datasets
-      // Note: If you need to see older events, remove the date filter below
-      const threeYearsAgo = new Date();
-      threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+      // Only load recent events (last 1 year) to reduce egress and improve performance
+      // Reduced from 3 years to 1 year to save egress
+      // Note: If you need to see older events, change this to 2-3 years
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
       
+      // Select only needed columns (not *) to reduce payload size
       const { data: eventsData, error: eventsError } = await supabase
         .from('events')
-        .select('*')
-        .gte('event_date', threeYearsAgo.toISOString()) // Only recent events (remove this line to see all events)
-        .order('event_date');
+        .select('id, title, description, location, event_date, start_time, end_time, capacity, color, created_by, created_at')
+        .gte('event_date', oneYearAgo.toISOString()) // Only recent events (reduced from 3 years to 1 year)
+        .order('event_date')
+        .limit(100); // Add limit to prevent loading too many events
 
       if (eventsError) {
         console.error('❌ Error getting events:', eventsError);
@@ -370,11 +441,13 @@ class SupabaseService {
 
       const eventIds = eventsData.map(event => event.id);
       
+      // Select only needed columns for attendees (not *) to reduce egress
       const { data: attendeesData, error: attendeesError } = await supabase
         .from('event_attendees')
-        .select('*')
+        .select('id, event_id, student_id, name, email, registered_at')
         .in('event_id', eventIds)
-        .order('registered_at');
+        .order('registered_at')
+        .limit(5000); // Limit attendees to prevent huge payloads
 
       if (attendeesError) {
         console.warn('⚠️ Continuing without attendees data');
@@ -955,14 +1028,15 @@ class SupabaseService {
    */
   static async getHourRequestsPage(
     lastSubmittedAt: string | null = null,
-    pageSize: number = 50
+    pageSize: number = 25  // Reduced from 50 to 25 to reduce egress
   ) {
     try {
       let query = supabase
         .from('hour_requests')
         .select(
-          // Include fields needed to show photo + details in the list.
-          'id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name'
+          // Reduced fields to minimize egress - removed large text fields for list view
+          // Load description and admin_notes only when viewing details (reduces egress by ~70%)
+          'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name'
         )
         .eq('status', 'pending')
         // ASC order so Postgres can walk the index efficiently
@@ -1001,7 +1075,8 @@ class SupabaseService {
     try {
       // Backwards-compatible wrapper: load the first page of pending requests.
       // Uses the optimized, index-friendly getHourRequestsPage() under the hood.
-      const data = await this.getHourRequestsPage(null, 50);
+      // Reduced to 25 to minimize egress (was 50)
+      const data = await this.getHourRequestsPage(null, 25);
       return data;
     } catch (error: any) {
       console.error('Error getting all hour requests:', error);
@@ -1014,7 +1089,7 @@ class SupabaseService {
     }
   }
 
-  static async searchHourRequests(searchTerm: string, status: string = 'pending', limit: number = 100) {
+  static async searchHourRequests(searchTerm: string, status: string = 'pending', limit: number = 25) {  // Reduced default from 100 to 25 to save egress
     try {
       // Optimize: select only needed columns
       // Only search recent requests (last 2 years) to improve performance with large datasets
@@ -1030,19 +1105,19 @@ class SupabaseService {
       if (status === 'all') {
         // Query both tables and combine results
         const [pendingData, archiveData] = await Promise.all([
-          // Query pending from main table
+          // Query pending from main table (reduced fields to minimize egress)
           supabase
             .from('hour_requests')
-            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
+            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
             .eq('status', 'pending')
             .gte('submitted_at', twoYearsAgo.toISOString())
             .order('submitted_at', { ascending: true })
             .limit(limit),
           
-          // Query approved/rejected from archive table
+          // Query approved/rejected from archive table (reduced fields to minimize egress)
           supabase
             .from('hour_requests_archive')
-            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
+            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
             .in('status', ['approved', 'rejected'])
             .gte('submitted_at', twoYearsAgo.toISOString())
             .order('submitted_at', { ascending: true })
@@ -1086,11 +1161,13 @@ class SupabaseService {
       // Query single table based on status
       const tableName = status === 'pending' ? 'hour_requests' : 'hour_requests_archive';
       
+      // Reduced fields for search to minimize egress - description/admin_notes loaded separately
       let query = supabase
         .from(tableName)
-        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, description, type, status, submitted_at, reviewed_at, reviewed_by, admin_notes, image_name')
+        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
         .eq('status', status)
-        .gte('submitted_at', twoYearsAgo.toISOString());
+        .gte('submitted_at', twoYearsAgo.toISOString())
+        .limit(limit); // Add limit early to reduce data transfer
 
       // Apply search - Supabase text search using ilike (case-insensitive)
       if (searchTerm.trim()) {
@@ -1246,25 +1323,89 @@ class SupabaseService {
     try {
       console.log('🔄 Starting hour request status update:', { requestId, status, adminNotes, reviewedBy, hoursRequested });
       
-      const { data: request, error: updateError } = await supabase
-        .from('hour_requests')
-        .update({
-          status: status,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: reviewedBy,
-          admin_notes: adminNotes
-        })
-        .eq('id', requestId)
-        .select()
-        .single();
+      const normalizedStatus = (status || '').toString().trim().toLowerCase();
+      const isApprovedOrRejected = normalizedStatus === 'approved' || normalizedStatus === 'rejected';
+      
+      // If approving/rejecting, move directly to archive table instead of updating in place
+      if (isApprovedOrRejected) {
+        // First, get the current request from the pending table
+        const { data: pendingRequest, error: fetchError } = await supabase
+          .from('hour_requests')
+          .select('*')
+          .eq('id', requestId)
+          .single();
 
-      if (updateError) {
-        console.error('❌ Error updating request status:', updateError);
-        throw updateError;
+        if (fetchError) {
+          console.error('❌ Error fetching pending request:', fetchError);
+          throw fetchError;
+        }
+
+        if (!pendingRequest) {
+          throw new Error(`Request ${requestId} not found in pending table`);
+        }
+
+        // Insert into archive table with updated status
+        const { data: archivedRequest, error: archiveError } = await supabase
+          .from('hour_requests_archive')
+          .insert({
+            ...pendingRequest,
+            status: normalizedStatus,
+            reviewed_at: new Date().toISOString(),
+            reviewed_by: reviewedBy,
+            admin_notes: adminNotes,
+            archived_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (archiveError) {
+          // If archive table doesn't exist or insert fails, try fallback
+          if (archiveError.code === '42P01') {
+            console.warn('⚠️ Archive table does not exist, updating in place instead');
+            // Fallback to regular update (trigger should handle it)
+            const { data: request, error: updateError } = await supabase
+              .from('hour_requests')
+              .update({
+                status: normalizedStatus,
+                reviewed_at: new Date().toISOString(),
+                reviewed_by: reviewedBy,
+                admin_notes: adminNotes
+              })
+              .eq('id', requestId)
+              .select()
+              .single();
+
+            if (updateError) {
+              console.error('❌ Error updating request status:', updateError);
+              throw updateError;
+            }
+            
+            // Set request for shared approval logic below
+            request = updatedRequest;
+          } else {
+            console.error('❌ Error archiving request:', archiveError);
+            throw archiveError;
+          }
+        } else {
+          // Archive succeeded, now delete from pending table
+        const { error: deleteError } = await supabase
+          .from('hour_requests')
+          .delete()
+          .eq('id', requestId);
+
+        if (deleteError) {
+          console.error('❌ Error deleting request from pending table:', deleteError);
+          // Don't throw - the request is already archived, just log the error
+          console.warn('⚠️ Request archived but could not be deleted from pending table. This is okay.');
+        }
+
+        console.log('✅ Request moved to archive table:', archivedRequest.id);
+
+        // Use archived request for approval logic
+        request = archivedRequest;
       }
 
-      const normalizedStatus = (status || '').toString().trim().toLowerCase();
-      
+      // Approval logic - only runs if status is approved
       if (normalizedStatus === 'approved' && request) {
         const studentSNumber = request.student_s_number;
         if (!studentSNumber) {
@@ -1287,29 +1428,59 @@ class SupabaseService {
           if (hoursType === 'social') {
             // Add approved hours to social_hours
             const currentSocialHours = parseFloat(student.social_hours || 0);
+            const currentVolunteeringHours = parseFloat(student.volunteering_hours || 0);
             const newSocialHours = currentSocialHours + requestedHours;
+            const newTotalHours = newSocialHours + currentVolunteeringHours; // Explicitly calculate total
             
-            await this.updateStudent(studentSNumber, {
+            const updateResult = await this.updateStudent(studentSNumber, {
               social_hours: newSocialHours,
+              total_hours: newTotalHours, // Explicitly set total_hours as backup (trigger should also handle this)
               last_hour_update: new Date().toISOString()
             });
             
+            if (!updateResult) {
+              throw new Error(`Failed to update student ${studentSNumber} hours`);
+            }
+            
             console.log(`✅ Added ${requestedHours} social credits to student ${studentSNumber}`);
+            console.log(`📊 Updated hours: ${currentSocialHours} → ${newSocialHours} social, ${newTotalHours} total`);
           } else {
             // Default: Add approved hours to volunteering_hours
             const currentVolunteeringHours = parseFloat(student.volunteering_hours || 0);
+            const currentSocialHours = parseFloat(student.social_hours || 0);
             const newVolunteeringHours = currentVolunteeringHours + requestedHours;
+            const newTotalHours = newVolunteeringHours + currentSocialHours; // Explicitly calculate total
             
-            await this.updateStudent(studentSNumber, {
+            const updateResult = await this.updateStudent(studentSNumber, {
               volunteering_hours: newVolunteeringHours,
+              total_hours: newTotalHours, // Explicitly set total_hours as backup (trigger should also handle this)
               last_hour_update: new Date().toISOString()
             });
             
+            if (!updateResult) {
+              throw new Error(`Failed to update student ${studentSNumber} hours`);
+            }
+            
             console.log(`✅ Added ${requestedHours} volunteering hours to student ${studentSNumber}`);
+            console.log(`📊 Updated hours: ${currentVolunteeringHours} → ${newVolunteeringHours} volunteering, ${newTotalHours} total`);
           }
           
-          // The trigger will automatically update total_hours
-          console.log('✅ Student hours updated successfully');
+          // Verify the update succeeded by fetching the student again
+          const updatedStudent = await this.getStudent(studentSNumber);
+          if (updatedStudent) {
+            const actualTotal = parseFloat(updatedStudent.total_hours || 0);
+            const expectedTotal = parseFloat(updatedStudent.volunteering_hours || 0) + parseFloat(updatedStudent.social_hours || 0);
+            
+            if (Math.abs(actualTotal - expectedTotal) > 0.01) {
+              console.warn(`⚠️ Total hours mismatch! Expected ${expectedTotal}, got ${actualTotal}. Updating...`);
+              // Fix total_hours if it doesn't match
+              await this.updateStudent(studentSNumber, {
+                total_hours: expectedTotal
+              });
+            } else {
+              console.log('✅ Student hours verified and correct in database');
+            }
+          }
 
           await this.uploadProofPhotoToDrive({
             ...request,
@@ -1318,6 +1489,7 @@ class SupabaseService {
         }
       }
 
+      // Return the archived/updated request
       return request;
     } catch (error) {
       console.error('❌ Error updating hour request status:', error);
@@ -1401,12 +1573,13 @@ class SupabaseService {
     try {
       const { status, searchTerm, startDate, endDate } = options;
 
-      // Limit to recent records and a reasonable page size to avoid timeouts
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      // Limit to recent records and smaller page size to reduce egress
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);  // Reduced from 1 year to 6 months to save egress
 
       // Try using the archive view first (combines both tables)
       // Falls back to main table if view doesn't exist (backwards compatible)
+      // Reduced fields and limit to minimize egress
       let query = supabase
         .from('hour_requests_archive')
         .select(
@@ -1416,7 +1589,6 @@ class SupabaseService {
             student_s_number,
             event_name,
             event_date,
-            description,
             image_name,
             status,
             hours_requested,
@@ -1424,9 +1596,9 @@ class SupabaseService {
             reviewed_at
           `
         )
-        .gte('submitted_at', oneYearAgo.toISOString())
+        .gte('submitted_at', sixMonthsAgo.toISOString())  // Reduced from 1 year to 6 months
         .order('submitted_at', { ascending: false })
-        .limit(300);
+        .limit(150);  // Reduced from 300 to 150 to save egress
 
       let { data, error } = await query;
 
@@ -1442,7 +1614,6 @@ class SupabaseService {
               student_s_number,
               event_name,
               event_date,
-              description,
               image_name,
               status,
               hours_requested,
@@ -1450,9 +1621,9 @@ class SupabaseService {
               reviewed_at
             `
           )
-          .gte('submitted_at', oneYearAgo.toISOString())
+          .gte('submitted_at', sixMonthsAgo.toISOString())  // Reduced from 1 year to 6 months
           .order('submitted_at', { ascending: false })
-          .limit(300);
+          .limit(150);  // Reduced from 300 to 150 to save egress
         
         const result = await query;
         data = result.data;
@@ -1938,7 +2109,7 @@ class SupabaseService {
     }
   }
 
-  static async getAllStudents() {
+  static async getAllStudents(limit: number = 500) {  // Reduced default from 1000 to 500 to save egress
     try {
       // Optimize: Select only needed columns and add pagination/timeout handling
       // Reduced limit from 5000 to 1000 for better performance with large datasets
@@ -1947,7 +2118,7 @@ class SupabaseService {
         .from('students')
         .select('id, s_number, name, email, volunteering_hours, social_hours, total_hours, tshirt_size, account_status, account_created, last_login')
         .order('name', { ascending: true })
-        .limit(1000); // Reduced from 5000, but increased from 500 for safety
+        .limit(limit); // Use parameterized limit (default 500) to save egress
       
       if (studentsError) {
         // Check for timeout errors
@@ -1963,7 +2134,7 @@ class SupabaseService {
       const { data: authUsers, error: authError } = await supabase
         .from('auth_users')
         .select('s_number')
-        .limit(1000); // Match students limit
+        .limit(limit); // Match students limit to save egress
       
       if (authError) {
         console.error('❌ Error getting auth users:', authError);

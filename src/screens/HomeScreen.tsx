@@ -33,8 +33,9 @@ export default function HomeScreen() {
   const { user, isAdmin } = useAuth();
   const { getStudentHours } = useHours();
   const [totalHours, setTotalHours] = useState(0);
-  const [recentRequests, setRecentRequests] = useState<HourRequest[]>([]);
-  const [loadingRequests, setLoadingRequests] = useState(false);
+  // Removed recentRequests state to save egress - users view requests on hour requests page only
+  // const [recentRequests, setRecentRequests] = useState<HourRequest[]>([]);
+  // const [loadingRequests, setLoadingRequests] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
@@ -42,7 +43,9 @@ export default function HomeScreen() {
   useEffect(() => {
     if (user && !isAdmin) {
       loadHours();
-      loadRecentRequests();
+      // Don't load hour requests on home page - only load when user goes to hour requests page
+      // This saves egress by not loading for every regular user on every page load
+      // loadRecentRequests(); // Removed to save egress
       loadNotifications();
     }
   }, [user, isAdmin]);
@@ -54,20 +57,21 @@ export default function HomeScreen() {
     }
   };
 
-  const loadRecentRequests = async () => {
-    if (user?.sNumber) {
-      setLoadingRequests(true);
-      try {
-        const requests = await SupabaseService.getStudentHourRequests(user.sNumber);
-        // Get the 3 most recent requests
-        setRecentRequests(requests.slice(0, 3));
-      } catch (error) {
-        console.error('Failed to load recent requests:', error);
-      } finally {
-        setLoadingRequests(false);
-      }
-    }
-  };
+  // Removed loadRecentRequests to save egress - users view requests on hour requests page only
+  // const loadRecentRequests = async () => {
+  //   if (user?.sNumber) {
+  //     setLoadingRequests(true);
+  //     try {
+  //       const requests = await SupabaseService.getStudentHourRequests(user.sNumber);
+  //       // Get the 3 most recent requests
+  //       setRecentRequests(requests.slice(0, 3));
+  //     } catch (error) {
+  //       console.error('Failed to load recent requests:', error);
+  //     } finally {
+  //       setLoadingRequests(false);
+  //     }
+  //   }
+  // };
 
   const loadNotifications = async () => {
     if (!user?.sNumber) return;
@@ -435,12 +439,13 @@ export default function HomeScreen() {
         >
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-white">Recent Activity</h2>
-            {!isAdmin && recentRequests.length > 0 && (
+            {/* Recent Hour Requests section removed to save egress - users can view requests on hour requests page */}
+            {!isAdmin && (
               <button
                 onClick={() => navigate('/student-hour-requests')}
                 className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
               >
-                View All
+                View All Requests
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -452,57 +457,26 @@ export default function HomeScreen() {
               <p className="text-gray-300 text-center">
                 Manage events, announcements, and student activities from the navigation menu.
               </p>
-            ) : loadingRequests ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400 mx-auto mb-2"></div>
-                <p className="text-gray-400 text-sm">Loading your requests...</p>
-              </div>
-            ) : recentRequests.length > 0 ? (
-              <div className="space-y-4">
-                {recentRequests.map((request, index) => {
-                  const getStatusColor = (status: string) => {
-                    switch (status) {
-                      case 'pending': return 'bg-yellow-500';
-                      case 'approved': return 'bg-green-500';
-                      case 'rejected': return 'bg-red-500';
-                      default: return 'bg-gray-500';
-                    }
-                  };
-
-                  return (
-                    <motion.div
-                      key={request.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="flex items-center justify-between p-4 bg-slate-600 bg-opacity-50 rounded-lg hover:bg-opacity-70 transition-all cursor-pointer"
-                      onClick={() => navigate('/student-hour-requests')}
-                    >
-                      <div className="flex-1">
-                        <h3 className="text-white font-semibold">{request.event_name}</h3>
-                        <p className="text-gray-400 text-sm">
-                          {request.hours_requested} hours • {new Date(request.submitted_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(request.status)}`}>
-                        {request.status.toUpperCase()}
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
             ) : (
               <div className="text-center py-8">
                 <svg className="w-12 h-12 text-gray-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p className="text-gray-300 mb-2">No recent hour requests</p>
-                <button
-                  onClick={() => navigate('/hour-request')}
-                  className="text-blue-400 hover:text-blue-300 text-sm"
-                >
-                  Submit your first request →
-                </button>
+                <p className="text-gray-300 mb-2">View your hour requests on the Hour Requests page</p>
+                <div className="flex gap-4 justify-center mt-4">
+                  <button
+                    onClick={() => navigate('/student-hour-requests')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    View My Requests
+                  </button>
+                  <button
+                    onClick={() => navigate('/hour-request')}
+                    className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+                  >
+                    Submit New Request
+                  </button>
+                </div>
               </div>
             )}
           </div>

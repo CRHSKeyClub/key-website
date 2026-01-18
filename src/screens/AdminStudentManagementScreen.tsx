@@ -44,6 +44,8 @@ export default function AdminStudentManagementScreen() {
     reason: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false); // Track if user has searched yet
   const [tshirtSizeFilter, setTshirtSizeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
@@ -55,18 +57,37 @@ export default function AdminStudentManagementScreen() {
       navigate('/home');
       return;
     }
-    loadStudents();
+    // Don't load all students on mount - search only mode to save egress
+    // Students will be loaded when user searches
   }, [isAdmin, navigate]);
 
-  const loadStudents = async () => {
+  // Search students when search query changes (debounced)
+  useEffect(() => {
+    const searchTimeout = setTimeout(async () => {
+      if (searchQuery.trim()) {
+        setHasSearched(true);
+        await searchStudents(searchQuery.trim());
+      } else {
+        // Clear results when search is empty
+        setStudents([]);
+        setFilteredStudents([]);
+        setHasSearched(false);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(searchTimeout);
+  }, [searchQuery]);
+
+  const searchStudents = async (query: string) => {
     try {
-      const result = await SupabaseService.getAllStudents();
-      // Handle the response structure - getAllStudents returns { data, error }
-      const studentsData = result.data || result || [];
-      const studentsArray = Array.isArray(studentsData) ? studentsData : [];
+      setLoading(true);
+      console.log('🔍 Searching students:', query);
+      
+      const result = await SupabaseService.searchStudents(query, 50);
+      const studentsData = result.data || [];
       
       // Sort students alphabetically by name
-      const sortedStudents = [...studentsArray].sort((a, b) => {
+      const sortedStudents = [...studentsData].sort((a, b) => {
         const nameA = (a.name || a.student_name || '').toLowerCase();
         const nameB = (b.name || b.student_name || '').toLowerCase();
         return nameA.localeCompare(nameB);
@@ -75,12 +96,12 @@ export default function AdminStudentManagementScreen() {
       setStudents(sortedStudents);
       setFilteredStudents(sortedStudents);
     } catch (error) {
-      console.error('Failed to load students:', error);
+      console.error('Failed to search students:', error);
       setStudents([]);
       setFilteredStudents([]);
       showModal({
         title: 'Error',
-        message: 'Failed to load students. Please try again.',
+        message: 'Failed to search students. Please try again.',
         onCancel: () => {},
         onConfirm: () => {},
         cancelText: '',
@@ -88,6 +109,8 @@ export default function AdminStudentManagementScreen() {
         icon: 'alert-circle',
         iconColor: '#ff4d4d'
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -156,6 +179,8 @@ export default function AdminStudentManagementScreen() {
       return;
     }
 
+    // Filter from already loaded search results (client-side for dropdown)
+    // Main search happens via searchStudents function which queries database
     const searchTerm = query.toLowerCase().trim();
     const results = students.filter(student => {
       const name = getStudentName(student).toLowerCase();
@@ -265,8 +290,20 @@ export default function AdminStudentManagementScreen() {
         adjustmentData.current_hours = currentHours;
       }
       
-      // Reload students to show updated hours
-      await loadStudents();
+      // Update local state instead of reloading (saves egress)
+      if (selectedStudent) {
+        setStudents(prev => prev.map(s => 
+          s.id === selectedStudent.id 
+            ? { ...s, volunteering_hours: newHours, social_hours: newHours, total_hours: newHours }
+            : s
+        ));
+        setFilteredStudents(prev => prev.map(s => 
+          s.id === selectedStudent.id 
+            ? { ...s, volunteering_hours: newHours, social_hours: newHours, total_hours: newHours }
+            : s
+        ));
+      }
+      // Don't reload all students - saves egress
 
       setShowAdjustmentModal(false);
       const getSuccessMessage = () => {
@@ -310,6 +347,17 @@ export default function AdminStudentManagementScreen() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <p className="text-blue-400 text-lg">Searching students...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
       {/* Header */}
@@ -346,7 +394,7 @@ export default function AdminStudentManagementScreen() {
                   // Delay hiding dropdown to allow click events
                   setTimeout(() => setShowSearchDropdown(false), 200);
                 }}
-                placeholder="Search by name or S-number..."
+                placeholder="Search by name or S-number (e.g. John, s123456)..."
                 className="bg-slate-700 text-white px-4 py-2 pl-10 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
               />
               <svg 
@@ -467,22 +515,21 @@ export default function AdminStudentManagementScreen() {
             transition={{ delay: 0.4 }}
             className="text-center mb-8"
           >
-            <p className="text-gray-300">
-              Showing {filteredStudents.length} of {students.length} students
-              {(tshirtSizeFilter !== 'all' || searchQuery.trim()) && (
-                <span className="text-blue-400">
-                  {' '}(
-                  {tshirtSizeFilter !== 'all' && (
-                    <>filtered by {tshirtSizeFilter === 'no-size' ? 'no t-shirt size' : `t-shirt size: ${tshirtSizeFilter}`}</>
-                  )}
-                  {tshirtSizeFilter !== 'all' && searchQuery.trim() && ' • '}
-                  {searchQuery.trim() && (
-                    <>searching: "{searchQuery}"</>
-                  )}
-                  )
-                </span>
-              )}
-            </p>
+            {searchQuery.trim() ? (
+              <p className="text-gray-300">
+                Found {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} matching "{searchQuery}"
+                {tshirtSizeFilter !== 'all' && (
+                  <span className="text-blue-400"> • Filtered by {tshirtSizeFilter === 'no-size' ? 'no t-shirt size' : `t-shirt size: ${tshirtSizeFilter}`}</span>
+                )}
+              </p>
+            ) : (
+              <p className="text-gray-300">
+                Enter a search query above to find students
+                {tshirtSizeFilter !== 'all' && (
+                  <span className="text-blue-400"> • Filtered by {tshirtSizeFilter === 'no-size' ? 'no t-shirt size' : `t-shirt size: ${tshirtSizeFilter}`}</span>
+                )}
+              </p>
+            )}
           </motion.div>
 
           {/* Students List */}
@@ -574,12 +621,29 @@ export default function AdminStudentManagementScreen() {
               className="text-center py-12"
             >
               <div className="mb-4">
-                <svg className="w-16 h-16 mx-auto text-slate-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
-                </svg>
+                {searchQuery.trim() ? (
+                  <svg className="w-16 h-16 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-16 h-16 mx-auto text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+                  </svg>
+                )}
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">No Students Found</h3>
-              <p className="text-slate-400">No students have been registered yet.</p>
+              {searchQuery.trim() && hasSearched ? (
+                <>
+                  <h3 className="text-2xl font-bold text-white mb-2">No Students Found</h3>
+                  <p className="text-slate-400">No students match your search "{searchQuery}"</p>
+                  <p className="text-slate-500 text-sm mt-2">Try a different search term or check the spelling</p>
+                </>
+              ) : (
+                <>
+                  <h3 className="text-2xl font-bold text-white mb-2">Search for Students</h3>
+                  <p className="text-slate-400 mb-4">Enter a student's name or S-number in the search box above</p>
+                  <p className="text-slate-500 text-sm">Search-only mode helps reduce database load and egress</p>
+                </>
+              )}
             </motion.div>
           )}
         </motion.div>

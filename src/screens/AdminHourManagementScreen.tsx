@@ -129,14 +129,14 @@ export default function AdminHourManagementScreen() {
       setLoading(true);
       console.log('🔄 Loading hour requests from database...');
       
-      // If no search query and context has data, try filtering context first
+      // If no search query and context has data, use cached data (no refresh to save egress)
       if (!forceRefresh && !searchQuery.trim() && contextHourRequests.length > 0) {
-        console.log('📦 Using context data first, refreshing in background...');
+        console.log('📦 Using cached context data (skipping refresh to save egress)...');
         filterAndSetRequests(contextHourRequests);
         setLastLoadTime(new Date());
         setLoading(false);
-        // Refresh in background (will update context, which will update this screen)
-        refreshHourRequests().catch(err => console.error('Background refresh failed:', err));
+        // DON'T refresh in background - saves egress!
+        // User can click refresh button if they want fresh data
         return;
       }
       
@@ -147,7 +147,8 @@ export default function AdminHourManagementScreen() {
       if (searchQuery.trim()) {
         console.log('🔍 Searching pending hour requests with query:', searchQuery);
         // Only search pending requests in hour_requests table
-        requests = await SupabaseService.searchHourRequests(searchQuery.trim(), 'pending', 100);
+        // Reduced limit to 50 to minimize egress (was 100)
+        requests = await SupabaseService.searchHourRequests(searchQuery.trim(), 'pending', 50);
       } else {
         // Always use getAllHourRequests which only queries hour_requests table for pending
         requests = await SupabaseService.getAllHourRequests();

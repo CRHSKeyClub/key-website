@@ -81,37 +81,48 @@ export function EventsProvider({ children }: EventsProviderProps) {
   const addEvent = useCallback(async (newEvent: any) => {
     try {
       console.log('➕ Adding new event:', newEvent.title);
-      await SupabaseService.createEvent(newEvent);
+      const createdEvent = await SupabaseService.createEvent(newEvent);
       
-      await loadEvents();
+      // Optimistically add to local state (saves egress)
+      if (createdEvent) {
+        setEvents(prev => [...prev, createdEvent]);
+      }
+      // Only reload if needed
+      // await loadEvents(); // Commented out to save egress
       
       console.log('✅ Event added successfully');
     } catch (error) {
       console.error('❌ Failed to add event:', error);
       throw error;
     }
-  }, [loadEvents]);
+  }, []); // Removed loadEvents dependency
 
   const updateEvent = useCallback(async (updatedEvent: any) => {
     try {
       console.log('📝 Updating event:', updatedEvent.id);
       await SupabaseService.updateEvent(updatedEvent.id, updatedEvent);
       
-      await loadEvents();
+      // Optimistically update local state (saves egress)
+      setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+      // Only reload if needed
+      // await loadEvents(); // Commented out to save egress
       
       console.log('✅ Event updated successfully');
     } catch (error) {
       console.error('❌ Failed to update event:', error);
       throw error;
     }
-  }, [loadEvents]);
+  }, []); // Removed loadEvents dependency
 
   const deleteEvent = useCallback(async (eventId: string) => {
     try {
       console.log('🗑️ Deleting event:', eventId);
       await SupabaseService.deleteEvent(eventId);
       
-      await loadEvents();
+      // Optimistically remove from local state (saves egress)
+      setEvents(prev => prev.filter(e => e.id !== eventId));
+      // Only reload if needed
+      // await loadEvents(); // Commented out to save egress
       
       console.log('✅ Event deleted successfully');
       return true;
@@ -119,7 +130,7 @@ export function EventsProvider({ children }: EventsProviderProps) {
       console.error('❌ Failed to delete event:', error);
       throw error;
     }
-  }, [loadEvents]);
+  }, []); // Removed loadEvents dependency
 
   const signupForEvent = useCallback(async (eventId: string, attendee: any) => {
     try {
@@ -143,10 +154,22 @@ export function EventsProvider({ children }: EventsProviderProps) {
       
       await SupabaseService.signupForEvent(eventId, attendee);
       
-      console.log('🔄 Reloading events to show new attendee...');
-      await loadEvents();
+      // Optimistically update local state instead of reloading (saves egress)
+      const updatedEvents = events.map(e => {
+        if (e.id === eventId) {
+          return {
+            ...e,
+            attendees: [...(e.attendees || []), {
+              ...attendee,
+              registeredAt: new Date().toISOString()
+            }]
+          };
+        }
+        return e;
+      });
+      setEvents(updatedEvents);
       
-      console.log('✅ Successfully signed up for event and reloaded data');
+      console.log('✅ Successfully signed up for event (optimistic update)');
     } catch (error) {
       console.error('❌ Failed to signup for event:', error);
       throw error;
