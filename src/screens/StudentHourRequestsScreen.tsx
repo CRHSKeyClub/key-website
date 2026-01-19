@@ -224,8 +224,10 @@ export default function StudentHourRequestsScreen() {
         {requests.length > 0 ? (
           <div className="space-y-4">
             {requests.map((request, index) => {
-              const photoData = extractPhotoData(request.description);
-              const cleanDescriptionText = cleanDescription(request.description);
+              // Check both 'descriptions' and 'description' field names
+              const description = request.descriptions || request.description;
+              const photoData = extractPhotoData(description);
+              const cleanDescriptionText = cleanDescription(description);
 
               return (
                 <motion.div

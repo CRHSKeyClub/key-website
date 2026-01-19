@@ -101,12 +101,13 @@ export default function HomeScreen() {
           }
         }
         
-        // Check for manual adjustments or transfers in description
-        if (request.description && request.admin_notes) {
-          const isAdjustment = request.description.includes('Manual Adjustment') || 
-                              request.description.includes('Manual hour adjustment');
-          const isTransfer = request.description.includes('Hour Transfer') ||
-                            request.description.includes('hour transfer');
+        // Check for manual adjustments or transfers in description - check both 'descriptions' and 'description'
+        const description = request.descriptions || request.description;
+        if (description && request.admin_notes) {
+          const isAdjustment = description.includes('Manual Adjustment') || 
+                              description.includes('Manual hour adjustment');
+          const isTransfer = description.includes('Hour Transfer') ||
+                            description.includes('hour transfer');
           
           if (isAdjustment || isTransfer) {
             const reviewedDate = request.reviewed_at ? new Date(request.reviewed_at) : null;

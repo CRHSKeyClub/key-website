@@ -82,7 +82,7 @@ export default function AdminHourManagementScreen() {
         r.student_name?.toLowerCase().includes(query) ||
         r.student_s_number?.toLowerCase().includes(query) ||
         r.event_name?.toLowerCase().includes(query) ||
-        r.description?.toLowerCase().includes(query)
+        (r.descriptions || r.description)?.toLowerCase().includes(query)
       );
     }
     
@@ -507,13 +507,14 @@ export default function AdminHourManagementScreen() {
       
       console.log(`📦 Full request object for ${requestId}:`, {
         hasDescription: 'description' in (fullRequest || {}),
-        descriptionType: typeof fullRequest?.description,
-        descriptionValue: fullRequest?.description ? fullRequest.description.substring(0, 100) : fullRequest?.description,
+        hasDescriptions: 'descriptions' in (fullRequest || {}),
+        descriptionType: typeof (fullRequest?.descriptions || fullRequest?.description),
+        descriptionValue: (fullRequest?.descriptions || fullRequest?.description) ? (fullRequest.descriptions || fullRequest.description).substring(0, 100) : (fullRequest?.descriptions || fullRequest?.description),
         allKeys: fullRequest ? Object.keys(fullRequest) : []
       });
       
-      // Access description field - check multiple possible field names
-      const description = fullRequest?.description || fullRequest?.Description || fullRequest?.desc || null;
+      // Access description field - check multiple possible field names (including plural 'descriptions')
+      const description = fullRequest?.descriptions || fullRequest?.description || fullRequest?.Description || fullRequest?.desc || null;
       
       if (description && typeof description === 'string' && description.length > 0) {
         console.log(`✅ Loaded description for request ${requestId}, length: ${description.length}`);
@@ -545,6 +546,7 @@ export default function AdminHourManagementScreen() {
         }
       } else {
         console.log(`⚠️ No description found for request ${requestId}`);
+        console.log(`   - fullRequest?.descriptions:`, fullRequest?.descriptions);
         console.log(`   - fullRequest?.description:`, fullRequest?.description);
         console.log(`   - fullRequest?.Description:`, fullRequest?.Description);
         console.log(`   - fullRequest?.desc:`, fullRequest?.desc);
@@ -838,8 +840,8 @@ export default function AdminHourManagementScreen() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request, index) => {
-              // Get loaded description (from object or from request itself)
-              const loadedDescription = loadedImageData[request.id] || request.description || null;
+              // Get loaded description (from object or from request itself) - check both 'descriptions' and 'description'
+              const loadedDescription = loadedImageData[request.id] || request.descriptions || request.description || null;
               
               // Extract photo data from description - recalculate every render to catch updates
               // Always check description for images, not just image_name column
@@ -849,27 +851,28 @@ export default function AdminHourManagementScreen() {
               const isProcessing = processingRequests.has(request.id);
               const isLoadingImage = loadingImages.has(request.id);
               
-              // Images are stored in the description column, NOT the image_name column
-              // We need to check the description column for images, not rely on image_name
+              // Images are stored in the description column as base64, NOT in image_name (which is just filename)
+              // image_name tells us there MIGHT be an image in description, but we need to check description
               const hasLoadedDescription = !!loadedImageData[request.id];
-              const hasDescription = !!request.description || hasLoadedDescription;
+              const hasDescription = !!(request.descriptions || request.description) || hasLoadedDescription;
               
               // Show button/section if:
-              // 1. We don't have description loaded yet (need to check description column for images)
-              // 2. OR we have description loaded and found photoData in it
-              // Don't check image_name - images are in description column
-              const hasImageAvailable = !hasDescription || photoData;
+              // 1. image_name exists (indicates there might be image data in descriptions/description)
+              // 2. OR we have description loaded
+              // 3. OR we found photoData in description
+              const hasImageAvailable = request.image_name || hasDescription || photoData;
               
-              // Can load if we don't have description loaded yet
-              // We need to fetch and check the description column for images
-              // Don't check image_name column - images are in description
-              const canLoadImage = !hasDescription && !photoData;
+              // Can load if:
+              // - image_name exists (means there's likely image data in description)
+              // - AND we don't have description loaded yet
+              // - AND we haven't extracted photoData yet
+              const canLoadImage = request.image_name && !hasDescription && !photoData;
               
               // Debug logging - log for all requests to see what's happening
               console.log(`📸 Request ${request.id} (${request.student_name}):`, {
                 image_name: request.image_name,
-                hasRequestDescription: !!request.description,
-                requestDescriptionLength: request.description?.length || 0,
+                hasRequestDescription: !!(request.descriptions || request.description),
+                requestDescriptionLength: (request.descriptions || request.description)?.length || 0,
                 hasLoadedDescription,
                 loadedDescriptionLength: loadedImageData[request.id]?.length || 0,
                 photoData: photoData ? `EXTRACTED (length: ${photoData.length}, preview: ${photoData.substring(0, 50)}...)` : 'NOT FOUND',

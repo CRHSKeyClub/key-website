@@ -987,10 +987,10 @@ export default function AdminStudentDetailScreen() {
                       </div>
                     </div>
 
-                    {request.description && (
+                    {(request.descriptions || request.description) && (
                       <div className="bg-slate-700 bg-opacity-50 rounded-lg p-4 mb-4">
                         <p className="text-gray-300 text-sm whitespace-pre-wrap">
-                          {request.description.replace(/\[PHOTO_DATA:.*?\]/g, '[Photo Attached]').replace(/\[PHOTO_STORAGE:.*?\]/g, '[Photo Attached]')}
+                          {(request.descriptions || request.description).replace(/\[PHOTO_DATA:.*?\]/g, '[Photo Attached]').replace(/\[PHOTO_STORAGE:.*?\]/g, '[Photo Attached]')}
                         </p>
                       </div>
                     )}

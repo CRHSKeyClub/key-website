@@ -1139,12 +1139,14 @@ class SupabaseService {
         // Apply search filter if provided
         if (searchTerm.trim()) {
           const searchPattern = searchTerm.trim().toLowerCase();
-          combined = combined.filter(r => 
-            r.student_name?.toLowerCase().includes(searchPattern) ||
-            r.student_s_number?.toLowerCase().includes(searchPattern) ||
-            r.event_name?.toLowerCase().includes(searchPattern) ||
-            r.description?.toLowerCase().includes(searchPattern)
-          );
+          combined = combined.filter(r => {
+            // Check both 'description' and 'descriptions' field names
+            const description = r.descriptions || r.description;
+            return r.student_name?.toLowerCase().includes(searchPattern) ||
+              r.student_s_number?.toLowerCase().includes(searchPattern) ||
+              r.event_name?.toLowerCase().includes(searchPattern) ||
+              description?.toLowerCase().includes(searchPattern);
+          });
         }
         
         // Sort and limit combined results
@@ -1173,7 +1175,8 @@ class SupabaseService {
         const searchPattern = `%${searchTerm.trim()}%`;
         // Use .or() with proper Supabase PostgREST syntax
         // Format: column.operator.value,column2.operator.value
-        query = query.or(`student_name.ilike.${searchPattern},student_s_number.ilike.${searchPattern},event_name.ilike.${searchPattern},description.ilike.${searchPattern}`);
+        // Search on both 'description' and 'descriptions' column names
+        query = query.or(`student_name.ilike.${searchPattern},student_s_number.ilike.${searchPattern},event_name.ilike.${searchPattern},description.ilike.${searchPattern},descriptions.ilike.${searchPattern}`);
       }
 
       // Order and limit
@@ -1241,8 +1244,16 @@ class SupabaseService {
           // Log what fields we got back
           console.log(`📋 Got request from ${otherTable}, fields:`, Object.keys(otherData || {}));
           console.log(`📋 Has description field:`, 'description' in (otherData || {}));
-          console.log(`📋 Description value type:`, typeof otherData?.description);
-          console.log(`📋 Description length:`, otherData?.description?.length || 'null/undefined');
+          console.log(`📋 Has descriptions field:`, 'descriptions' in (otherData || {}));
+          // Normalize field name: check both 'description' and 'descriptions' (plural)
+          const descriptionValue = otherData?.descriptions || otherData?.description;
+          console.log(`📋 Description value type:`, typeof descriptionValue);
+          console.log(`📋 Description length:`, descriptionValue?.length || 'null/undefined');
+          
+          // Normalize the field name to 'description' for consistency
+          if (otherData && 'descriptions' in otherData && !('description' in otherData)) {
+            otherData.description = otherData.descriptions;
+          }
           
           return otherData;
         }
@@ -1253,10 +1264,18 @@ class SupabaseService {
       // Log what fields we got back
       console.log(`📋 Got request from ${tableName}, fields:`, Object.keys(data || {}));
       console.log(`📋 Has description field:`, 'description' in (data || {}));
-      console.log(`📋 Description value type:`, typeof data?.description);
-      console.log(`📋 Description length:`, data?.description?.length || 'null/undefined');
-      if (data?.description) {
-        console.log(`📋 Description preview:`, data.description.substring(0, 200));
+      console.log(`📋 Has descriptions field:`, 'descriptions' in (data || {}));
+      // Normalize field name: check both 'description' and 'descriptions' (plural)
+      const descriptionValue = data?.descriptions || data?.description;
+      console.log(`📋 Description value type:`, typeof descriptionValue);
+      console.log(`📋 Description length:`, descriptionValue?.length || 'null/undefined');
+      if (descriptionValue) {
+        console.log(`📋 Description preview:`, descriptionValue.substring(0, 200));
+      }
+
+      // Normalize the field name to 'description' for consistency
+      if (data && 'descriptions' in data && !('description' in data)) {
+        data.description = data.descriptions;
       }
 
       return data;
@@ -1295,7 +1314,8 @@ class SupabaseService {
           const requestedHours = parseFloat(request.hours_requested || 0);
           const hoursType = (request.type || 'volunteering').toLowerCase();
           const eventName = (request.event_name || '').toLowerCase();
-          const description = (request.description || '').toLowerCase();
+          // Check both 'descriptions' and 'description' field names
+          const description = ((request.descriptions || request.description) || '').toLowerCase();
           
           // Check if this was an adjustment that REMOVED hours (so we should ADD them back)
           const wasRemoval = eventName.includes('removed') || 
@@ -1720,11 +1740,13 @@ class SupabaseService {
 
       const results = (data || [])
         .filter((request) => {
-          if (!request?.description) {
+          // Check both 'descriptions' and 'description' field names
+          const description = request?.descriptions || request?.description;
+          if (!description) {
             return false;
           }
 
-          const hasPhoto = /\[PHOTO_DATA:(.*?)\]/.test(request.description) || /data:image\/[^;]+;base64,/.test(request.description);
+          const hasPhoto = /\[PHOTO_DATA:(.*?)\]/.test(description) || /data:image\/[^;]+;base64,/.test(description);
           if (!hasPhoto) {
             return false;
           }
@@ -1763,7 +1785,9 @@ class SupabaseService {
           return true;
         })
         .map((request) => {
-          const photoToken = this.extractPhotoToken(request.description);
+          // Check both 'descriptions' and 'description' field names
+          const description = request?.descriptions || request?.description;
+          const photoToken = this.extractPhotoToken(description);
           if (!photoToken) {
             return null;
           }
@@ -1798,7 +1822,7 @@ class SupabaseService {
             submittedAt: request.submitted_at,
             reviewedAt: request.reviewed_at,
             hoursRequested: request.hours_requested,
-            description: request.description,
+            description: description,
             fileName,
             mimeType,
             base64Data,
@@ -2643,7 +2667,9 @@ class SupabaseService {
 
   private static async uploadProofPhotoToDrive(request: any) {
     try {
-      const photoToken = this.extractPhotoToken(request?.description);
+      // Check both 'descriptions' and 'description' field names
+      const description = request?.descriptions || request?.description;
+      const photoToken = this.extractPhotoToken(description);
       if (!photoToken) {
         console.log('ℹ️ No proof photo found for request', request?.id);
         return;
