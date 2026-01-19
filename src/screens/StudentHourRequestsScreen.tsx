@@ -224,8 +224,8 @@ export default function StudentHourRequestsScreen() {
         {requests.length > 0 ? (
           <div className="space-y-4">
             {requests.map((request, index) => {
-              // Check both 'descriptions' and 'description' field names
-              const description = request.descriptions || request.description;
+              // Check 'description' first (actual DB column), fallback to 'descriptions' for backwards compatibility
+              const description = request.description || request.descriptions;
               const photoData = extractPhotoData(description);
               const cleanDescriptionText = cleanDescription(description);
 

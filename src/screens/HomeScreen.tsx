@@ -101,8 +101,8 @@ export default function HomeScreen() {
           }
         }
         
-        // Check for manual adjustments or transfers in description - check both 'descriptions' and 'description'
-        const description = request.descriptions || request.description;
+        // Check for manual adjustments or transfers in description - check 'description' first (actual DB column)
+        const description = request.description || request.descriptions;
         if (description && request.admin_notes) {
           const isAdjustment = description.includes('Manual Adjustment') || 
                               description.includes('Manual hour adjustment');

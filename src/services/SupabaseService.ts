@@ -1050,8 +1050,31 @@ class SupabaseService {
     pageSize: number = 25  // Reduced from 50 to 25 to reduce egress
   ) {
     try {
+      // Table has 15 columns total:
+      // id, student_s_number, student_name, event_name, event_date, hours_requested, 
+      // description, status, submitted_at, reviewed_at, reviewed_by, admin_notes, 
+      // proof_image_url, image_name, type
+      // We're only requesting 12 to save bandwidth (excluding description, admin_notes, proof_image_url)
       const requestedColumns = 'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name';
-      console.log(`📊 Querying hour_requests table - Requested columns:`, requestedColumns);
+      console.log(`📊 Querying hour_requests table - Requested columns (12 of 15):`, requestedColumns);
+      console.log(`📊 Missing columns: description, admin_notes, proof_image_url`);
+      
+      // First, let's check what ALL columns exist by querying one row with select('*')
+      const { data: sampleData, error: sampleError } = await supabase
+        .from('hour_requests')
+        .select('*')
+        .eq('status', 'pending')
+        .limit(1)
+        .maybeSingle();
+      
+      if (sampleData && !sampleError) {
+        const allColumns = Object.keys(sampleData);
+        console.log(`📊 ALL columns in hour_requests table (${allColumns.length} total):`, allColumns);
+        console.log(`📊 Expected 15 columns, found ${allColumns.length} columns`);
+        console.log(`📊 Complete column list:`, allColumns);
+      } else if (sampleError && sampleError.code !== 'PGRST116') {
+        console.warn(`⚠️ Could not fetch sample row to check all columns:`, sampleError.message);
+      }
       
       let query = supabase
         .from('hour_requests')
@@ -1083,13 +1106,15 @@ class SupabaseService {
       // Log what columns are actually returned
       if (data && data.length > 0) {
         console.log(`📊 hour_requests query returned ${data.length} rows`);
-        console.log(`📊 Columns actually returned in first row:`, Object.keys(data[0]));
+        console.log(`📊 Columns actually returned in first row (${Object.keys(data[0]).length} columns):`, Object.keys(data[0]));
+        console.log(`📊 Expected 12 columns (excluding: description, admin_notes, proof_image_url), got ${Object.keys(data[0]).length} columns`);
         console.log(`📊 Sample row data:`, {
           id: data[0].id,
           student_s_number: data[0].student_s_number,
           event_name: data[0].event_name,
           has_description: 'description' in data[0],
           has_descriptions: 'descriptions' in data[0],
+          has_proof_image_url: 'proof_image_url' in data[0],
           allKeys: Object.keys(data[0])
         });
       } else {
@@ -1189,8 +1214,8 @@ class SupabaseService {
         if (searchTerm.trim()) {
           const searchPattern = searchTerm.trim().toLowerCase();
           combined = combined.filter(r => {
-            // Check both 'description' and 'descriptions' field names
-            const description = r.descriptions || r.description;
+            // Check 'description' (actual DB column) first, fallback to 'descriptions' for backwards compatibility
+            const description = r.description || r.descriptions;
             return r.student_name?.toLowerCase().includes(searchPattern) ||
               r.student_s_number?.toLowerCase().includes(searchPattern) ||
               r.event_name?.toLowerCase().includes(searchPattern) ||
@@ -1227,8 +1252,8 @@ class SupabaseService {
         const searchPattern = `%${searchTerm.trim()}%`;
         // Use .or() with proper Supabase PostgREST syntax
         // Format: column.operator.value,column2.operator.value
-        // Search on both 'description' and 'descriptions' column names
-        query = query.or(`student_name.ilike.${searchPattern},student_s_number.ilike.${searchPattern},event_name.ilike.${searchPattern},description.ilike.${searchPattern},descriptions.ilike.${searchPattern}`);
+        // Search on 'description' (actual DB column name is singular, not plural)
+        query = query.or(`student_name.ilike.${searchPattern},student_s_number.ilike.${searchPattern},event_name.ilike.${searchPattern},description.ilike.${searchPattern}`);
       }
 
       // Order and limit
@@ -1281,41 +1306,45 @@ class SupabaseService {
     try {
       const tableName = status === 'pending' ? 'hour_requests' : 'hour_requests_archive';
       
-      // Helper function to normalize description field
+      // Helper function to normalize description field (column is 'description' singular in DB)
       const normalizeDescription = (record: any): any => {
         if (!record) return record;
         
         // Create a new object to avoid mutation issues
         const normalized = { ...record };
         
-        // Detect which field actually has data
-        const hasDescriptions = 'descriptions' in normalized && normalized.descriptions != null && normalized.descriptions !== '';
+        // Table has 'description' (singular) column, not 'descriptions' (plural)
+        // Check for 'description' field (this is what the actual DB column is)
         const hasDescription = 'description' in normalized && normalized.description != null && normalized.description !== '';
         
+        // Also check for 'descriptions' in case of any data migration/backwards compatibility
+        const hasDescriptions = 'descriptions' in normalized && normalized.descriptions != null && normalized.descriptions !== '';
+        
         console.log(`🔍 Detecting description field:`, {
-          hasDescriptions,
           hasDescription,
-          descriptionsType: typeof normalized.descriptions,
-          descriptionsLength: hasDescriptions ? normalized.descriptions?.length : 'N/A',
+          hasDescriptions,
           descriptionType: typeof normalized.description,
-          descriptionLength: hasDescription ? normalized.description?.length : 'N/A'
+          descriptionLength: hasDescription ? normalized.description?.length : 'N/A',
+          descriptionsType: typeof normalized.descriptions,
+          descriptionsLength: hasDescriptions ? normalized.descriptions?.length : 'N/A'
         });
         
-        // Always ensure 'description' field exists, prefer 'descriptions' if it has content
-        if (hasDescriptions) {
-          // 'descriptions' exists and has content - use it
+        // Primary: use 'description' (actual DB column)
+        // Fallback: use 'descriptions' if it exists but 'description' doesn't (backwards compatibility)
+        if (hasDescription) {
+          // 'description' exists and has content - this is the correct column
+          console.log(`✅ Using 'description' field (length: ${normalized.description?.length}) - this is the actual DB column`);
+        } else if (hasDescriptions) {
+          // 'descriptions' exists but 'description' doesn't - normalize to 'description'
           normalized.description = normalized.descriptions;
-          console.log(`✅ Using 'descriptions' field (length: ${normalized.descriptions?.length}) and normalizing to 'description'`);
-        } else if (hasDescription) {
-          // 'description' exists and has content - already correct
-          console.log(`✅ Using 'description' field (length: ${normalized.description?.length})`);
+          console.log(`✅ Normalized 'descriptions' to 'description' field (length: ${normalized.descriptions?.length})`);
         } else {
-          // Neither has content - set to null/undefined
-          console.log(`⚠️ Neither 'descriptions' nor 'description' has content`);
+          // Neither has content - set to null
+          console.log(`⚠️ Neither 'description' nor 'descriptions' has content`);
           normalized.description = normalized.descriptions || normalized.description || null;
         }
         
-        // Keep both fields for backwards compatibility but ensure 'description' is the canonical one
+        // Ensure 'description' is always set (the canonical field name)
         return normalized;
       };
       
@@ -1344,12 +1373,14 @@ class SupabaseService {
           
           // Log what fields we got back
           console.log(`📋 Querying ${otherTable} table with select('*') (fallback)`);
-          console.log(`📋 Got request from ${otherTable}, ALL columns returned:`, Object.keys(otherData || {}));
+          console.log(`📋 Got request from ${otherTable}, ALL columns returned (${Object.keys(otherData || {}).length}):`, Object.keys(otherData || {}));
           console.log(`📋 Column details:`, {
             has_description: 'description' in (otherData || {}),
             has_descriptions: 'descriptions' in (otherData || {}),
+            has_proof_image_url: 'proof_image_url' in (otherData || {}),
             description_value: otherData?.description ? `[${typeof otherData.description}] length: ${otherData.description?.length || 0}` : 'null/undefined',
             descriptions_value: otherData?.descriptions ? `[${typeof otherData.descriptions}] length: ${otherData.descriptions?.length || 0}` : 'null/undefined',
+            proof_image_url_value: otherData?.proof_image_url || 'null/undefined',
             allColumns: Object.keys(otherData || {})
           });
           
@@ -1372,12 +1403,14 @@ class SupabaseService {
 
       // Log what fields we got back
       console.log(`📋 Querying ${tableName} table with select('*')`);
-      console.log(`📋 Got request from ${tableName}, ALL columns returned:`, Object.keys(data || {}));
+      console.log(`📋 Got request from ${tableName}, ALL columns returned (${Object.keys(data || {}).length}):`, Object.keys(data || {}));
       console.log(`📋 Column details:`, {
         has_description: 'description' in (data || {}),
         has_descriptions: 'descriptions' in (data || {}),
+        has_proof_image_url: 'proof_image_url' in (data || {}),
         description_value: data?.description ? `[${typeof data.description}] length: ${data.description?.length || 0}` : 'null/undefined',
         descriptions_value: data?.descriptions ? `[${typeof data.descriptions}] length: ${data.descriptions?.length || 0}` : 'null/undefined',
+        proof_image_url_value: data?.proof_image_url || 'null/undefined',
         allColumns: Object.keys(data || {})
       });
       
@@ -1428,8 +1461,8 @@ class SupabaseService {
           const requestedHours = parseFloat(request.hours_requested || 0);
           const hoursType = (request.type || 'volunteering').toLowerCase();
           const eventName = (request.event_name || '').toLowerCase();
-          // Check both 'descriptions' and 'description' field names
-          const description = ((request.descriptions || request.description) || '').toLowerCase();
+          // Check 'description' (actual DB column) first, fallback to 'descriptions' for backwards compatibility
+          const description = ((request.description || request.descriptions) || '').toLowerCase();
           
           // Check if this was an adjustment that REMOVED hours (so we should ADD them back)
           const wasRemoval = eventName.includes('removed') || 
@@ -1854,8 +1887,8 @@ class SupabaseService {
 
       const results = (data || [])
         .filter((request) => {
-          // Check both 'descriptions' and 'description' field names
-          const description = request?.descriptions || request?.description;
+          // Check 'description' (actual DB column) first, fallback to 'descriptions' for backwards compatibility
+          const description = request?.description || request?.descriptions;
           if (!description) {
             return false;
           }
@@ -1899,8 +1932,8 @@ class SupabaseService {
           return true;
         })
         .map((request) => {
-          // Check both 'descriptions' and 'description' field names
-          const description = request?.descriptions || request?.description;
+          // Check 'description' (actual DB column) first, fallback to 'descriptions' for backwards compatibility
+          const description = request?.description || request?.descriptions;
           const photoToken = this.extractPhotoToken(description);
           if (!photoToken) {
             return null;
@@ -2781,8 +2814,8 @@ class SupabaseService {
 
   private static async uploadProofPhotoToDrive(request: any) {
     try {
-      // Check both 'descriptions' and 'description' field names
-      const description = request?.descriptions || request?.description;
+      // Check 'description' (actual DB column) first, fallback to 'descriptions' for backwards compatibility
+      const description = request?.description || request?.descriptions;
       const photoToken = this.extractPhotoToken(description);
       if (!photoToken) {
         console.log('ℹ️ No proof photo found for request', request?.id);

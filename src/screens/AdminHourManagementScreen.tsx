@@ -508,13 +508,13 @@ export default function AdminHourManagementScreen() {
       console.log(`📦 Full request object for ${requestId}:`, {
         hasDescription: 'description' in (fullRequest || {}),
         hasDescriptions: 'descriptions' in (fullRequest || {}),
-        descriptionType: typeof (fullRequest?.descriptions || fullRequest?.description),
-        descriptionValue: (fullRequest?.descriptions || fullRequest?.description) ? (fullRequest.descriptions || fullRequest.description).substring(0, 100) : (fullRequest?.descriptions || fullRequest?.description),
+        descriptionType: typeof (fullRequest?.description || fullRequest?.descriptions),
+        descriptionValue: (fullRequest?.description || fullRequest?.descriptions) ? (fullRequest.description || fullRequest.descriptions).substring(0, 100) : (fullRequest?.description || fullRequest?.descriptions),
         allKeys: fullRequest ? Object.keys(fullRequest) : []
       });
       
-      // Access description field - check multiple possible field names (including plural 'descriptions')
-      const description = fullRequest?.descriptions || fullRequest?.description || fullRequest?.Description || fullRequest?.desc || null;
+      // Access description field - check 'description' first (actual DB column), then fallbacks
+      const description = fullRequest?.description || fullRequest?.descriptions || fullRequest?.Description || fullRequest?.desc || null;
       
       if (description && typeof description === 'string' && description.length > 0) {
         console.log(`✅ Loaded description for request ${requestId}, length: ${description.length}`);
@@ -546,8 +546,8 @@ export default function AdminHourManagementScreen() {
         }
       } else {
         console.log(`⚠️ No description found for request ${requestId}`);
-        console.log(`   - fullRequest?.descriptions:`, fullRequest?.descriptions);
         console.log(`   - fullRequest?.description:`, fullRequest?.description);
+        console.log(`   - fullRequest?.descriptions:`, fullRequest?.descriptions);
         console.log(`   - fullRequest?.Description:`, fullRequest?.Description);
         console.log(`   - fullRequest?.desc:`, fullRequest?.desc);
       }
@@ -840,8 +840,8 @@ export default function AdminHourManagementScreen() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request, index) => {
-              // Get loaded description (from object or from request itself) - check both 'descriptions' and 'description'
-              const loadedDescription = loadedImageData[request.id] || request.descriptions || request.description || null;
+              // Get loaded description (from object or from request itself) - check 'description' first (actual DB column)
+              const loadedDescription = loadedImageData[request.id] || request.description || request.descriptions || null;
               
               // Extract photo data from description - recalculate every render to catch updates
               // Always check description for images, not just image_name column
@@ -854,7 +854,7 @@ export default function AdminHourManagementScreen() {
               // Images are stored in the description column as base64, NOT in image_name (which is just filename)
               // image_name tells us there MIGHT be an image in description, but we need to check description
               const hasLoadedDescription = !!loadedImageData[request.id];
-              const hasDescription = !!(request.descriptions || request.description) || hasLoadedDescription;
+              const hasDescription = !!(request.description || request.descriptions) || hasLoadedDescription;
               
               // Show button/section if:
               // 1. image_name exists (indicates there might be image data in descriptions/description)
@@ -871,8 +871,8 @@ export default function AdminHourManagementScreen() {
               // Debug logging - log for all requests to see what's happening
               console.log(`📸 Request ${request.id} (${request.student_name}):`, {
                 image_name: request.image_name,
-                hasRequestDescription: !!(request.descriptions || request.description),
-                requestDescriptionLength: (request.descriptions || request.description)?.length || 0,
+                hasRequestDescription: !!(request.description || request.descriptions),
+                requestDescriptionLength: (request.description || request.descriptions)?.length || 0,
                 hasLoadedDescription,
                 loadedDescriptionLength: loadedImageData[request.id]?.length || 0,
                 photoData: photoData ? `EXTRACTED (length: ${photoData.length}, preview: ${photoData.substring(0, 50)}...)` : 'NOT FOUND',
