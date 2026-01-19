@@ -1220,6 +1220,45 @@ class SupabaseService {
     try {
       const tableName = status === 'pending' ? 'hour_requests' : 'hour_requests_archive';
       
+      // Helper function to normalize description field
+      const normalizeDescription = (record: any): any => {
+        if (!record) return record;
+        
+        // Create a new object to avoid mutation issues
+        const normalized = { ...record };
+        
+        // Detect which field actually has data
+        const hasDescriptions = 'descriptions' in normalized && normalized.descriptions != null && normalized.descriptions !== '';
+        const hasDescription = 'description' in normalized && normalized.description != null && normalized.description !== '';
+        
+        console.log(`🔍 Detecting description field:`, {
+          hasDescriptions,
+          hasDescription,
+          descriptionsType: typeof normalized.descriptions,
+          descriptionsLength: hasDescriptions ? normalized.descriptions?.length : 'N/A',
+          descriptionType: typeof normalized.description,
+          descriptionLength: hasDescription ? normalized.description?.length : 'N/A'
+        });
+        
+        // Always ensure 'description' field exists, prefer 'descriptions' if it has content
+        if (hasDescriptions) {
+          // 'descriptions' exists and has content - use it
+          normalized.description = normalized.descriptions;
+          console.log(`✅ Using 'descriptions' field (length: ${normalized.descriptions?.length}) and normalizing to 'description'`);
+        } else if (hasDescription) {
+          // 'description' exists and has content - already correct
+          console.log(`✅ Using 'description' field (length: ${normalized.description?.length})`);
+        } else {
+          // Neither has content - set to null/undefined
+          console.log(`⚠️ Neither 'descriptions' nor 'description' has content`);
+          normalized.description = normalized.descriptions || normalized.description || null;
+        }
+        
+        // Keep both fields for backwards compatibility but ensure 'description' is the canonical one
+        return normalized;
+      };
+      
+      // Use select('*') to get all columns including descriptions/description
       const { data, error } = await supabase
         .from(tableName)
         .select('*')
@@ -1230,6 +1269,7 @@ class SupabaseService {
         // If not found in first table, try the other one
         if (error.code === 'PGRST116') {
           const otherTable = status === 'pending' ? 'hour_requests_archive' : 'hour_requests';
+          // Use select('*') to get all columns including descriptions/description
           const { data: otherData, error: otherError } = await supabase
             .from(otherTable)
             .select('*')
@@ -1245,17 +1285,18 @@ class SupabaseService {
           console.log(`📋 Got request from ${otherTable}, fields:`, Object.keys(otherData || {}));
           console.log(`📋 Has description field:`, 'description' in (otherData || {}));
           console.log(`📋 Has descriptions field:`, 'descriptions' in (otherData || {}));
-          // Normalize field name: check both 'description' and 'descriptions' (plural)
-          const descriptionValue = otherData?.descriptions || otherData?.description;
+          
+          // Normalize the description field
+          const normalized = normalizeDescription(otherData);
+          
+          const descriptionValue = normalized?.description || normalized?.descriptions;
           console.log(`📋 Description value type:`, typeof descriptionValue);
           console.log(`📋 Description length:`, descriptionValue?.length || 'null/undefined');
-          
-          // Normalize the field name to 'description' for consistency
-          if (otherData && 'descriptions' in otherData && !('description' in otherData)) {
-            otherData.description = otherData.descriptions;
+          if (descriptionValue) {
+            console.log(`📋 Description preview:`, descriptionValue.substring(0, 200));
           }
           
-          return otherData;
+          return normalized;
         }
         console.error('❌ Error fetching hour request details:', error);
         throw error;
@@ -1265,20 +1306,18 @@ class SupabaseService {
       console.log(`📋 Got request from ${tableName}, fields:`, Object.keys(data || {}));
       console.log(`📋 Has description field:`, 'description' in (data || {}));
       console.log(`📋 Has descriptions field:`, 'descriptions' in (data || {}));
-      // Normalize field name: check both 'description' and 'descriptions' (plural)
-      const descriptionValue = data?.descriptions || data?.description;
+      
+      // Normalize the description field
+      const normalized = normalizeDescription(data);
+      
+      const descriptionValue = normalized?.description || normalized?.descriptions;
       console.log(`📋 Description value type:`, typeof descriptionValue);
       console.log(`📋 Description length:`, descriptionValue?.length || 'null/undefined');
       if (descriptionValue) {
         console.log(`📋 Description preview:`, descriptionValue.substring(0, 200));
       }
 
-      // Normalize the field name to 'description' for consistency
-      if (data && 'descriptions' in data && !('description' in data)) {
-        data.description = data.descriptions;
-      }
-
-      return data;
+      return normalized;
     } catch (error) {
       console.error('❌ Error fetching hour request details:', error);
       throw error;
