@@ -166,7 +166,19 @@ export default function AdminHourManagementScreen() {
       const requestsWithImages = requests.filter(r => r.image_name);
       console.log(`✅ Data loading completed: ${requests.length} requests, ${requestsWithImages.length} with images`);
       if (requestsWithImages.length > 0) {
-        console.log('📸 Requests with images:', requestsWithImages.map(r => ({ id: r.id, student: r.student_name, image_name: r.image_name })));
+        console.log('📸 Requests with image_name:', requestsWithImages.map(r => ({ 
+          id: r.id, 
+          student: r.student_name, 
+          image_name: r.image_name,
+          event_name: r.event_name,
+          has_description: !!(r.description || r.descriptions),
+          description_length: (r.description || r.descriptions)?.length || 0
+        })));
+      } else {
+        console.log('⚠️ NO requests found with image_name - checking all requests:');
+        requests.forEach(r => {
+          console.log(`   - ${r.student_name} (${r.event_name}): image_name=${r.image_name || 'NULL'}`);
+        });
       }
     } catch (error: any) {
       console.error('❌ Error loading requests:', error);
@@ -857,30 +869,35 @@ export default function AdminHourManagementScreen() {
               const hasDescription = !!(request.description || request.descriptions) || hasLoadedDescription;
               
               // Show button/section if:
-              // 1. image_name exists (indicates there might be image data in descriptions/description)
+              // 1. image_name exists (indicates there might be image data in description)
               // 2. OR we have description loaded
               // 3. OR we found photoData in description
-              const hasImageAvailable = request.image_name || hasDescription || photoData;
+              const hasImageAvailable = !!request.image_name || hasDescription || !!photoData;
               
               // Can load if:
               // - image_name exists (means there's likely image data in description)
               // - AND we don't have description loaded yet
               // - AND we haven't extracted photoData yet
-              const canLoadImage = request.image_name && !hasDescription && !photoData;
+              const canLoadImage = !!request.image_name && !hasDescription && !photoData;
               
-              // Debug logging - log for all requests to see what's happening
-              console.log(`📸 Request ${request.id} (${request.student_name}):`, {
-                image_name: request.image_name,
-                hasRequestDescription: !!(request.description || request.descriptions),
-                requestDescriptionLength: (request.description || request.descriptions)?.length || 0,
-                hasLoadedDescription,
-                loadedDescriptionLength: loadedImageData[request.id]?.length || 0,
-                photoData: photoData ? `EXTRACTED (length: ${photoData.length}, preview: ${photoData.substring(0, 50)}...)` : 'NOT FOUND',
-                canLoadImage,
-                hasImageAvailable,
-                hasDescription,
-                loadedDescriptionSample: loadedDescription ? loadedDescription.substring(0, 150) : 'none'
-              });
+              // Debug logging - log for ALL requests, especially ones with image_name
+              if (request.image_name || hasDescription || photoData) {
+                console.log(`📸 Request ${request.id} (${request.student_name}) - IMAGE REQUEST:`, {
+                  image_name: request.image_name || 'MISSING',
+                  hasRequestDescription: !!(request.description || request.descriptions),
+                  requestDescriptionLength: (request.description || request.descriptions)?.length || 0,
+                  hasLoadedDescription,
+                  loadedDescriptionLength: loadedImageData[request.id]?.length || 0,
+                  photoData: photoData ? `EXTRACTED (length: ${photoData.length})` : 'NOT FOUND',
+                  canLoadImage,
+                  hasImageAvailable,
+                  hasDescription,
+                  willShowImageSection: hasImageAvailable,
+                  willShowButton: canLoadImage,
+                  willShowImage: !!photoData,
+                  loadedDescriptionSample: loadedDescription ? loadedDescription.substring(0, 150) : 'none'
+                });
+              }
 
               return (
                 <motion.div
@@ -1010,7 +1027,14 @@ export default function AdminHourManagementScreen() {
                   )}
 
                   {/* Photo Section - Button to load or display if loaded */}
-                  {hasImageAvailable && (
+                  {/* DEBUG: Show this section if image_name exists OR description is loaded OR photoData exists */}
+                  {(() => {
+                    if (hasImageAvailable) {
+                      console.log(`🖼️ Rendering image section for ${request.student_name}: hasImageAvailable=${hasImageAvailable}, canLoadImage=${canLoadImage}, hasPhotoData=${!!photoData}, image_name=${request.image_name || 'NONE'}`);
+                      return true;
+                    }
+                    return false;
+                  })() && (
                     <div className="mb-4">
                       {canLoadImage ? (
                         // Show button to load image when description doesn't exist yet
