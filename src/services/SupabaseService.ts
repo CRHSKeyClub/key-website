@@ -971,6 +971,8 @@ class SupabaseService {
 
   static async getStudentHourRequests(sNumber: string) {
     try {
+      console.log(`📊 Getting student hour requests for ${sNumber} - Using select('*') to get all columns`);
+      
       // Query both tables to get full history (pending from main, approved/rejected from archive)
       const [pendingData, archiveData] = await Promise.all([
         // Get pending requests from main table
@@ -999,6 +1001,21 @@ class SupabaseService {
         ? []
         : (archiveData.data || []);
       
+      // Log what columns are actually returned
+      if (pending.length > 0) {
+        console.log(`📊 hour_requests table returned ${pending.length} pending rows`);
+        console.log(`📊 Columns actually returned in first pending row:`, Object.keys(pending[0]));
+        console.log(`📊 First pending row has description:`, 'description' in pending[0]);
+        console.log(`📊 First pending row has descriptions:`, 'descriptions' in pending[0]);
+      }
+      
+      if (archived.length > 0) {
+        console.log(`📊 hour_requests_archive table returned ${archived.length} archived rows`);
+        console.log(`📊 Columns actually returned in first archived row:`, Object.keys(archived[0]));
+        console.log(`📊 First archived row has description:`, 'description' in archived[0]);
+        console.log(`📊 First archived row has descriptions:`, 'descriptions' in archived[0]);
+      }
+      
       // If archive table doesn't exist, fall back to just main table
       if (archiveData.error && archiveData.error.code === '42P01') {
         console.log('ℹ️ Archive table not found, returning only pending requests');
@@ -1012,6 +1029,8 @@ class SupabaseService {
         const dateB = new Date(b.submitted_at).getTime();
         return dateB - dateA; // Descending order
       });
+      
+      console.log(`📊 Total combined rows: ${combined.length}`);
       
       return combined;
     } catch (error) {
@@ -1031,11 +1050,14 @@ class SupabaseService {
     pageSize: number = 25  // Reduced from 50 to 25 to reduce egress
   ) {
     try {
+      const requestedColumns = 'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name';
+      console.log(`📊 Querying hour_requests table - Requested columns:`, requestedColumns);
+      
       let query = supabase
         .from('hour_requests')
         .select(
           // Exclude description to reduce load - images loaded on-demand via button
-          'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name'
+          requestedColumns
         )
         .eq('status', 'pending')
         // ASC order so Postgres can walk the index efficiently
@@ -1056,6 +1078,22 @@ class SupabaseService {
           return [];
         }
         throw error;
+      }
+
+      // Log what columns are actually returned
+      if (data && data.length > 0) {
+        console.log(`📊 hour_requests query returned ${data.length} rows`);
+        console.log(`📊 Columns actually returned in first row:`, Object.keys(data[0]));
+        console.log(`📊 Sample row data:`, {
+          id: data[0].id,
+          student_s_number: data[0].student_s_number,
+          event_name: data[0].event_name,
+          has_description: 'description' in data[0],
+          has_descriptions: 'descriptions' in data[0],
+          allKeys: Object.keys(data[0])
+        });
+      } else {
+        console.log(`📊 hour_requests query returned 0 rows`);
       }
 
       // Already ASC (oldest first) which is what admins usually want.
@@ -1102,12 +1140,15 @@ class SupabaseService {
       // - all → query both tables and combine
       
       if (status === 'all') {
+        const requestedColumns = 'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name';
+        console.log(`📊 Searching both tables (all status) - Requested columns:`, requestedColumns);
+        
         // Query both tables and combine results
         const [pendingData, archiveData] = await Promise.all([
           // Query pending from main table (exclude description to reduce load)
           supabase
             .from('hour_requests')
-            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
+            .select(requestedColumns)
             .eq('status', 'pending')
             .gte('submitted_at', twoYearsAgo.toISOString())
             .order('submitted_at', { ascending: true })
@@ -1116,7 +1157,7 @@ class SupabaseService {
           // Query approved/rejected from archive table (exclude description to reduce load)
           supabase
             .from('hour_requests_archive')
-            .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
+            .select(requestedColumns)
             .in('status', ['approved', 'rejected'])
             .gte('submitted_at', twoYearsAgo.toISOString())
             .order('submitted_at', { ascending: true })
@@ -1135,6 +1176,14 @@ class SupabaseService {
           ...(pendingData.data || []),
           ...(archiveData.data || [])
         ];
+        
+        // Log what columns are actually returned
+        if (combined.length > 0) {
+          console.log(`📊 Combined search returned ${combined.length} rows`);
+          console.log(`📊 Columns actually returned in first row:`, Object.keys(combined[0]));
+        } else {
+          console.log(`📊 Combined search returned 0 rows`);
+        }
         
         // Apply search filter if provided
         if (searchTerm.trim()) {
@@ -1162,10 +1211,13 @@ class SupabaseService {
       // Query single table based on status
       const tableName = status === 'pending' ? 'hour_requests' : 'hour_requests_archive';
       
+      const requestedColumns = 'id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name';
+      console.log(`📊 Searching ${tableName} table - Requested columns:`, requestedColumns);
+      
       // Exclude description to reduce load - images loaded on-demand via button
       let query = supabase
         .from(tableName)
-        .select('id, student_s_number, student_name, event_name, event_date, hours_requested, type, status, submitted_at, reviewed_at, reviewed_by, image_name')
+        .select(requestedColumns)
         .eq('status', status)
         .gte('submitted_at', twoYearsAgo.toISOString())
         .limit(limit); // Add limit early to reduce data transfer
@@ -1200,6 +1252,15 @@ class SupabaseService {
         }
         throw error;
       }
+      
+      // Log what columns are actually returned
+      if (data && data.length > 0) {
+        console.log(`📊 ${tableName} search returned ${data.length} rows`);
+        console.log(`📊 Columns actually returned in first row:`, Object.keys(data[0]));
+      } else {
+        console.log(`📊 ${tableName} search returned 0 rows`);
+      }
+      
       return data || [];
     } catch (error: any) {
       console.error('Error searching hour requests:', error);
@@ -1282,19 +1343,26 @@ class SupabaseService {
           }
           
           // Log what fields we got back
-          console.log(`📋 Got request from ${otherTable}, fields:`, Object.keys(otherData || {}));
-          console.log(`📋 Has description field:`, 'description' in (otherData || {}));
-          console.log(`📋 Has descriptions field:`, 'descriptions' in (otherData || {}));
+          console.log(`📋 Querying ${otherTable} table with select('*') (fallback)`);
+          console.log(`📋 Got request from ${otherTable}, ALL columns returned:`, Object.keys(otherData || {}));
+          console.log(`📋 Column details:`, {
+            has_description: 'description' in (otherData || {}),
+            has_descriptions: 'descriptions' in (otherData || {}),
+            description_value: otherData?.description ? `[${typeof otherData.description}] length: ${otherData.description?.length || 0}` : 'null/undefined',
+            descriptions_value: otherData?.descriptions ? `[${typeof otherData.descriptions}] length: ${otherData.descriptions?.length || 0}` : 'null/undefined',
+            allColumns: Object.keys(otherData || {})
+          });
           
           // Normalize the description field
           const normalized = normalizeDescription(otherData);
           
           const descriptionValue = normalized?.description || normalized?.descriptions;
-          console.log(`📋 Description value type:`, typeof descriptionValue);
-          console.log(`📋 Description length:`, descriptionValue?.length || 'null/undefined');
+          console.log(`📋 After normalization - Description value type:`, typeof descriptionValue);
+          console.log(`📋 After normalization - Description length:`, descriptionValue?.length || 'null/undefined');
           if (descriptionValue) {
-            console.log(`📋 Description preview:`, descriptionValue.substring(0, 200));
+            console.log(`📋 After normalization - Description preview:`, descriptionValue.substring(0, 200));
           }
+          console.log(`📋 After normalization - Final columns:`, Object.keys(normalized || {}));
           
           return normalized;
         }
@@ -1303,19 +1371,26 @@ class SupabaseService {
       }
 
       // Log what fields we got back
-      console.log(`📋 Got request from ${tableName}, fields:`, Object.keys(data || {}));
-      console.log(`📋 Has description field:`, 'description' in (data || {}));
-      console.log(`📋 Has descriptions field:`, 'descriptions' in (data || {}));
+      console.log(`📋 Querying ${tableName} table with select('*')`);
+      console.log(`📋 Got request from ${tableName}, ALL columns returned:`, Object.keys(data || {}));
+      console.log(`📋 Column details:`, {
+        has_description: 'description' in (data || {}),
+        has_descriptions: 'descriptions' in (data || {}),
+        description_value: data?.description ? `[${typeof data.description}] length: ${data.description?.length || 0}` : 'null/undefined',
+        descriptions_value: data?.descriptions ? `[${typeof data.descriptions}] length: ${data.descriptions?.length || 0}` : 'null/undefined',
+        allColumns: Object.keys(data || {})
+      });
       
       // Normalize the description field
       const normalized = normalizeDescription(data);
       
       const descriptionValue = normalized?.description || normalized?.descriptions;
-      console.log(`📋 Description value type:`, typeof descriptionValue);
-      console.log(`📋 Description length:`, descriptionValue?.length || 'null/undefined');
+      console.log(`📋 After normalization - Description value type:`, typeof descriptionValue);
+      console.log(`📋 After normalization - Description length:`, descriptionValue?.length || 'null/undefined');
       if (descriptionValue) {
-        console.log(`📋 Description preview:`, descriptionValue.substring(0, 200));
+        console.log(`📋 After normalization - Description preview:`, descriptionValue.substring(0, 200));
       }
+      console.log(`📋 After normalization - Final columns:`, Object.keys(normalized || {}));
 
       return normalized;
     } catch (error) {
