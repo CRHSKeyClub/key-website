@@ -88,8 +88,8 @@ export default function AdminStudentManagementScreen() {
       
       // Sort students alphabetically by name
       const sortedStudents = [...studentsData].sort((a, b) => {
-        const nameA = (a.name || a.student_name || '').toLowerCase();
-        const nameB = (b.name || b.student_name || '').toLowerCase();
+        const nameA = (a.name || a.name || '').toLowerCase();
+        const nameB = (b.name || b.name || '').toLowerCase();
         return nameA.localeCompare(nameB);
       });
       
@@ -467,8 +467,9 @@ export default function AdminStudentManagementScreen() {
             </select>
             
             <button
-              onClick={loadStudents}
-              className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+              onClick={() => searchQuery.trim() && searchStudents(searchQuery.trim())}
+              disabled={!searchQuery.trim()}
+              className="p-2 hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Refresh"
             >
               <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
