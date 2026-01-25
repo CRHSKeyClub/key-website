@@ -58,12 +58,14 @@ class SupabaseService {
 
   static async getStudent(sNumber: string) {
     try {
-      console.log('🔍 Getting student:', sNumber);
+      // Trim whitespace and normalize to lowercase
+      const normalizedSNumber = sNumber.trim().toLowerCase();
+      console.log('🔍 Getting student:', normalizedSNumber);
       
       const { data, error } = await supabase
         .from('students')
         .select('*')
-        .eq('s_number', sNumber.toLowerCase())
+        .eq('s_number', normalizedSNumber)
         .maybeSingle();
 
       if (error) {
@@ -148,12 +150,14 @@ class SupabaseService {
 
   static async getAuthUser(sNumber: string) {
     try {
-      console.log('🔍 Getting auth user:', sNumber);
+      // Trim whitespace and normalize to lowercase
+      const normalizedSNumber = sNumber.trim().toLowerCase();
+      console.log('🔍 Getting auth user:', normalizedSNumber);
       
       const { data, error } = await supabase
         .from('auth_users')
         .select('*')
-        .eq('s_number', sNumber.toLowerCase())
+        .eq('s_number', normalizedSNumber)
         .maybeSingle();
 
       if (error) {
@@ -218,12 +222,14 @@ class SupabaseService {
 
   static async updateStudent(sNumber: string, updateData: any) {
     try {
-      console.log('📝 Updating student:', sNumber, updateData);
+      // Trim whitespace and normalize to lowercase
+      const normalizedSNumber = sNumber.trim().toLowerCase();
+      console.log('📝 Updating student:', normalizedSNumber, updateData);
       
       const { data, error } = await supabase
         .from('students')
         .update(updateData)
-        .eq('s_number', sNumber.toLowerCase())
+        .eq('s_number', normalizedSNumber)
         .select()
         .single();
 
@@ -368,7 +374,10 @@ class SupabaseService {
 
   static async changePassword(sNumber: string, oldPassword: string, newPassword: string) {
     try {
-      const authUser = await this.getAuthUser(sNumber);
+      // Trim whitespace and normalize to lowercase (done in getAuthUser as well)
+      const normalizedSNumber = sNumber.trim().toLowerCase();
+      
+      const authUser = await this.getAuthUser(normalizedSNumber);
       if (!authUser) {
         throw new Error('Account not found');
       }
@@ -383,7 +392,7 @@ class SupabaseService {
       const { error } = await supabase
         .from('auth_users')
         .update({ password_hash: newPasswordHash })
-        .eq('s_number', sNumber.toLowerCase());
+        .eq('s_number', normalizedSNumber);
 
       if (error) throw error;
       return { success: true };
@@ -395,12 +404,15 @@ class SupabaseService {
 
   static async resetPassword(sNumber: string, newPassword: string) {
     try {
+      // Trim whitespace and normalize to lowercase
+      const normalizedSNumber = sNumber.trim().toLowerCase();
+      
       const newPasswordHash = await this.hashPassword(newPassword);
 
       const { error } = await supabase
         .from('auth_users')
         .update({ password_hash: newPasswordHash })
-        .eq('s_number', sNumber.toLowerCase());
+        .eq('s_number', normalizedSNumber);
 
       if (error) throw error;
       return { success: true };
@@ -926,10 +938,13 @@ class SupabaseService {
       
       for (const update of updates) {
         try {
+          // Trim whitespace and normalize to lowercase
+          const normalizedSNumber = update.sNumber.trim().toLowerCase();
+          
           const { data, error } = await supabase
             .from('students')
             .update({ tshirt_size: update.tshirtSize })
-            .eq('s_number', update.sNumber.toLowerCase())
+            .eq('s_number', normalizedSNumber)
             .select('s_number, name, tshirt_size')
             .single();
 
@@ -971,7 +986,9 @@ class SupabaseService {
 
   static async getStudentHourRequests(sNumber: string) {
     try {
-      console.log(`📊 Getting student hour requests for ${sNumber} - Using select('*') to get all columns`);
+      // Trim whitespace and normalize to lowercase
+      const normalizedSNumber = sNumber.trim().toLowerCase();
+      console.log(`📊 Getting student hour requests for ${normalizedSNumber} (original: "${sNumber}") - Using select('*') to get all columns`);
       
       // Query both tables to get full history (pending from main, approved/rejected from archive)
       const [pendingData, archiveData] = await Promise.all([
@@ -979,7 +996,7 @@ class SupabaseService {
         supabase
           .from('hour_requests')
           .select('*')
-          .eq('student_s_number', sNumber.toLowerCase())
+          .eq('student_s_number', normalizedSNumber)
           .eq('status', 'pending')
           .order('submitted_at', { ascending: false }),
         
@@ -987,7 +1004,7 @@ class SupabaseService {
         supabase
           .from('hour_requests_archive')
           .select('*')
-          .eq('student_s_number', sNumber.toLowerCase())
+          .eq('student_s_number', normalizedSNumber)
           .in('status', ['approved', 'rejected'])
           .order('submitted_at', { ascending: false })
       ]);
@@ -1033,8 +1050,13 @@ class SupabaseService {
       console.log(`📊 Total combined rows: ${combined.length}`);
       
       return combined;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error getting student hour requests:', error);
+      // If it's a timeout error, return empty array with a warning
+      if (error.code === '57014' || error.message?.includes('timeout')) {
+        console.warn('⚠️ Query timeout while fetching student hour requests. Returning empty array.');
+        return [];
+      }
       throw error;
     }
   }
@@ -2073,7 +2095,9 @@ class SupabaseService {
 
   static async getStudentAttendance(studentSNumber: string) {
     try {
-      console.log('📋 Getting attendance for student:', studentSNumber);
+      // Trim whitespace and normalize to lowercase
+      const normalizedSNumber = studentSNumber.trim().toLowerCase();
+      console.log('📋 Getting attendance for student:', normalizedSNumber);
       
       const { data: attendance, error } = await supabase
         .from('meeting_attendance')
@@ -2086,7 +2110,7 @@ class SupabaseService {
             is_open
           )
         `)
-        .eq('student_s_number', studentSNumber.toLowerCase())
+        .eq('student_s_number', normalizedSNumber)
         .order('submitted_at', { ascending: false });
 
       if (error) {
@@ -2136,6 +2160,10 @@ class SupabaseService {
 
   static async submitAttendance(meetingId: string, studentSNumber: string, attendanceCode: string, sessionType: string = 'both') {
     try {
+      // Trim whitespace and normalize to lowercase
+      const normalizedSNumber = studentSNumber.trim().toLowerCase();
+      console.log('📝 Submitting attendance for meeting:', meetingId, 'student:', normalizedSNumber);
+      
       const { data: meeting, error: meetingError } = await supabase
         .from('meetings')
         .select('*')
@@ -2151,7 +2179,7 @@ class SupabaseService {
         .from('meeting_attendance')
         .select('*')
         .eq('meeting_id', meetingId)
-        .eq('student_s_number', studentSNumber.toLowerCase())
+        .eq('student_s_number', normalizedSNumber)
         .single();
 
       if (existingAttendance) {
@@ -2162,7 +2190,7 @@ class SupabaseService {
         .from('meeting_attendance')
         .insert([{
           meeting_id: meetingId,
-          student_s_number: studentSNumber.toLowerCase(),
+          student_s_number: normalizedSNumber,
           attendance_code: attendanceCode,
           session_type: sessionType,
           submitted_at: new Date().toISOString()
