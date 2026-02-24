@@ -1,0 +1,14 @@
+{
+  "exported_at": "2026-02-23T23:36:06.356Z",
+  "tables": [
+    "students",
+    "auth_users",
+    "meetings",
+    "meeting_attendance",
+    "hour_requests",
+    "events",
+    "event_attendees",
+    "hour_requests_archive"
+  ],
+  "total_rows": 3627
+}

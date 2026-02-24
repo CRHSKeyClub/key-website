@@ -1,0 +1,5 @@
+{
+  "total_parts": 7,
+  "total_records": 1400,
+  "note": "Combine all hour_requests_archive_partN.json files to reconstruct full archive"
+}

@@ -42,5 +42,3 @@ app-example
 # Local Netlify folder
 .netlify
 
-# Database backups (too large for GitHub - keep locally)
-database_backup/
