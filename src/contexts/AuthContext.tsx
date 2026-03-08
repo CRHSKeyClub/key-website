@@ -220,11 +220,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       console.log("Registering test user");
       const testUser: User = {
-        sNumber: 's000000',
-        name: 'Test User',
+        sNumber: 's123456',
+        name: 'New Test User',
         role: 'student',
         totalHours: '0',
-        tshirtSize: 'M',
+        tshirtSize: 'L',
         id: 'test-user',
         loginTime: new Date().toISOString()
       };
