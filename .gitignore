@@ -42,3 +42,6 @@ app-example
 # Local Netlify folder
 .netlify
 
+# Local database backups (was broken submodule)
+database_backups_repo/
+
