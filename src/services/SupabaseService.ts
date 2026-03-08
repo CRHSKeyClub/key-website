@@ -1302,10 +1302,10 @@ class SupabaseService {
       
       // Log what columns are actually returned
       if (data && data.length > 0) {
-        console.log(`📊 ${tableName} search returned ${data.length} rows`);
-        console.log(`📊 Columns actually returned in first row:`, Object.keys(data[0]));
+        console.log(`${tableName} search returned ${data.length} rows`);
+        console.log(`Columns actually returned in first row:`, Object.keys(data[0]));
       } else {
-        console.log(`📊 ${tableName} search returned 0 rows`);
+        console.log(`${tableName} search returned 0 rows`);
       }
       
       return data || [];
@@ -2696,6 +2696,23 @@ class SupabaseService {
     } catch (error: any) {
       console.error('❌ Error creating approved hour request:', error);
       throw new Error(`Failed to create approved hour request: ${error.message}`);
+    }
+  }
+
+  static async createTestUser() {
+    try {
+      console.log('Creating test user...');
+      const sNumber = 's12345678';
+      const password = 'TestPassword123!';
+      const name = 'Test User';
+      const tshirtSize = 'M';
+
+      const result = await this.registerStudent(sNumber, password, name, tshirtSize);
+      console.log('Test user creation result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error creating test user:', error);
+      throw error;
     }
   }
 
