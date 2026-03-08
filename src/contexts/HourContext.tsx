@@ -1,14 +1,14 @@
-import { useContext, useState, useEffect, createContext, useCallback, ReactNode } from 'react';
+import { useContext, useState, createContext, useCallback, ReactNode } from 'react';
 import SupabaseService from '../services/SupabaseService';
 
-interface HourRequest {
+export interface HourRequest { // Added export here
   id: string;
   student_s_number: string;
   student_name: string;
   event_name: string;
   event_date: string;
   hours_requested: number;
-  description: string;
+  description?: string; // Made optional
   type?: 'volunteering' | 'social';
   status: string;
   submitted_at: string;
@@ -193,4 +193,3 @@ export function HourProvider({ children }: HourProviderProps) {
     </HourContext.Provider>
   );
 }
-

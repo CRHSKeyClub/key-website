@@ -1,42 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useHours } from '../contexts/HourContext';
+import { useHours, HourRequest } from '../contexts/HourContext'; // Import HourRequest from HourContext
 import { useModal } from '../contexts/ModalContext';
 import SupabaseService from '../services/SupabaseService';
 
-interface HourRequest {
-  id: string;
-  student_name: string;
-  student_s_number: string;
-  event_name: string;
-  event_date: string | null;
-  hours_requested: number;
-  description?: string; // Optional - loaded on demand to prevent timeouts
-  type?: 'volunteering' | 'social';
-  status: 'pending' | 'approved' | 'rejected';
-  submitted_at: string | null;
-  reviewed_at?: string | null;
-  image_name?: string;
-}
+// Removed local HourRequest interface to use the one from HourContext
 
 export default function AdminHourManagementScreen() {
   const navigate = useNavigate();
-  const { deleteHourRequest, hourRequests: contextHourRequests, loading: contextLoading, refreshHourRequests } = useHours();
+  const { deleteHourRequest, hourRequests: contextHourRequests, loading: contextLoading } = useHours(); // Removed refreshHourRequests from destructuring
   const { showModal } = useModal();
   
   const [allRequests, setAllRequests] = useState<HourRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<HourRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  // This page only shows pending requests - no filter needed
-  // const [filter, setFilter] = useState('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [lastLoadTime, setLastLoadTime] = useState<Date | null>(null);
   const [processingRequests, setProcessingRequests] = useState<Set<string>>(new Set());
-  // Track which requests have loaded their image data (description) - using object instead of Map for React reactivity
   const [loadedImageData, setLoadedImageData] = useState<Record<string, string>>({});
-  // Track which requests are currently loading images
   const [loadingImages, setLoadingImages] = useState<Set<string>>(new Set());
   
   const [reviewModal, setReviewModal] = useState({
@@ -67,22 +50,18 @@ export default function AdminHourManagementScreen() {
 
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Helper to filter and set requests
-  // This page only shows pending requests from hour_requests table
   const filterAndSetRequests = useCallback((requests: HourRequest[]) => {
-    // Only show pending requests (filter out any non-pending that might be in context)
     const pendingOnly = requests.filter(r => r.status === 'pending');
     
     let filtered = pendingOnly;
     
-    // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(r => 
         r.student_name?.toLowerCase().includes(query) ||
         r.student_s_number?.toLowerCase().includes(query) ||
         r.event_name?.toLowerCase().includes(query) ||
-        (r.descriptions || r.description)?.toLowerCase().includes(query)
+        r.description?.toLowerCase().includes(query) // Changed r.descriptions to r.description
       );
     }
     
@@ -90,21 +69,17 @@ export default function AdminHourManagementScreen() {
     setFilteredRequests(filtered);
   }, [searchQuery]);
 
-  // Use context data on initial load if available (avoids redundant query)
   useEffect(() => {
     if (!contextLoading && contextHourRequests.length > 0 && allRequests.length === 0) {
       console.log('✅ Using cached hour requests from context:', contextHourRequests.length);
       filterAndSetRequests(contextHourRequests);
       setLoading(false);
     } else if (!contextLoading && contextHourRequests.length === 0 && allRequests.length === 0) {
-      // Only load if context doesn't have data
       loadData();
     }
   }, [contextLoading, contextHourRequests.length, allRequests.length, filterAndSetRequests]);
 
-  // Debounced search effect - only trigger when searchQuery changes (not on initial mount)
   useEffect(() => {
-    // Skip on initial mount (when searchQuery is empty and we just loaded)
     if (searchQuery === '' && allRequests.length === 0) {
       return;
     }
@@ -115,54 +90,41 @@ export default function AdminHourManagementScreen() {
 
     searchTimeoutRef.current = setTimeout(() => {
       loadData();
-    }, 500); // 500ms debounce
+    }, 500);
 
     return () => {
       if (searchTimeoutRef.current) {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
-
-  // This page only shows pending requests - filter removed
-  // useEffect removed since we don't have filter changes anymore
 
   const loadData = async (forceRefresh: boolean = false) => {
     try {
       setLoading(true);
       console.log('🔄 Loading hour requests from database...');
       
-      // If no search query and context has data, use cached data (no refresh to save egress)
       if (!forceRefresh && !searchQuery.trim() && contextHourRequests.length > 0) {
         console.log('📦 Using cached context data (skipping refresh to save egress)...');
         filterAndSetRequests(contextHourRequests);
         setLastLoadTime(new Date());
         setLoading(false);
-        // DON'T refresh in background - saves egress!
-        // User can click refresh button if they want fresh data
         return;
       }
       
       let requests: HourRequest[];
       
-      // This page ONLY shows pending requests from hour_requests table
-      // If there's a search query, search only in pending requests
       if (searchQuery.trim()) {
         console.log('🔍 Searching pending hour requests with query:', searchQuery);
-        // Only search pending requests in hour_requests table
-        // Reduced limit to 50 to minimize egress (was 100)
         requests = await SupabaseService.searchHourRequests(searchQuery.trim(), 'pending', 50);
       } else {
-        // Always use getAllHourRequests which only queries hour_requests table for pending
         requests = await SupabaseService.getAllHourRequests();
       }
       
       setAllRequests(requests);
-      setFilteredRequests(requests); // Search results are already filtered
+      setFilteredRequests(requests);
       setLastLoadTime(new Date());
       
-      // Debug: log image_name for all requests
       const requestsWithImages = requests.filter(r => r.image_name);
       console.log(`✅ Data loading completed: ${requests.length} requests, ${requestsWithImages.length} with images`);
       if (requestsWithImages.length > 0) {
@@ -171,8 +133,8 @@ export default function AdminHourManagementScreen() {
           student: r.student_name, 
           image_name: r.image_name,
           event_name: r.event_name,
-          has_description: !!(r.description || r.descriptions),
-          description_length: (r.description || r.descriptions)?.length || 0
+          has_description: !!r.description, // Changed r.descriptions to r.description
+          description_length: r.description?.length || 0 // Changed r.descriptions to r.description
         })));
       } else {
         console.log('⚠️ NO requests found with image_name - checking all requests:');
@@ -183,7 +145,6 @@ export default function AdminHourManagementScreen() {
     } catch (error: any) {
       console.error('❌ Error loading requests:', error);
       
-      // If error but we have context data, use that as fallback
       if (contextHourRequests.length > 0) {
         console.warn('⚠️ Using cached context data due to error');
         filterAndSetRequests(contextHourRequests);
@@ -209,11 +170,6 @@ export default function AdminHourManagementScreen() {
     await loadData(true); // Force refresh
     setRefreshing(false);
   };
-
-  // Filter removed - this page only shows pending requests
-  // const handleFilterChange = (newFilter: string) => {
-  //   setFilter(newFilter);
-  // };
 
   const handleReviewRequest = (request: HourRequest, action: 'approve' | 'reject') => {
     setReviewModal({
@@ -247,10 +203,8 @@ export default function AdminHourManagementScreen() {
     if (processingRequests.has(requestId)) return;
     setProcessingRequests(prev => new Set([...prev, requestId]));
 
-    // Close modal immediately for better UX
     setReviewModal({ visible: false, request: null, action: null, notes: '' });
 
-    // Optimistically remove the request from the list immediately
     setAllRequests(prev => prev.filter(r => r.id !== requestId));
     setFilteredRequests(prev => prev.filter(r => r.id !== requestId));
 
@@ -264,7 +218,6 @@ export default function AdminHourManagementScreen() {
       );
 
       if (result) {
-        // Force a fresh reload from the database so the list auto-refreshes
         await loadData(true);
         
         showModal({
@@ -278,7 +231,6 @@ export default function AdminHourManagementScreen() {
           iconColor: '#4CAF50'
         });
       } else {
-        // If update failed, reload to restore the request
         await loadData();
         showModal({
           title: 'Error',
@@ -292,7 +244,6 @@ export default function AdminHourManagementScreen() {
         });
       }
     } catch (error) {
-      // If error occurred, reload to restore the request
       await loadData();
       showModal({
         title: 'Error',
@@ -375,7 +326,6 @@ export default function AdminHourManagementScreen() {
     try {
       await SupabaseService.updateHourRequestType(requestId, newType);
       
-      // Update the local state
       setAllRequests(prev => prev.map(r => 
         r.id === requestId ? { ...r, type: newType } : r
       ));
@@ -432,7 +382,6 @@ export default function AdminHourManagementScreen() {
     const requestId = request.id;
     const newHours = parseFloat(editingHours.value);
 
-    // Validate hours
     if (isNaN(newHours) || newHours <= 0) {
       showModal({
         title: 'Error',
@@ -453,7 +402,6 @@ export default function AdminHourManagementScreen() {
     try {
       await SupabaseService.updateHourRequestHours(requestId, newHours);
       
-      // Update the local state
       setAllRequests(prev => prev.map(r => 
         r.id === requestId ? { ...r, hours_requested: newHours } : r
       ));
@@ -461,7 +409,6 @@ export default function AdminHourManagementScreen() {
         r.id === requestId ? { ...r, hours_requested: newHours } : r
       ));
       
-      // Clear editing state
       setEditingHours({
         requestId: null,
         value: ''
@@ -498,10 +445,8 @@ export default function AdminHourManagementScreen() {
     }
   };
 
-  // Load image data on-demand for a specific request
   const loadImageForRequest = async (requestId: string) => {
     if (loadedImageData[requestId] || loadingImages.has(requestId)) {
-      // Already loaded or currently loading
       console.log(`⏭️ Skipping load for ${requestId} - already loaded or loading`);
       return;
     }
@@ -510,35 +455,29 @@ export default function AdminHourManagementScreen() {
       setLoadingImages(prev => new Set(prev).add(requestId));
       console.log(`🔄 Loading image for request ${requestId}...`);
       
-      // Find the request to get its status
       const request = allRequests.find(r => r.id === requestId);
       const status = request?.status || 'pending';
       
-      // Fetch full request details including description
       const fullRequest = await SupabaseService.getHourRequestDetails(requestId, status);
       
       console.log(`📦 Full request object for ${requestId}:`, {
         hasDescription: 'description' in (fullRequest || {}),
-        hasDescriptions: 'descriptions' in (fullRequest || {}),
-        descriptionType: typeof (fullRequest?.description || fullRequest?.descriptions),
-        descriptionValue: (fullRequest?.description || fullRequest?.descriptions) ? (fullRequest.description || fullRequest.descriptions).substring(0, 100) : (fullRequest?.description || fullRequest?.descriptions),
+        descriptionType: typeof (fullRequest?.description),
+        descriptionValue: (fullRequest?.description) ? (fullRequest.description).substring(0, 100) : (fullRequest?.description),
         allKeys: fullRequest ? Object.keys(fullRequest) : []
       });
       
-      // Access description field - check 'description' first (actual DB column), then fallbacks
-      const description = fullRequest?.description || fullRequest?.descriptions || fullRequest?.Description || fullRequest?.desc || null;
+      const description = fullRequest?.description || null; // Changed fullRequest?.descriptions to fullRequest?.description
       
       if (description && typeof description === 'string' && description.length > 0) {
         console.log(`✅ Loaded description for request ${requestId}, length: ${description.length}`);
         console.log(`📝 Description preview: ${description.substring(0, 300)}...`);
         
-        // Store the description for this request - create new object to trigger re-render
         setLoadedImageData(prev => ({
           ...prev,
           [requestId]: description
         }));
         
-        // Try extracting photo data to verify it works
         const extracted = extractPhotoData(description);
         console.log(`📸 Extracted photo data: ${extracted ? 'SUCCESS' : 'FAILED'}`);
         if (extracted) {
@@ -546,7 +485,6 @@ export default function AdminHourManagementScreen() {
           console.log(`📸 Photo data length: ${extracted.length}`);
         } else {
           console.log(`⚠️ Photo extraction failed. Checking description patterns...`);
-          // Log what patterns exist in description
           const hasPhotoData = description.includes('[PHOTO_DATA:');
           const hasPhotoColon = description.includes('Photo:');
           const hasDataImage = description.includes('data:image/');
@@ -559,9 +497,6 @@ export default function AdminHourManagementScreen() {
       } else {
         console.log(`⚠️ No description found for request ${requestId}`);
         console.log(`   - fullRequest?.description:`, fullRequest?.description);
-        console.log(`   - fullRequest?.descriptions:`, fullRequest?.descriptions);
-        console.log(`   - fullRequest?.Description:`, fullRequest?.Description);
-        console.log(`   - fullRequest?.desc:`, fullRequest?.desc);
       }
     } catch (error) {
       console.error(`❌ Error loading image for request ${requestId}:`, error);
@@ -587,16 +522,11 @@ export default function AdminHourManagementScreen() {
   const extractPhotoData = (description: string) => {
     if (!description) return null;
     
-    // Try multiple patterns to extract photo data (handles both app and website formats)
     const patterns = [
-      // Pattern 1: [PHOTO_DATA:...] format (website format)
-      /\[PHOTO_DATA:(.*?)\]/s, // 's' flag for multiline
-      // Pattern 2: Photo: ... format (may have pipe separator or newline)
+      /\[PHOTO_DATA:(.*?)\]/s,
       /Photo:\s*([^\n|]+)/s,
-      // Pattern 3: Full data URI (data:image/...;base64,...) - capture everything including newlines
       /data:image\/[^;]+;base64,([A-Za-z0-9+/=\s\n]+)/s,
-      // Pattern 4: Base64 string without data URI prefix (app format) - must be long enough
-      /([A-Za-z0-9+/=\s]{200,})/ // Large base64 string (at least 200 chars, allow spaces/newlines)
+      /([A-Za-z0-9+/=\s]{200,})/ 
     ];
     
     for (const pattern of patterns) {
@@ -604,40 +534,28 @@ export default function AdminHourManagementScreen() {
       if (match) {
         let photoData = (match[1] || match[0]).trim();
         
-        // Remove newlines and extra whitespace from base64
         photoData = photoData.replace(/\s+/g, '');
         
-        // If it already has data:image/ prefix, return as-is
         if (photoData.startsWith('data:image/')) {
-          // Also clean this one
           return photoData.replace(/\s+/g, '');
         }
         
-        // If it's just base64 data (from app), add data URI prefix
-        // Check if it looks like base64 (long string of base64 chars)
         if (photoData.length > 100 && /^[A-Za-z0-9+/=]+$/.test(photoData)) {
-          // Try to detect image type from first few chars or default to jpeg
           if (photoData.substring(0, 20).includes('iVBORw0KGgo')) {
-            // PNG signature (looks for PNG magic bytes in base64)
             return `data:image/png;base64,${photoData}`;
           } else if (photoData.substring(0, 20).includes('/9j/')) {
-            // JPEG signature (looks for JPEG magic bytes in base64)
             return `data:image/jpeg;base64,${photoData}`;
           } else {
-            // Default to JPEG for app images
             return `data:image/jpeg;base64,${photoData}`;
           }
         }
         
-        // If we got here but data looks valid, try adding prefix anyway
         if (photoData.length > 100) {
           return `data:image/jpeg;base64,${photoData}`;
         }
       }
     }
     
-    // Last resort: check if description contains large base64-like string anywhere
-    // Remove common text patterns and check if remainder is base64
     const textRemoved = description
       .replace(/\[PHOTO_DATA:.*?\]/gs, '')
       .replace(/Photo:.*?/g, '')
@@ -646,7 +564,6 @@ export default function AdminHourManagementScreen() {
       .replace(/\s+/g, '')
       .trim();
     
-    // If what's left is a large base64-like string, use it
     if (textRemoved.length > 100 && /^[A-Za-z0-9+/=]+$/.test(textRemoved)) {
       return `data:image/jpeg;base64,${textRemoved}`;
     }
@@ -715,10 +632,9 @@ export default function AdminHourManagementScreen() {
   };
 
   const getFilterCounts = () => {
-    // This page only shows pending requests
     return {
       all: allRequests.length,
-      pending: allRequests.length, // All requests shown are pending
+      pending: allRequests.length,
       approved: 0,
       rejected: 0
     };
@@ -739,7 +655,6 @@ export default function AdminHourManagementScreen() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      {/* Header */}
       <motion.div 
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -779,9 +694,7 @@ export default function AdminHourManagementScreen() {
         </div>
       </motion.div>
 
-      {/* Filter Tabs */}
       <div className="p-4">
-        {/* This page only shows pending requests - filter removed since we only query pending table */}
         <div className="bg-slate-800 bg-opacity-60 rounded-lg p-3 mb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -794,7 +707,6 @@ export default function AdminHourManagementScreen() {
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="bg-slate-800 bg-opacity-60 rounded-lg p-3 mb-4 flex items-center gap-3">
           <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -805,13 +717,11 @@ export default function AdminHourManagementScreen() {
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              // Search is debounced and will trigger loadData via useEffect
             }}
             className="flex-1 bg-transparent text-white placeholder-slate-400 outline-none"
           />
         </div>
 
-        {/* Last Updated Info */}
         {lastLoadTime && (
           <div className="text-center mb-4 text-slate-400 text-sm">
             <p>Last updated: {lastLoadTime.toLocaleTimeString()}</p>
@@ -820,7 +730,6 @@ export default function AdminHourManagementScreen() {
         )}
       </div>
 
-      {/* Requests List */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -852,41 +761,25 @@ export default function AdminHourManagementScreen() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request, index) => {
-              // Get loaded description (from object or from request itself) - check 'description' first (actual DB column)
-              const loadedDescription = loadedImageData[request.id] || request.description || request.descriptions || null;
+              const loadedDescription = loadedImageData[request.id] || request.description || null; // Changed request.descriptions to request.description
               
-              // Extract photo data from description - recalculate every render to catch updates
-              // Always check description for images, not just image_name column
               const photoData = loadedDescription ? extractPhotoData(loadedDescription) : null;
               
               const cleanDescriptionText = loadedDescription ? cleanDescription(loadedDescription) : '';
               const isProcessing = processingRequests.has(request.id);
               const isLoadingImage = loadingImages.has(request.id);
               
-              // Images are stored in the description column as base64, NOT in image_name (which is just filename)
-              // image_name tells us there MIGHT be an image in description, but we need to check description
               const hasLoadedDescription = !!loadedImageData[request.id];
-              const hasDescription = !!(request.description || request.descriptions) || hasLoadedDescription;
+              const hasDescription = !!request.description || hasLoadedDescription; // Changed request.descriptions to request.description
               
-              // Show button/section if:
-              // 1. image_name exists (indicates there might be image data in description)
-              // 2. OR we have description loaded (might have image from iOS submissions)
-              // 3. OR we found photoData in description
-              // 4. OR we haven't checked yet (show button to check description for all requests)
-              // Note: iOS submissions save images directly in description column, even without image_name
               const hasImageAvailable = !!request.image_name || hasDescription || !!photoData || !hasLoadedDescription;
               
-              // Can load if:
-              // - We don't have description loaded yet (check description for image data)
-              // - AND we haven't extracted photoData yet
-              // Note: Even if image_name doesn't exist, description might have image (iOS submissions)
               const canLoadImage = !hasDescription && !photoData;
               
-              // Debug logging - log for ALL requests to see which have image_name or might have images in description
               console.log(`📸 Request ${request.id} (${request.student_name}):`, {
                 image_name: request.image_name || 'NO image_name',
-                hasRequestDescription: !!(request.description || request.descriptions),
-                requestDescriptionLength: (request.description || request.descriptions)?.length || 0,
+                hasRequestDescription: !!request.description, // Changed request.descriptions to request.description
+                requestDescriptionLength: request.description?.length || 0, // Changed request.descriptions to request.description
                 hasLoadedDescription,
                 loadedDescriptionLength: loadedImageData[request.id]?.length || 0,
                 photoData: photoData ? `EXTRACTED (length: ${photoData.length})` : 'NOT FOUND',
@@ -908,7 +801,6 @@ export default function AdminHourManagementScreen() {
                   transition={{ delay: index * 0.1 }}
                   className="bg-slate-700 bg-opacity-40 backdrop-blur-sm rounded-xl p-6 border border-slate-600"
                 >
-                  {/* Header */}
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-xl font-bold text-blue-400">{request.student_name}</h3>
@@ -920,14 +812,11 @@ export default function AdminHourManagementScreen() {
                     </div>
                   </div>
 
-                  {/* Event Info */}
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="text-lg font-semibold text-white">{request.event_name}</h4>
                     
-                    {/* Hours Display/Edit */}
                     <div className="flex items-center gap-2">
                       {editingHours.requestId === request.id ? (
-                        // Edit mode
                         <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-1">
                           <input
                             type="number"
@@ -968,7 +857,6 @@ export default function AdminHourManagementScreen() {
                           </button>
                         </div>
                       ) : (
-                        // View mode
                         <div className="flex items-center gap-2">
                           <span className="text-blue-400 font-bold">{request.hours_requested} hours</span>
                           {isRequestPending(request) && (
@@ -988,7 +876,6 @@ export default function AdminHourManagementScreen() {
                     </div>
                   </div>
 
-                  {/* Type Display and Toggle */}
                   <div className="flex items-center gap-3 mb-4 bg-slate-800 bg-opacity-50 rounded-lg p-3">
                     <div className="flex items-center gap-2">
                       <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1020,18 +907,15 @@ export default function AdminHourManagementScreen() {
                     )}
                   </div>
 
-                  {/* Description */}
                   {cleanDescriptionText && (
                     <div className="mb-4">
                       <p className="text-slate-300 leading-relaxed">{cleanDescriptionText}</p>
                     </div>
                   )}
 
-                  {/* Photo Section - Button to load or display if loaded */}
                   {hasImageAvailable && (
                     <div className="mb-4">
                       {canLoadImage ? (
-                        // Show button to load image when description doesn't exist yet
                         <button
                           onClick={() => loadImageForRequest(request.id)}
                           disabled={isLoadingImage || isProcessing}
@@ -1056,7 +940,6 @@ export default function AdminHourManagementScreen() {
                           )}
                         </button>
                       ) : photoData ? (
-                        // Show image if we extracted photo data from description
                         <>
                           <div className="flex items-center gap-2 mb-3">
                             <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1111,7 +994,6 @@ export default function AdminHourManagementScreen() {
                           </div>
                         </>
                       ) : (
-                        // Show nothing if description was loaded but no photo found
                         <div className="text-center py-4 text-slate-400 text-sm">
                           No photo found in description
                         </div>
@@ -1119,12 +1001,10 @@ export default function AdminHourManagementScreen() {
                     </div>
                   )}
 
-                  {/* Date */}
                   <p className="text-slate-400 text-sm mb-4">
                     Submitted: {formatDate(request.submitted_at)}
                   </p>
 
-                  {/* Action Buttons */}
                   <div className="flex gap-3">
                     {isRequestPending(request) && (
                       <>
@@ -1152,7 +1032,6 @@ export default function AdminHourManagementScreen() {
                       </>
                     )}
                     
-                    {/* Delete Button - Available for all requests */}
                     <button
                       onClick={() => handleDeleteRequest(request)}
                       disabled={isProcessing}
@@ -1160,12 +1039,11 @@ export default function AdminHourManagementScreen() {
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
+                    </svg>
                       Delete
                     </button>
                   </div>
 
-                  {/* Processing Indicator */}
                   {isProcessing && (
                     <div className="flex items-center justify-center gap-2 mt-4 py-2 bg-yellow-900 bg-opacity-50 rounded-lg">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-400"></div>
@@ -1179,7 +1057,6 @@ export default function AdminHourManagementScreen() {
         )}
       </motion.div>
 
-      {/* Review Modal */}
       {reviewModal.visible && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md">
@@ -1228,7 +1105,6 @@ export default function AdminHourManagementScreen() {
         </div>
       )}
 
-      {/* Enhanced Photo Modal */}
       {photoModal.visible && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -1324,7 +1200,6 @@ export default function AdminHourManagementScreen() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {deleteModal.visible && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-800 rounded-xl p-6 w-full max-w-md">
