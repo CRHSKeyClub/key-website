@@ -19,6 +19,7 @@ interface AuthContextType {
   loginAsAdmin: (email: string, password: string) => Promise<boolean>;
   loginAsStudent: (sNumber: string, password: string) => Promise<boolean>;
   registerStudent: (sNumber: string, password: string, name: string, tshirtSize?: string) => Promise<boolean>;
+  registerTestUser: () => Promise<boolean>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<boolean>;
   resetPassword: (sNumber: string, newPassword: string) => Promise<boolean>;
   logout: () => Promise<boolean>;
@@ -215,6 +216,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const registerTestUser = async () => {
+    try {
+      console.log("Registering test user");
+      const testUser: User = {
+        sNumber: 's000000',
+        name: 'Test User',
+        role: 'student',
+        totalHours: '0',
+        tshirtSize: 'M',
+        id: 'test-user',
+        loginTime: new Date().toISOString()
+      };
+      await storeUserData(testUser);
+      setUser(testUser);
+      setIsAuthenticated(true);
+      setIsAdmin(false);
+      console.log("Test user registration successful");
+      return true;
+    } catch (error) {
+      console.error('Test user registration error:', error);
+      return false;
+    }
+  };
+
   const changePassword = async (oldPassword: string, newPassword: string) => {
     try {
       if (!user?.sNumber) {
@@ -286,6 +311,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         loginAsAdmin,
         loginAsStudent,
         registerStudent,
+        registerTestUser,
         changePassword,
         resetPassword,
         logout,
@@ -309,4 +335,3 @@ export function useAuth() {
   }
   return context;
 }
-
