@@ -1137,6 +1137,9 @@ class SupabaseService {
           has_description: 'description' in data[0],
           has_descriptions: 'descriptions' in data[0],
           has_proof_image_url: 'proof_image_url' in data[0],
+          description_value: data[0]?.description ? `[${typeof data[0].description}] length: ${data[0].description?.length || 0}` : 'null/undefined',
+          descriptions_value: data[0]?.descriptions ? `[${typeof data[0].descriptions}] length: ${data[0].descriptions?.length || 0}` : 'null/undefined',
+          proof_image_url_value: data[0]?.proof_image_url || 'null/undefined',
           allKeys: Object.keys(data[0])
         });
       } else {
@@ -1175,7 +1178,7 @@ class SupabaseService {
 
   static async searchHourRequests(searchTerm: string, status: string = 'pending', limit: number = 25) {  // Reduced default from 100 to 25 to save egress
     try {
-      // Optimize: select only needed columns
+      // Optimize: select only needed columns and add pagination/timeout handling
       // Only search recent requests (last 2 years) to improve performance with large datasets
       // Note: Search will still work but only finds recent records. Remove date filter to search all records.
       const twoYearsAgo = new Date();
@@ -2716,6 +2719,23 @@ class SupabaseService {
     }
   }
 
+  static async createSpecificAccount() {
+    try {
+      console.log('Attempting to create account for sNumber 999999...');
+      const sNumber = '999999';
+      const password = 'Password123!'; // A strong dummy password
+      const name = 'New Student 999999';
+      const tshirtSize = 'L';
+
+      const result = await this.registerStudent(sNumber, password, name, tshirtSize);
+      console.log('Account creation for 999999 result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error creating account for sNumber 999999:', error);
+      throw error;
+    }
+  }
+
   private static extractPhotoToken(description?: string | null) {
     if (!description) return null;
 
@@ -2917,4 +2937,3 @@ class SupabaseService {
 }
 
 export default SupabaseService;
-
