@@ -50,6 +50,9 @@ export default function AdminStudentManagementScreen() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showSearchDropdown, setShowSearchDropdown] = useState<boolean>(false);
   const [searchResults, setSearchResults] = useState<Student[]>([]);
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
+  const [addStudentForm, setAddStudentForm] = useState({ sNumber: '', name: '', email: '', tshirtSize: '' });
+  const [addStudentSubmitting, setAddStudentSubmitting] = useState(false);
   const MAX_MANUAL_ADJUSTMENT = Number.POSITIVE_INFINITY;
 
   useEffect(() => {
@@ -347,6 +350,75 @@ export default function AdminStudentManagementScreen() {
     }
   };
 
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const sNumber = addStudentForm.sNumber.trim().toLowerCase();
+    const name = addStudentForm.name.trim();
+    if (!sNumber || !name) {
+      showModal({
+        title: 'Missing fields',
+        message: 'Please enter both S-number and name.',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+      return;
+    }
+    if (!sNumber.startsWith('s')) {
+      showModal({
+        title: 'Invalid S-number',
+        message: 'S-number must start with "s".',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+      return;
+    }
+    setAddStudentSubmitting(true);
+    try {
+      await SupabaseService.createStudent({
+        sNumber,
+        name,
+        email: addStudentForm.email.trim() || undefined,
+        tshirtSize: addStudentForm.tshirtSize.trim() || undefined
+      });
+      setShowAddStudentModal(false);
+      setAddStudentForm({ sNumber: '', name: '', email: '', tshirtSize: '' });
+      setSearchQuery(sNumber);
+      await searchStudents(sNumber);
+      showModal({
+        title: 'Student added',
+        message: `${name} (${sNumber}) has been added. They can now register an account.`,
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'checkmark-circle',
+        iconColor: '#4CAF50'
+      });
+    } catch (err) {
+      console.error('Failed to add student:', err);
+      showModal({
+        title: 'Error',
+        message: (err as Error)?.message?.includes('duplicate') ? 'A student with this S-number already exists.' : 'Failed to add student. Please try again.',
+        onCancel: () => {},
+        onConfirm: () => {},
+        cancelText: '',
+        confirmText: 'OK',
+        icon: 'alert-circle',
+        iconColor: '#ff4d4d'
+      });
+    } finally {
+      setAddStudentSubmitting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
@@ -477,6 +549,16 @@ export default function AdminStudentManagementScreen() {
               </svg>
             </button>
             
+            <button
+              onClick={() => setShowAddStudentModal(true)}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+              title="Add student"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              Add Student
+            </button>
             <button
               onClick={() => navigate('/admin-students-export')}
               className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
@@ -649,6 +731,95 @@ export default function AdminStudentManagementScreen() {
           )}
         </motion.div>
       </div>
+
+      {/* Add Student Modal */}
+      {showAddStudentModal && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl border border-slate-600"
+          >
+            <h3 className="text-xl font-bold text-white mb-4">Add Student</h3>
+            <form onSubmit={handleAddStudent} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">S-Number *</label>
+                <input
+                  type="text"
+                  value={addStudentForm.sNumber}
+                  onChange={(e) => setAddStudentForm(prev => ({ ...prev, sNumber: e.target.value }))}
+                  placeholder="e.g. s933563"
+                  className="w-full bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={addStudentForm.name}
+                  onChange={(e) => setAddStudentForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Full name"
+                  className="w-full bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Email (optional)</label>
+                <input
+                  type="email"
+                  value={addStudentForm.email}
+                  onChange={(e) => setAddStudentForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="email@example.com"
+                  className="w-full bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">T-Shirt Size (optional)</label>
+                <select
+                  value={addStudentForm.tshirtSize}
+                  onChange={(e) => setAddStudentForm(prev => ({ ...prev, tshirtSize: e.target.value }))}
+                  className="w-full bg-slate-700 text-white px-3 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none"
+                >
+                  <option value="">—</option>
+                  <option value="XS">XS</option>
+                  <option value="S">S</option>
+                  <option value="M">M</option>
+                  <option value="L">L</option>
+                  <option value="XL">XL</option>
+                  <option value="XXL">XXL</option>
+                  <option value="XXXL">XXXL</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAddStudentModal(false);
+                    setAddStudentForm({ sNumber: '', name: '', email: '', tshirtSize: '' });
+                  }}
+                  className="flex-1 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addStudentSubmitting}
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+                >
+                  {addStudentSubmitting ? 'Adding...' : 'Add Student'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
 
       {/* Hour Adjustment Modal */}
       {showAdjustmentModal && selectedStudent && (
